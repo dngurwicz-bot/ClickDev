@@ -53,7 +53,8 @@ interface FormData {
   subscription_tier: string
   active_modules: string[]
   admin_email: string
-  admin_full_name: string
+  admin_first_name: string
+  admin_last_name: string
   admin_phone: string
 }
 
@@ -83,7 +84,8 @@ export default function CreateOrganizationPage() {
     subscription_tier: 'basic',
     active_modules: ['core'],
     admin_email: '',
-    admin_full_name: '',
+    admin_first_name: '',
+    admin_last_name: '',
     admin_phone: '',
   })
 
@@ -118,7 +120,7 @@ export default function CreateOrganizationPage() {
       case 2:
         return formData.active_modules.includes('core')
       case 3:
-        return !!(formData.admin_email && formData.admin_full_name)
+        return !!(formData.admin_email && formData.admin_first_name && formData.admin_last_name)
       default:
         return true
     }
@@ -163,35 +165,44 @@ export default function CreateOrganizationPage() {
       if (orgError) throw orgError
       setCreatedOrg(org)
 
-      // Try to invite the admin user
+      // Create admin user using API route (ensures user is created in auth.users)
+      let emailSent = false
+      let emailError: string | null = null
+      let adminUserId: string | null = null
+      
       try {
-        await supabase.auth.admin.inviteUserByEmail(formData.admin_email, {
-          data: {
-            full_name: formData.admin_full_name,
-            phone: formData.admin_phone,
-            organization_id: org.id,
+        const response = await fetch('/api/admin/organizations/create-admin-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          redirectTo: `${window.location.origin}/login`
-        })
-      } catch {
-        // If admin invite fails, try regular signup with password reset
-        const tempPassword = Math.random().toString(36).slice(-12) + 'A1!'
-        
-        await supabase.auth.signUp({
-          email: formData.admin_email,
-          password: tempPassword,
-          options: {
-            data: {
-              full_name: formData.admin_full_name,
-              phone: formData.admin_phone,
-            }
-          }
+          body: JSON.stringify({
+            email: formData.admin_email,
+            firstName: formData.admin_first_name,
+            lastName: formData.admin_last_name,
+            phone: formData.admin_phone || '',
+            organizationId: org.id,
+          }),
         })
 
-        await supabase.auth.resetPasswordForEmail(formData.admin_email, {
-          redirectTo: `${window.location.origin}/reset-password`
-        })
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'שגיאה ביצירת מנהל הארגון')
+        }
+
+        adminUserId = data.userId
+        emailSent = data.emailSent || false
+        emailError = data.emailError || null
+      } catch (createErr: any) {
+        console.error('Error creating admin user:', createErr)
+        emailError = createErr.message || 'שגיאה ביצירת מנהל הארגון'
       }
+
+      // Profile and user_role are created by the API route
+      // No need to create them here
+      
+      setCreatedOrg({ ...org, emailSent, emailError, adminEmail: formData.admin_email })
 
       setSuccess(true)
     } catch (err: any) {
@@ -213,15 +224,35 @@ export default function CreateOrganizationPage() {
             <p className="text-text-secondary mb-6">
               מספר ארגון: <span className="font-mono font-bold text-primary">{createdOrg.org_number}</span>
             </p>
-            <div className="bg-blue-50 rounded-lg p-4 mb-6 text-right">
-              <div className="flex items-center gap-2 text-blue-800 mb-2">
-                <Mail className="h-5 w-5" />
-                <span className="font-medium">הודעה נשלחה למנהל המערכת</span>
+            {createdOrg.emailSent ? (
+              <div className="bg-blue-50 rounded-lg p-4 mb-6 text-right border border-blue-200">
+                <div className="flex items-center gap-2 text-blue-800 mb-2">
+                  <Mail className="h-5 w-5" />
+                  <span className="font-medium">הודעה נשלחה למנהל המערכת</span>
+                </div>
+                <p className="text-sm text-blue-700">
+                  מייל עם קישור לאיפוס סיסמה נשלח ל-{formData.admin_email}
+                </p>
               </div>
-              <p className="text-sm text-blue-700">
-                מייל עם קישור לאיפוס סיסמה נשלח ל-{formData.admin_email}
-              </p>
-            </div>
+            ) : (
+              <div className="bg-amber-50 rounded-lg p-4 mb-6 text-right border border-amber-200">
+                <div className="flex items-center gap-2 text-amber-800 mb-2">
+                  <Mail className="h-5 w-5" />
+                  <span className="font-medium">המייל לא נשלח</span>
+                </div>
+                <p className="text-sm text-amber-700 mb-3">
+                  לא ניתן לשלוח מייל אוטומטי ל-{formData.admin_email}
+                </p>
+                {createdOrg.emailError && (
+                  <p className="text-xs text-amber-600 mb-3 bg-amber-100 p-2 rounded">
+                    שגיאה: {createdOrg.emailError}
+                  </p>
+                )}
+                <p className="text-xs text-amber-600 mb-3">
+                  💡 ניתן לשלוח מייל מחדש מדף הארגון
+                </p>
+              </div>
+            )}
             <div className="flex gap-4 justify-center">
               <Link
                 href={`/admin/organizations/${createdOrg.id}`}
@@ -518,16 +549,30 @@ export default function CreateOrganizationPage() {
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-text-primary mb-2">
-                    שם מלא <span className="text-red-500">*</span>
+                    שם פרטי <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={formData.admin_full_name}
-                    onChange={(e) => setFormData({ ...formData, admin_full_name: e.target.value })}
+                    value={formData.admin_first_name}
+                    onChange={(e) => setFormData({ ...formData, admin_first_name: e.target.value })}
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="שם פרטי ושם משפחה"
+                    placeholder="שם פרטי"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">
+                    שם משפחה <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.admin_last_name}
+                    onChange={(e) => setFormData({ ...formData, admin_last_name: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="שם משפחה"
+                    required
                   />
                 </div>
                 <div>
@@ -618,7 +663,7 @@ export default function CreateOrganizationPage() {
                   <div className="grid gap-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-text-secondary">שם:</span>
-                      <span className="font-medium">{formData.admin_full_name}</span>
+                      <span className="font-medium">{formData.admin_first_name} {formData.admin_last_name}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-text-secondary">אימייל:</span>

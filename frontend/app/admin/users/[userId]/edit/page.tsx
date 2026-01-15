@@ -41,7 +41,8 @@ export default function EditUserPage() {
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   
   const [formData, setFormData] = useState({
-    full_name: '',
+    first_name: '',
+    last_name: '',
     phone: '',
     role: 'employee' as string,
     organization_id: '',
@@ -80,9 +81,15 @@ export default function EditUserPage() {
 
         if (role) setUserRole(role)
 
-        // Set form data
+        // Set form data - split full_name if exists, otherwise use first_name and last_name
+        const fullName = profile?.full_name || ''
+        const nameParts = fullName.split(' ')
+        const firstName = profile?.first_name || nameParts[0] || ''
+        const lastName = profile?.last_name || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '')
+        
         setFormData({
-          full_name: profile?.full_name || '',
+          first_name: firstName,
+          last_name: lastName,
           phone: profile?.phone || '',
           role: role?.role || 'employee',
           organization_id: role?.organization_id || '',
@@ -104,28 +111,25 @@ export default function EditUserPage() {
     setError(null)
 
     try {
-      // Update profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: formData.full_name,
+      // Use API route to update user (bypasses RLS)
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          role: formData.role,
+          organization_id: formData.role === 'super_admin' ? null : formData.organization_id || null,
           is_super_admin: formData.role === 'super_admin',
-        })
-        .eq('id', userId)
+        }),
+      })
 
-      if (profileError) throw profileError
+      const data = await response.json()
 
-      // Update user role
-      if (userRole) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .update({
-            role: formData.role,
-            organization_id: formData.role === 'super_admin' ? null : formData.organization_id || null,
-          })
-          .eq('id', userRole.id)
-
-        if (roleError) throw roleError
+      if (!response.ok) {
+        throw new Error(data.error || 'שגיאה בעדכון המשתמש')
       }
 
       setSuccess(true)
@@ -322,17 +326,33 @@ export default function EditUserPage() {
 
           {/* User Details */}
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-2">
-                שם מלא
-              </label>
-              <input
-                type="text"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="שם פרטי ושם משפחה"
-              />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  שם פרטי <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="שם פרטי"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">
+                  שם משפחה <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="שם משפחה"
+                  required
+                />
+              </div>
             </div>
           </div>
 

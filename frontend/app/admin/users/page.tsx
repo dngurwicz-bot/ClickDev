@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
-import { Users, Mail, Plus, Search, Loader2, Shield, Building2, UserCog } from 'lucide-react'
+import { Users, Mail, Plus, Search, Loader2, Shield, Building2, UserCog, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 import Link from 'next/link'
@@ -34,45 +33,30 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch users
-  useEffect(() => {
-    async function fetchUsers() {
-      setLoading(true)
-      const supabase = createClient()
-      
-      // Get all user roles with organizations
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select(`
-          *,
-          organization:organizations(name)
-        `)
-        .order('created_at', { ascending: false })
+  // Fetch users function
+  const fetchUsers = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      // Use API route to fetch users (bypasses RLS)
+      const response = await fetch('/api/admin/users/list')
+      const data = await response.json()
 
-      if (rolesError) {
-        setError(rolesError.message)
-        setLoading(false)
-        return
+      if (!response.ok) {
+        throw new Error(data.error || 'שגיאה בטעינת המשתמשים')
       }
 
-      // Get all profiles separately
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-
-      // Create a map of profiles by user_id for quick lookup
-      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || [])
-
-      // Combine the data
-      const usersWithProfiles = userRoles?.map(role => ({
-        ...role,
-        profile: profilesMap.get(role.user_id) || null
-      })) || []
-
-      setUsers(usersWithProfiles)
+      setUsers(data.users || [])
+    } catch (err: any) {
+      setError(err.message || 'שגיאה בטעינת המשתמשים')
+    } finally {
       setLoading(false)
     }
+  }
 
+  // Fetch users on mount
+  useEffect(() => {
     fetchUsers()
   }, [])
 
@@ -125,13 +109,24 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold text-text-primary">משתמשים</h1>
           <p className="mt-2 text-text-secondary">ניהול כל המשתמשים במערכת</p>
         </div>
-        <Link
-          href="/admin/users/new"
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors hover:bg-primary-dark"
-        >
-          <Plus className="h-5 w-5" />
-          <span>משתמש חדש</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => fetchUsers()}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-text-primary transition-colors hover:bg-gray-50 disabled:opacity-50"
+            title="רענן רשימה"
+          >
+            <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            <span>רענן</span>
+          </button>
+          <Link
+            href="/admin/users/new"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors hover:bg-primary-dark"
+          >
+            <Plus className="h-5 w-5" />
+            <span>משתמש חדש</span>
+          </Link>
+        </div>
       </div>
 
       {/* Role Stats */}
@@ -142,6 +137,10 @@ export default function UsersPage() {
             params.delete('role')
             window.history.pushState(null, '', `?${params.toString()}`)
             window.location.reload()
+          }}
+          onMouseEnter={() => {
+            // Refresh data on hover to ensure latest data
+            fetchUsers()
           }}
           className={`rounded-lg p-4 text-center transition-all ${
             roleFilter === 'all' 

@@ -25,6 +25,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 import { OrganizationActions } from '@/components/admin/OrganizationActions'
+import { ResendPasswordEmail } from '@/components/admin/ResendPasswordEmail'
 
 export default async function OrganizationDetailPage({
   params,
@@ -52,6 +53,36 @@ export default async function OrganizationDetailPage({
     .from('system_modules')
     .select('*')
     .order('is_core', { ascending: false })
+
+  // Get organization admin user
+  const { data: adminRoles } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('organization_id', id)
+    .eq('role', 'organization_admin')
+    .limit(1)
+
+  let adminEmail: string | null = null
+  let adminFullName: string | null = null
+  if (adminRoles && adminRoles.length > 0) {
+    const { data: adminProfile } = await supabase
+      .from('profiles')
+      .select('email, first_name, last_name, full_name')
+      .eq('id', adminRoles[0].user_id)
+      .single()
+    
+    adminEmail = adminProfile?.email || null
+    adminFullName = adminProfile?.full_name || 
+      (adminProfile?.first_name && adminProfile?.last_name 
+        ? `${adminProfile.first_name} ${adminProfile.last_name}` 
+        : adminProfile?.first_name || adminProfile?.last_name || null)
+  }
+
+  // Fallback: if no admin role found, try to find by auth.users
+  if (!adminEmail) {
+    // Try to get from auth.users directly (requires service role, so we'll use a different approach)
+    // For now, we'll show the component anyway with a note
+  }
 
   if (orgError || !organization) {
     return (
@@ -378,6 +409,72 @@ export default async function OrganizationDetailPage({
                 ))
               ) : (
                 <p className="text-text-secondary text-center py-4">אין מודולים פעילים</p>
+              )}
+            </div>
+          </div>
+
+          {/* Organization Admin */}
+          <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
+                <Users className="h-5 w-5 text-blue-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-text-primary">מנהל הארגון</h2>
+            </div>
+            
+            <div className="space-y-4">
+              {adminEmail ? (
+                <>
+                  {adminFullName && (
+                    <div>
+                      <p className="text-sm text-text-muted mb-1">שם מלא</p>
+                      <p className="font-medium text-text-primary text-lg">
+                        {adminFullName}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <p className="text-sm text-text-muted mb-1">אימייל</p>
+                    <p className="font-medium text-text-primary" dir="ltr">
+                      {adminEmail}
+                    </p>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="text-sm text-text-muted mb-2">שליחת מייל לאיפוס סיסמה</p>
+                    <ResendPasswordEmail 
+                      userEmail={adminEmail}
+                      organizationId={id}
+                      organizationName={organization.name}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                    <p className="text-sm text-amber-800 mb-3">
+                      ⚠️ לא נמצא מנהל ארגון רשום במערכת
+                    </p>
+                    <p className="text-xs text-amber-700 mb-4">
+                      אם יצרת ארגון עם מנהל, ייתכן שהתפקיד לא נוצר. ניתן לשלוח מייל לאימייל הארגון:
+                    </p>
+                    <div className="mb-4">
+                      <p className="text-sm text-text-muted mb-1">אימייל ארגון</p>
+                      <p className="font-medium text-text-primary" dir="ltr">
+                        {organization.email}
+                      </p>
+                    </div>
+                    <div className="pt-4 border-t border-amber-200">
+                      <p className="text-sm text-text-muted mb-2">שליחת מייל לאיפוס סיסמה</p>
+                      <ResendPasswordEmail 
+                        userEmail={organization.email}
+                        organizationId={id}
+                        organizationName={organization.name}
+                      />
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>

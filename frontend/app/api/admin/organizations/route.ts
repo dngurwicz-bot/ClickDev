@@ -1,6 +1,19 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+
+// Create admin client with service role key
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 // Create authenticated client using cookies
 async function getSupabaseClient() {
@@ -74,9 +87,46 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'חסר מזהה ארגון' }, { status: 400 })
     }
 
-    // Delete related data first (RLS policies should allow this for Super Admin)
-    // Delete employees
-    const { error: empError } = await supabase
+    // Get all user IDs associated with this organization before deleting
+    const { data: orgUserRoles } = await supabaseAdmin
+      .from('user_roles')
+      .select('user_id')
+      .eq('organization_id', organizationId)
+
+    const orgUserIds = orgUserRoles?.map(ur => ur.user_id) || []
+
+    // Delete related data using admin client to bypass RLS
+    // 1. Delete employee_user_mapping (for employees in this org)
+    const { data: employees } = await supabaseAdmin
+      .from('employees')
+      .select('id')
+      .eq('organization_id', organizationId)
+
+    const employeeIds = employees?.map(e => e.id) || []
+
+    if (employeeIds.length > 0) {
+      const { error: mappingError } = await supabaseAdmin
+        .from('employee_user_mapping')
+        .delete()
+        .in('employee_id', employeeIds)
+      
+      if (mappingError) {
+        console.log('Error deleting employee_user_mapping:', mappingError.message)
+      }
+    }
+
+    // 2. Delete employee_history (history of employees in this org)
+    const { error: historyError } = await supabaseAdmin
+      .from('employee_history')
+      .delete()
+      .eq('organization_id', organizationId)
+    
+    if (historyError) {
+      console.log('Error deleting employee_history:', historyError.message)
+    }
+
+    // 3. Delete employees
+    const { error: empError } = await supabaseAdmin
       .from('employees')
       .delete()
       .eq('organization_id', organizationId)
@@ -85,8 +135,18 @@ export async function DELETE(request: NextRequest) {
       console.log('Error deleting employees:', empError.message)
     }
 
-    // Delete user roles for this organization
-    const { error: rolesError } = await supabase
+    // 4. Delete system_logs for this organization
+    const { error: logsError } = await supabaseAdmin
+      .from('system_logs')
+      .delete()
+      .eq('organization_id', organizationId)
+    
+    if (logsError) {
+      console.log('Error deleting system_logs:', logsError.message)
+    }
+
+    // 5. Delete user_roles for this organization
+    const { error: rolesError } = await supabaseAdmin
       .from('user_roles')
       .delete()
       .eq('organization_id', organizationId)
@@ -95,8 +155,45 @@ export async function DELETE(request: NextRequest) {
       console.log('Error deleting user roles:', rolesError.message)
     }
 
-    // Delete the organization
-    const { error: orgError } = await supabase
+    // 6. Delete users from auth.users if they only belong to this organization
+    // (only delete if they don't have other roles)
+    for (const userId of orgUserIds) {
+      // Check if user has other roles
+      const { data: otherRoles } = await supabaseAdmin
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .neq('organization_id', organizationId)
+
+      // If no other roles and not super admin, delete the user
+      if (!otherRoles || otherRoles.length === 0) {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('is_super_admin')
+          .eq('id', userId)
+          .single()
+
+        // Don't delete super admins
+        if (!profile?.is_super_admin) {
+          try {
+            // Delete profile first
+            await supabaseAdmin
+              .from('profiles')
+              .delete()
+              .eq('id', userId)
+
+            // Delete from auth.users
+            await supabaseAdmin.auth.admin.deleteUser(userId)
+            console.log(`Deleted user ${userId} (only belonged to deleted organization)`)
+          } catch (userDeleteError: any) {
+            console.log(`Error deleting user ${userId}:`, userDeleteError.message)
+          }
+        }
+      }
+    }
+
+    // 7. Delete the organization
+    const { error: orgError } = await supabaseAdmin
       .from('organizations')
       .delete()
       .eq('id', organizationId)
@@ -106,7 +203,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'שגיאה במחיקת הארגון: ' + orgError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ 
+      success: true,
+      message: 'הארגון וכל הנתונים הקשורים נמחקו בהצלחה',
+      deletedUsers: orgUserIds.length
+    })
 
   } catch (error: any) {
     console.error('Delete organization error:', error)

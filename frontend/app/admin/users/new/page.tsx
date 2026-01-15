@@ -21,7 +21,8 @@ export default function NewUserPage() {
   
   const [formData, setFormData] = useState({
     email: '',
-    full_name: '',
+    first_name: '',
+    last_name: '',
     phone: '',
     role: 'employee' as 'super_admin' | 'organization_admin' | 'manager' | 'employee',
     organization_id: '',
@@ -48,7 +49,7 @@ export default function NewUserPage() {
 
     try {
       // Validate
-      if (!formData.email || !formData.full_name) {
+      if (!formData.email || !formData.first_name || !formData.last_name) {
         throw new Error('נא למלא את כל השדות הנדרשים')
       }
 
@@ -64,7 +65,9 @@ export default function NewUserPage() {
         password: tempPassword,
         options: {
           data: {
-            full_name: formData.full_name,
+            full_name: `${formData.first_name} ${formData.last_name}`.trim(),
+            first_name: formData.first_name,
+            last_name: formData.last_name,
             phone: formData.phone,
           }
         }
@@ -86,7 +89,8 @@ export default function NewUserPage() {
         .upsert({
           id: userId,
           email: formData.email,
-          full_name: formData.full_name,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
           is_super_admin: formData.role === 'super_admin',
         })
 
@@ -150,7 +154,8 @@ export default function NewUserPage() {
                   setSuccess(false)
                   setFormData({
                     email: '',
-                    full_name: '',
+                    first_name: '',
+                    last_name: '',
                     phone: '',
                     role: 'employee',
                     organization_id: '',
@@ -321,14 +326,27 @@ export default function NewUserPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
-                שם מלא <span className="text-red-500">*</span>
+                שם פרטי <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="שם פרטי ושם משפחה"
+                placeholder="שם פרטי"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">
+                שם משפחה <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="שם משפחה"
                 required
               />
             </div>
