@@ -29,22 +29,23 @@ import { OrganizationActions } from '@/components/admin/OrganizationActions'
 export default async function OrganizationDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = await params;
   const supabase = await createClient()
   
   // Get organization with all details
   const { data: organization, error: orgError } = await supabase
     .from('organizations')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   // Get employees count
   const { count: employeesCount } = await supabase
     .from('employees')
     .select('*', { count: 'exact', head: true })
-    .eq('organization_id', params.id)
+    .eq('organization_id', id)
 
   // Get organization modules
   const { data: allModules } = await supabase
@@ -111,13 +112,13 @@ export default async function OrganizationDetailPage({
           {/* Actions */}
           <div className="flex gap-3">
             <Link
-              href={`/admin/organizations/${params.id}/edit`}
+              href={`/admin/organizations/${id}/edit`}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-text-primary hover:bg-gray-50"
             >
               <Edit className="h-4 w-4" />
               עריכה
             </Link>
-            <OrganizationActions organizationId={params.id} organizationName={organization.name} />
+            <OrganizationActions organizationId={id} organizationName={organization.name} />
           </div>
         </div>
       </div>
@@ -319,7 +320,7 @@ export default async function OrganizationDetailPage({
                 <h2 className="text-lg font-semibold text-text-primary">עובדים ({employeesCount || 0})</h2>
               </div>
               <Link
-                href={`/admin/organizations/${params.id}/employees`}
+                href={`/admin/organizations/${id}/employees`}
                 className="text-sm text-primary hover:text-primary-dark font-medium"
               >
                 צפה בכל העובדים →
@@ -335,7 +336,7 @@ export default async function OrganizationDetailPage({
                         </div>
                 <p className="text-text-secondary mb-4">אין עובדים רשומים לארגון זה</p>
                         <Link
-                  href={`/admin/organizations/${params.id}/employees/new`}
+                  href={`/admin/organizations/${id}/employees/new`}
                   className="inline-flex items-center gap-2 text-primary hover:text-primary-dark font-medium"
                         >
                   הוסף עובד ראשון

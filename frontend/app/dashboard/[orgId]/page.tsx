@@ -5,8 +5,9 @@ import { Logo } from "@/components/ui/Logo";
 export default async function DashboardPage({
   params,
 }: {
-  params: { orgId: string };
+  params: Promise<{ orgId: string }>;
 }) {
+  const { orgId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -18,7 +19,7 @@ export default async function DashboardPage({
   const { data: member } = await supabase
     .from("organization_members")
     .select("*, organizations(*)")
-    .eq("organization_id", params.orgId)
+    .eq("organization_id", orgId)
     .eq("user_id", user.id)
     .single();
 
@@ -30,7 +31,7 @@ export default async function DashboardPage({
   const { data: employees } = await supabase
     .from("employees")
     .select("*")
-    .eq("organization_id", params.orgId)
+    .eq("organization_id", orgId)
     .order("created_at", { ascending: false });
 
   return (

@@ -8,10 +8,11 @@ import { he } from 'date-fns/locale'
 export default async function EmployeeDetailPage({
   params,
 }: {
-  params: { id: string; employeeId: string }
+  params: Promise<{ id: string; employeeId: string }>
 }) {
-  const { data: employee, error: empError } = await getEmployeeById(params.employeeId)
-  const { data: history } = await getEmployeeHistory(params.employeeId)
+  const { id, employeeId } = await params;
+  const { data: employee, error: empError } = await getEmployeeById(employeeId)
+  const { data: history } = await getEmployeeHistory(employeeId)
 
   if (empError || !employee) {
     return (
@@ -27,7 +28,7 @@ export default async function EmployeeDetailPage({
     <div className="p-8">
       <div className="mb-8">
         <Link
-          href={`/admin/organizations/${params.id}`}
+          href={`/admin/organizations/${id}`}
           className="mb-4 inline-block text-primary hover:text-primary-dark"
         >
           ← חזור לארגון

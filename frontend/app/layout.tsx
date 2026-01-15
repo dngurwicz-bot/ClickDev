@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
+import { MaintenanceBanner } from "@/components/admin/MaintenanceBanner";
 
 const rubik = Rubik({
   subsets: ["latin", "hebrew"],
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl" className={rubik.variable}>
       <body className="font-sans antialiased">
+        <MaintenanceBanner />
         {children}
       </body>
     </html>
