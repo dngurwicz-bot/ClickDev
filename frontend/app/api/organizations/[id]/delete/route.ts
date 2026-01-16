@@ -28,16 +28,23 @@ export async function DELETE(
       )
     }
 
+    // Force Authorization header to ensure service role is used
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${supabaseServiceKey}`
+        }
       }
     })
 
     // Handle both Next.js 15 (Promise) and older versions
     const resolvedParams = params instanceof Promise ? await params : params
     const orgId = resolvedParams.id
+    console.log('Attempting to delete organization:', orgId)
 
     if (!orgId) {
       return NextResponse.json(
@@ -46,19 +53,43 @@ export async function DELETE(
       )
     }
 
-    // Delete organization using service role (bypasses RLS)
-    const { error: deleteError } = await supabaseAdmin
+    // Verify existence (and read permissions) first
+    const { data: existingOrg, error: findError } = await supabaseAdmin
       .from('organizations')
-      .delete()
+      .select('id')
       .eq('id', orgId)
+      .single()
 
-    if (deleteError) {
-      console.error('Error deleting organization:', deleteError)
+    if (findError) {
+      console.error('Error finding organization before delete:', JSON.stringify(findError, null, 2))
+    } else {
+      console.log('Organization found, proceeding to delete:', existingOrg.id)
+    }
+
+    // Delete organization using direct REST API to guarantee service role usage
+    // This bypasses any client-side RLS or cookie interference from the library
+    console.log('Executing raw REST delete for:', orgId)
+    const response = await fetch(`${supabaseUrl}/rest/v1/organizations?id=eq.${orgId}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': supabaseServiceKey,
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      }
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Raw delete failed:', response.status, errorText)
       return NextResponse.json(
-        { error: deleteError.message || 'Failed to delete organization' },
-        { status: 400 }
+        { error: `Database error: ${response.status} ${errorText}` },
+        { status: response.status }
       )
     }
+
+    const data = await response.json()
+    console.log('Raw delete success, deleted rows:', data)
 
     return NextResponse.json({
       success: true,

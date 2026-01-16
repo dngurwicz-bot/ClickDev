@@ -17,10 +17,11 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = params.id
+    const { id } = await params
+    const userId = id
 
     const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
 

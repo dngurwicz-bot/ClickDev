@@ -3,7 +3,7 @@ import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'CLICK - מערכת ניהול משאבי אנוש',
+  title: 'Click',
   description: 'מערכת ניהול משאבי אנוש Multi-Tenant',
 }
 
@@ -14,6 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet" />
+      </head>
       <body>
         {children}
         <Toaster

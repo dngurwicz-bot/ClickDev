@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Plus, Search, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -22,6 +23,7 @@ export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const router = useRouter()
 
   useEffect(() => {
     fetchOrganizations()
@@ -33,9 +35,9 @@ export default function OrganizationsPage() {
         .from('organizations')
         .select('*')
         .order('created_at', { ascending: false })
-      
+
       if (error) throw error
-      
+
       setOrganizations(data || [])
     } catch (error) {
       console.error('Error fetching organizations:', error)
@@ -46,7 +48,8 @@ export default function OrganizationsPage() {
 
   const filteredOrgs = organizations.filter(org =>
     org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.email.toLowerCase().includes(searchTerm.toLowerCase())
+    org.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    org.org_number?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
@@ -110,7 +113,11 @@ export default function OrganizationsPage() {
               </tr>
             ) : (
               filteredOrgs.map((org) => (
-                <tr key={org.id} className="hover:bg-gray-50">
+                <tr
+                  key={org.id}
+                  onClick={() => router.push(`/admin/organizations/${org.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                >
                   <td className="px-6 py-4">
                     <span className="font-mono font-semibold text-primary">
                       {org.org_number || '-'}
@@ -127,28 +134,23 @@ export default function OrganizationsPage() {
                   <td className="px-6 py-4 text-text-secondary">{org.email}</td>
                   <td className="px-6 py-4 text-text-secondary">{org.phone || '-'}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      org.subscription_tier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${org.subscription_tier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
                       org.subscription_tier === 'professional' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                        'bg-gray-100 text-gray-800'
+                      }`}>
                       {org.subscription_tier}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      org.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${org.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
                       {org.is_active ? 'פעיל' : 'לא פעיל'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <Link
-                      href={`/admin/organizations/${org.id}`}
-                      className="text-primary hover:text-primary-dark font-medium"
-                    >
+                    <span className="text-primary hover:text-primary-dark font-medium">
                       צפה
-                    </Link>
+                    </span>
                   </td>
                 </tr>
               ))

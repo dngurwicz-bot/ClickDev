@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { 
-  ArrowRight, Building2, Mail, Phone, MapPin, Send, CheckCircle2, XCircle, 
+import {
+  ArrowRight, Building2, Mail, Phone, MapPin, Send, CheckCircle2, XCircle,
   Users, Settings, Package, Edit, Trash2, Plus, Save, X, Globe, FileText,
-  AlertTriangle
+  AlertTriangle, Loader2, Upload, Search
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -80,6 +80,57 @@ export default function OrganizationDetailPage() {
   const [showAddUser, setShowAddUser] = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [error, setError] = useState('')
+  const [userSearchTerm, setUserSearchTerm] = useState('')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return
+    }
+
+    const file = event.target.files[0]
+    if (!file.type.startsWith('image/')) {
+      toast.error('הקובץ חייב להיות תמונה')
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) { // 2MB
+      toast.error('גודל התמונה חייב להיות קטן מ-2MB')
+      return
+    }
+
+    setUploadingLogo(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${orgId}/${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file)
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(fileName)
+
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ logo_url: publicUrl })
+        .eq('id', orgId)
+
+      if (updateError) throw updateError
+
+      setOrganization(prev => prev ? { ...prev, logo_url: publicUrl } : null)
+      setEditForm(prev => ({ ...prev, logo_url: publicUrl }))
+      toast.success('הלוגו עודכן בהצלחה')
+    } catch (error: any) {
+      console.error('Error uploading logo:', error)
+      toast.error('שגיאה בהעלאת הלוגו')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
 
   const [editForm, setEditForm] = useState<Partial<Organization>>({})
   const [newUserForm, setNewUserForm] = useState({
@@ -191,6 +242,15 @@ export default function OrganizationDetailPage() {
     setOrganizationUsers(usersWithDetails)
   }
 
+  const filteredUsers = organizationUsers.filter(user => {
+    const searchLower = userSearchTerm.toLowerCase()
+    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase()
+    return (
+      fullName.includes(searchLower) ||
+      user.email?.toLowerCase().includes(searchLower)
+    )
+  })
+
   const fetchSubscriptionTiers = async () => {
     const { data, error } = await supabase
       .from('subscription_tiers')
@@ -256,7 +316,7 @@ export default function OrganizationDetailPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         let errorMessage = errorData.error || 'שגיאה במחיקת הארגון'
-        
+
         // Translate common errors to Hebrew
         if (errorMessage.includes('Invalid API key') || errorMessage.includes('API key')) {
           errorMessage = 'שגיאת הגדרת שרת: מפתח API לא תקין. אנא פנה למנהל המערכת.'
@@ -265,7 +325,7 @@ export default function OrganizationDetailPage() {
         } else if (errorMessage.includes('permission denied')) {
           errorMessage = 'אין הרשאה למחוק את הארגון. אנא פנה למנהל המערכת.'
         }
-        
+
         throw new Error(errorMessage)
       }
 
@@ -351,7 +411,7 @@ export default function OrganizationDetailPage() {
 
   const toggleModule = (moduleId: string) => {
     if (moduleId === 'core') return // Core is always active
-    
+
     setEditForm(prev => ({
       ...prev,
       active_modules: prev.active_modules?.includes(moduleId)
@@ -423,11 +483,10 @@ export default function OrganizationDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <div className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              organization.is_active
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}>
+            <div className={`px-4 py-2 rounded-lg text-sm font-medium ${organization.is_active
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+              }`}>
               {organization.is_active ? 'פעיל' : 'לא פעיל'}
             </div>
             {!editing && (
@@ -471,7 +530,7 @@ export default function OrganizationDetailPage() {
             {tabs.map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
-              
+
               return (
                 <button
                   key={tab.id}
@@ -707,13 +766,47 @@ export default function OrganizationDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {organization.logo_url && (
-                    <div className="md:col-span-2 mb-4">
+                  {organization.logo_url ? (
+                    <div className="md:col-span-2 mb-4 relative group w-32">
                       <img
                         src={organization.logo_url}
                         alt={organization.name}
                         className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200"
                       />
+                      <label className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        {uploadingLogo ? (
+                          <Loader2 className="w-8 h-8 text-white animate-spin" />
+                        ) : (
+                          <Upload className="w-8 h-8 text-white" />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                          disabled={uploadingLogo}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="md:col-span-2 mb-4">
+                      <label className="w-32 h-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+                        {uploadingLogo ? (
+                          <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+                        ) : (
+                          <>
+                            <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                            <span className="text-sm text-gray-500">העלה לוגו</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                          disabled={uploadingLogo}
+                        />
+                      </label>
                     </div>
                   )}
                   <div>
@@ -776,11 +869,10 @@ export default function OrganizationDetailPage() {
                     <label className="block text-sm font-medium text-text-secondary mb-1">
                       סוג מנוי
                     </label>
-                    <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${
-                      organization.subscription_tier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
+                    <span className={`inline-block px-3 py-1 rounded text-sm font-medium ${organization.subscription_tier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
                       organization.subscription_tier === 'professional' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                        'bg-gray-100 text-gray-800'
+                      }`}>
                       {organization.subscription_tier}
                     </span>
                   </div>
@@ -818,6 +910,20 @@ export default function OrganizationDetailPage() {
                   <Plus className="w-4 h-4" />
                   הוסף משתמש
                 </button>
+              </div>
+
+              {/* User Search */}
+              <div className="mb-6">
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-muted w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="חפש משתמש לפי שם או אימייל..."
+                    value={userSearchTerm}
+                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
               </div>
 
               {showAddUser && (
@@ -930,13 +1036,12 @@ export default function OrganizationDetailPage() {
                             : 'ללא שם'}
                         </p>
                         <p className="text-sm text-text-secondary">{user.email}</p>
-                        <span className={`inline-block mt-2 px-2 py-1 rounded text-xs ${
-                          user.role === 'organization_admin' ? 'bg-purple-100 text-purple-800' :
+                        <span className={`inline-block mt-2 px-2 py-1 rounded text-xs ${user.role === 'organization_admin' ? 'bg-purple-100 text-purple-800' :
                           user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                            'bg-gray-100 text-gray-800'
+                          }`}>
                           {user.role === 'organization_admin' ? 'מנהל ארגון' :
-                           user.role === 'manager' ? 'מנהל' : 'עובד'}
+                            user.role === 'manager' ? 'מנהל' : 'עובד'}
                         </span>
                       </div>
                       <button
@@ -981,11 +1086,10 @@ export default function OrganizationDetailPage() {
                         <div
                           key={module.id}
                           onClick={() => toggleModule(module.id)}
-                          className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                            editForm.active_modules?.includes(module.id)
-                              ? 'border-primary bg-primary-light'
-                              : 'border-gray-200 hover:border-gray-300'
-                          } ${module.id === 'core' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${editForm.active_modules?.includes(module.id)
+                            ? 'border-primary bg-primary-light'
+                            : 'border-gray-200 hover:border-gray-300'
+                            } ${module.id === 'core' ? 'opacity-60 cursor-not-allowed' : ''}`}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div>
@@ -1051,7 +1155,7 @@ export default function OrganizationDetailPage() {
           {activeTab === 'settings' && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold text-text-primary mb-6">הגדרות ארגון</h2>
-              
+
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-6">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />

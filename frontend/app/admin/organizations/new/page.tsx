@@ -102,7 +102,7 @@ export default function NewOrganizationPage() {
 
   const toggleModule = (moduleId: string) => {
     if (moduleId === 'core') return // Core is always active
-    
+
     setFormData(prev => ({
       ...prev,
       activeModules: prev.activeModules.includes(moduleId)
@@ -211,12 +211,40 @@ export default function NewOrganizationPage() {
         throw orgError
       }
 
+      // Automatically assign the creator as an Organization Admin
+      // We use the add-user API for this to ensure consistency and bypass RLS if needed
+      try {
+        const adminData = {
+          firstName: user.user_metadata?.first_name || 'Admin',
+          lastName: user.user_metadata?.last_name || 'User',
+          email: user.email,
+          role: 'organization_admin'
+        }
+
+        // We use the API because it uses service_role key to write to user_roles
+        // Standard users might not have insert permission on user_roles depending on RLS
+        await fetch('/api/organizations/add-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            organizationId: org.id,
+            userData: adminData,
+          }),
+        })
+      } catch (adminError) {
+        console.error('Failed to assign creator as admin:', adminError)
+        // We don't block the flow, but we warn
+        toast.error('הארגון נוצר אך הייתה בעיה בהגדרת המנהל. אנא פנה לתמיכה.')
+      }
+
       toast.success('הארגון נוצר בהצלחה! כעת תוכל להוסיף מנהל ראשוני דרך דף העריכה.')
       router.push(`/admin/organizations/${org.id}`)
     } catch (err: any) {
       console.error('Error creating organization:', err)
       let errorMessage = err.message || 'שגיאה ביצירת הארגון'
-      
+
       // Translate common database errors to Hebrew
       if (errorMessage.includes('duplicate key value violates unique constraint')) {
         if (errorMessage.includes('organizations_email_key')) {
@@ -229,7 +257,7 @@ export default function NewOrganizationPage() {
       } else if (errorMessage.includes('permission denied')) {
         errorMessage = 'אין הרשאה לבצע פעולה זו. אנא פנה למנהל המערכת.'
       }
-      
+
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
@@ -277,7 +305,7 @@ export default function NewOrganizationPage() {
               const Icon = tab.icon
               const status = getTabStatus(tab.id)
               const isActive = activeTab === tab.id
-              
+
               return (
                 <button
                   key={tab.id}
@@ -325,10 +353,10 @@ export default function NewOrganizationPage() {
                   <div className="space-y-3">
                     {logoPreview ? (
                       <div className="relative group">
-                        <img 
-                          src={logoPreview} 
-                          alt="Logo preview" 
-                          className="w-full aspect-square object-cover rounded-xl border-2 border-gray-200" 
+                        <img
+                          src={logoPreview}
+                          alt="Logo preview"
+                          className="w-full aspect-square object-cover rounded-xl border-2 border-gray-200"
                         />
                         <button
                           onClick={() => {
@@ -453,8 +481,8 @@ export default function NewOrganizationPage() {
                 <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                   <Package className="w-16 h-16 mx-auto mb-4 text-text-muted" />
                   <p className="text-text-secondary mb-4">אין סוגי מנויים זמינים</p>
-                  <Link 
-                    href="/admin/subscription-tiers/new" 
+                  <Link
+                    href="/admin/subscription-tiers/new"
                     className="inline-flex items-center gap-2 text-primary hover:text-primary-dark font-medium"
                   >
                     צור סוג מנוי חדש

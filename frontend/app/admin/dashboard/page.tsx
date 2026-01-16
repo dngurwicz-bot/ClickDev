@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react'
 import { Building2, Users, TrendingUp, Activity } from 'lucide-react'
 import StatsCard from '@/components/admin/StatsCard'
+import TasksWidget from '@/components/admin/TasksWidget'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalOrganizations: 0,
     activeOrganizations: 0,
     totalEmployees: 0,
+    mrr: 0,
     recentActivity: []
   })
   const [loading, setLoading] = useState(true)
@@ -21,7 +23,7 @@ export default function DashboardPage() {
     try {
       const { supabase } = await import('@/lib/supabase')
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (!session?.access_token) {
         throw new Error('No session')
       }
@@ -31,17 +33,18 @@ export default function DashboardPage() {
           'Authorization': `Bearer ${session.access_token}`
         }
       })
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch stats')
       }
-      
+
       const data = await response.json()
       setStats({
         totalOrganizations: data.total_organizations || 0,
         activeOrganizations: data.active_organizations || 0,
         totalEmployees: data.total_employees || 0,
-        recentActivity: []
+        mrr: data.mrr || 0,
+        recentActivity: data.recent_activity || []
       })
     } catch (error) {
       console.error('Error fetching stats:', error)
@@ -55,11 +58,12 @@ export default function DashboardPage() {
       <div className="p-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} className="h-32 bg-gray-200 rounded"></div>
             ))}
           </div>
+          <div className="h-64 bg-gray-200 rounded"></div>
         </div>
       </div>
     )
@@ -70,7 +74,7 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold text-text-primary mb-8">דשבורד</h1>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <StatsCard
           title="סה״כ ארגונים"
           value={stats.totalOrganizations}
@@ -89,14 +93,69 @@ export default function DashboardPage() {
           icon={Users}
           color="info"
         />
+        <StatsCard
+          title="הכנסה חודשית (MRR)"
+          value={`₪${stats.mrr?.toLocaleString()}`}
+          icon={TrendingUp}
+          color="warning"
+        />
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl font-bold text-text-primary mb-4">פעילות אחרונה</h2>
-        <div className="text-text-secondary">
-          אין פעילות אחרונה להצגה
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activity */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100">
+            <h2 className="text-xl font-bold text-text-primary">ארגונים חדשים</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">שם הארגון</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">תאריך</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">סטטוס</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {stats.recentActivity.length > 0 ? (
+                  stats.recentActivity.map((org: any) => (
+                    <tr key={org.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-8 w-8 bg-primary-light rounded-full flex items-center justify-center text-primary font-bold text-xs">
+                            {org.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="mr-3">
+                            <div className="text-sm font-medium text-gray-900">{org.name}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(org.created_at).toLocaleDateString('he-IL')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${org.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                          {org.is_active ? 'פעיל' : 'לא פעיל'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
+                      אין פעילות אחרונה להצגה
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        {/* Tasks Widget */}
+        <TasksWidget />
       </div>
     </div>
   )

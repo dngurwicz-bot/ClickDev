@@ -7,50 +7,49 @@ interface LogoProps {
   variant?: 'default' | 'light' // light = white text for dark backgrounds
 }
 
+
 export default function Logo({ size = 'md', showDngHub = true, className = '', variant = 'default' }: LogoProps) {
-  const sizeClasses = {
-    sm: {
-      main: 'text-xl',
-      dot: 'text-xl',
-      divider: 'h-4',
-      dng: 'text-xs'
-    },
-    md: {
-      main: 'text-2xl',
-      dot: 'text-2xl',
-      divider: 'h-5',
-      dng: 'text-xs'
-    },
-    lg: {
-      main: 'text-3xl',
-      dot: 'text-3xl',
-      divider: 'h-6',
-      dng: 'text-sm'
-    }
+  // Scaling factors for different sizes (preserving ratios)
+  const scales = {
+    sm: 0.7,
+    md: 1,
+    lg: 1.5
   }
 
-  const classes = sizeClasses[size]
-  
-  const textColor = variant === 'light' ? 'text-white' : 'text-secondary'
-  const dotColor = variant === 'light' ? 'text-primary' : 'text-primary' // Primary color works on both
-  const dividerColor = variant === 'light' ? 'bg-gray-500' : 'bg-text-muted'
-  const dngColor = variant === 'light' ? 'text-gray-300' : 'text-text-secondary'
+  const scale = scales[size]
 
   return (
-    <div 
-      className={`flex items-center justify-center gap-2.5 font-['Rubik'] cursor-pointer ${className}`}
-      style={{ direction: 'ltr' }}
+    <div
+      className={`flex items-center justify-center font-['Rubik,sans-serif'] cursor-pointer ${className}`}
+      style={{
+        direction: 'ltr',
+        gap: `${10 * scale}px`,
+        fontFamily: "'Rubik', sans-serif"
+      }}
     >
-      <div className={`${classes.main} font-black ${textColor}`} style={{ letterSpacing: '-1px' }}>
-        CLICK<span className={dotColor}>.</span>
+      <div style={{
+        fontSize: `${28 * scale}px`,
+        fontWeight: 900,
+        color: variant === 'light' ? '#FFFFFF' : '#2C3E50',
+        letterSpacing: '-1px'
+      }}>
+        CLICK<span style={{ color: variant === 'light' ? '#00A896' : '#00A896' }}>.</span>
       </div>
-      
+
       {showDngHub && (
         <>
-          <div 
-            className={`w-px ${classes.divider} ${dividerColor}`}
-          />
-          <div className={`${classes.dng} font-medium ${dngColor} leading-tight`}>
+          <div style={{
+            width: `${1 * Math.max(1, scale)}px`,
+            height: `${20 * scale}px`,
+            backgroundColor: variant === 'light' ? '#BDC3C7' : '#BDC3C7'
+          }}></div>
+
+          <div style={{
+            fontSize: `${12 * scale}px`,
+            fontWeight: 500,
+            color: variant === 'light' ? '#BDC3C7' : '#7F8C8D',
+            lineHeight: 1.2
+          }}>
             DNG<br />HUB
           </div>
         </>

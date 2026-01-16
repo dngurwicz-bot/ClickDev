@@ -5,27 +5,26 @@ export async function getCurrentUser() {
   return user
 }
 
-export async function getUserRole() {
+export async function getUserRoles() {
   const user = await getCurrentUser()
-  if (!user) return null
-  
+  if (!user) return []
+
   const { data, error } = await supabase
     .from('user_roles')
     .select('role, organization_id')
     .eq('user_id', user.id)
-    .single()
-  
+
   if (error) {
-    console.error('Error fetching user role:', error)
-    return null
+    console.error('Error fetching user roles:', error)
+    return []
   }
-  
+
   return data
 }
 
 export async function isSuperAdmin() {
-  const role = await getUserRole()
-  return role?.role === 'super_admin'
+  const roles = await getUserRoles()
+  return roles.some(r => r.role === 'super_admin')
 }
 
 export async function requireSuperAdmin() {
