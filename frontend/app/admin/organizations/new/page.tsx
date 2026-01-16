@@ -1,721 +1,612 @@
-"use client"
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
+import { ArrowRight, Building2, Mail, Phone, MapPin, Upload, CheckCircle2, XCircle, Package, Save } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import toast from 'react-hot-toast'
 import Link from 'next/link'
-import { 
-  Building2, 
-  Package, 
-  UserCog, 
-  CheckCircle2,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Users,
-  TrendingUp,
-  FileText,
-  BarChart3,
-  Mail,
-  Loader2
-} from 'lucide-react'
-
-// Icon mapping for modules
-const moduleIcons: Record<string, any> = {
-  Users, 
-  Workflow: ArrowRight,
-  FileText, 
-  Network: Building2,
-  Car: Package,
-  Heart: Users,
-  TrendingUp, 
-  BarChart3
-}
 
 interface Module {
   id: string
   name: string
-  name_en: string
+  nameEn: string
   description: string
-  icon: string
-  is_core: boolean
-  price_monthly: number
-  tag?: string
-  target_audience?: string
+  premium: boolean
 }
 
-interface FormData {
-  name: string
-  name_en: string
-  email: string
-  phone: string
-  address: string
-  subscription_tier: string
-  active_modules: string[]
-  admin_email: string
-  admin_first_name: string
-  admin_last_name: string
-  admin_phone: string
-}
-
-const steps = [
-  { id: 1, name: 'פרטי ארגון', icon: Building2 },
-  { id: 2, name: 'מודולים', icon: Package },
-  { id: 3, name: 'מנהל מערכת', icon: UserCog },
-  { id: 4, name: 'סיכום', icon: CheckCircle2 },
+const AVAILABLE_MODULES: Module[] = [
+  { id: 'core', name: 'ליבה', nameEn: 'Core', description: 'מודול הבסיס - ניהול עובדים, משכורות, היסטוריה', premium: false },
+  { id: 'flow', name: 'Flow', nameEn: 'Flow', description: 'ניהול תהליכים וזרימות עבודה', premium: true },
+  { id: 'docs', name: 'מסמכים', nameEn: 'Documents', description: 'ניהול מסמכים וקבצים', premium: true },
+  { id: 'vision', name: 'Vision', nameEn: 'Vision', description: 'תכנון וראייה ארגונית', premium: true },
+  { id: 'assets', name: 'נכסים', nameEn: 'Assets', description: 'ניהול נכסים וציוד', premium: true },
+  { id: 'vibe', name: 'Vibe', nameEn: 'Vibe', description: 'תרבות ארגונית ושביעות רצון', premium: true },
+  { id: 'grow', name: 'Grow', nameEn: 'Grow', description: 'התפתחות מקצועית והדרכות', premium: true },
+  { id: 'insights', name: 'Insights', nameEn: 'Insights', description: 'אנליטיקה ודוחות מתקדמים', premium: true },
 ]
 
-export default function CreateOrganizationPage() {
+type TabType = 'organization' | 'subscription' | 'modules'
+
+export default function NewOrganizationPage() {
   const router = useRouter()
-  const supabase = createClient()
-  const [currentStep, setCurrentStep] = useState(1)
+  const [activeTab, setActiveTab] = useState<TabType>('organization')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [modules, setModules] = useState<Module[]>([])
-  const [createdOrg, setCreatedOrg] = useState<any>(null)
-  
-  const [formData, setFormData] = useState<FormData>({
+  const [error, setError] = useState('')
+
+  // Form data
+  const [formData, setFormData] = useState({
     name: '',
-    name_en: '',
+    nameEn: '',
     email: '',
     phone: '',
     address: '',
-    subscription_tier: 'basic',
-    active_modules: ['core'],
-    admin_email: '',
-    admin_first_name: '',
-    admin_last_name: '',
-    admin_phone: '',
+    subscriptionTierId: '' as string,
+    activeModules: ['core'] as string[],
   })
 
+  const [subscriptionTiers, setSubscriptionTiers] = useState<any[]>([])
+  const [selectedTier, setSelectedTier] = useState<any>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string>('')
+
   useEffect(() => {
-    async function loadModules() {
-      const { data } = await supabase
-        .from('system_modules')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order')
-      
-      if (data) setModules(data)
-    }
-    loadModules()
+    fetchSubscriptionTiers()
   }, [])
 
-  const handleModuleToggle = (moduleId: string, isCore: boolean) => {
-    if (isCore) return
-    
+  const fetchSubscriptionTiers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subscription_tiers')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+
+      if (error) throw error
+      setSubscriptionTiers(data || [])
+    } catch (error) {
+      console.error('Error fetching subscription tiers:', error)
+    }
+  }
+
+  const handleTierChange = (tierId: string) => {
+    const tier = subscriptionTiers.find(t => t.id === tierId)
+    setSelectedTier(tier)
     setFormData(prev => ({
       ...prev,
-      active_modules: prev.active_modules.includes(moduleId)
-        ? prev.active_modules.filter(m => m !== moduleId)
-        : [...prev.active_modules, moduleId]
+      subscriptionTierId: tierId,
+      activeModules: tier?.included_modules || ['core']
     }))
   }
 
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        return !!(formData.name && formData.email)
-      case 2:
-        return formData.active_modules.includes('core')
-      case 3:
-        return !!(formData.admin_email && formData.admin_first_name && formData.admin_last_name)
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    setError('')
+  }
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('גודל הקובץ חייב להיות קטן מ-5MB')
+        return
+      }
+      setLogoFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const toggleModule = (moduleId: string) => {
+    if (moduleId === 'core') return // Core is always active
+    
+    setFormData(prev => ({
+      ...prev,
+      activeModules: prev.activeModules.includes(moduleId)
+        ? prev.activeModules.filter(id => id !== moduleId)
+        : [...prev.activeModules, moduleId]
+    }))
+  }
+
+  const validateAll = () => {
+    if (!formData.name.trim()) {
+      setError('שם הארגון הוא שדה חובה')
+      setActiveTab('organization')
+      return false
+    }
+    if (!formData.email.trim()) {
+      setError('אימייל הארגון הוא שדה חובה')
+      setActiveTab('organization')
+      return false
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError('אימייל לא תקין')
+      setActiveTab('organization')
+      return false
+    }
+    if (!formData.subscriptionTierId) {
+      setError('יש לבחור סוג מנוי')
+      setActiveTab('subscription')
+      return false
+    }
+    return true
+  }
+
+  const getTabStatus = (tab: TabType) => {
+    switch (tab) {
+      case 'organization':
+        return formData.name && formData.email ? 'complete' : 'incomplete'
+      case 'subscription':
+        return formData.subscriptionTierId ? 'complete' : 'incomplete'
+      case 'modules':
+        return formData.activeModules.length > 0 ? 'complete' : 'incomplete'
       default:
-        return true
+        return 'incomplete'
     }
-  }
-
-  const handleNext = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 4))
-      setError(null)
-    } else {
-      setError('נא למלא את כל השדות הנדרשים')
-    }
-  }
-
-  const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1))
-    setError(null)
   }
 
   const handleSubmit = async () => {
+    if (!validateAll()) return
+
     setLoading(true)
-    setError(null)
+    setError('')
 
     try {
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser()
-      
+      if (!user) throw new Error('לא מחובר למערכת')
+
+      // Step 1: Upload logo if exists
+      let logoUrl = null
+      if (logoFile) {
+        const fileExt = logoFile.name.split('.').pop()
+        const fileName = `${Date.now()}.${fileExt}`
+        const filePath = `organizations/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('logos')
+          .upload(filePath, logoFile, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (uploadError) {
+          console.warn('Logo upload failed:', uploadError)
+          // Continue without logo
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from('logos')
+            .getPublicUrl(filePath)
+          logoUrl = publicUrl
+        }
+      }
+
+      // Step 2: Create organization (without admin user)
       const { data: org, error: orgError } = await supabase
         .from('organizations')
         .insert({
           name: formData.name,
-          name_en: formData.name_en,
+          name_en: formData.nameEn || null,
           email: formData.email,
-          phone: formData.phone,
-          address: formData.address,
-          subscription_tier: formData.subscription_tier,
-          active_modules: formData.active_modules,
-          created_by: user?.id,
+          phone: formData.phone || null,
+          address: formData.address || null,
+          logo_url: logoUrl,
+          active_modules: formData.activeModules,
+          subscription_tier_id: formData.subscriptionTierId,
+          subscription_tier: selectedTier?.name || null,
+          is_active: true,
+          created_by: user.id,
         })
         .select()
         .single()
 
-      if (orgError) throw orgError
-      setCreatedOrg(org)
-
-      // Create admin user using API route (ensures user is created in auth.users)
-      let emailSent = false
-      let emailError: string | null = null
-      let adminUserId: string | null = null
-      
-      try {
-        const response = await fetch('/api/admin/organizations/create-admin-user', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: formData.admin_email,
-            firstName: formData.admin_first_name,
-            lastName: formData.admin_last_name,
-            phone: formData.admin_phone || '',
-            organizationId: org.id,
-          }),
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.error || 'שגיאה ביצירת מנהל הארגון')
+      if (orgError) {
+        // Handle duplicate email error
+        if (orgError.code === '23505' && (orgError.message?.includes('organizations_email_key') || orgError.message?.includes('email'))) {
+          throw new Error('אימייל הארגון כבר קיים במערכת. אנא בחר אימייל אחר.')
         }
-
-        adminUserId = data.userId
-        emailSent = data.emailSent || false
-        emailError = data.emailError || null
-      } catch (createErr: any) {
-        console.error('Error creating admin user:', createErr)
-        emailError = createErr.message || 'שגיאה ביצירת מנהל הארגון'
+        throw orgError
       }
 
-      // Profile and user_role are created by the API route
-      // No need to create them here
-      
-      setCreatedOrg({ ...org, emailSent, emailError, adminEmail: formData.admin_email })
-
-      setSuccess(true)
+      toast.success('הארגון נוצר בהצלחה! כעת תוכל להוסיף מנהל ראשוני דרך דף העריכה.')
+      router.push(`/admin/organizations/${org.id}`)
     } catch (err: any) {
-      setError(err.message || 'שגיאה ביצירת הארגון')
+      console.error('Error creating organization:', err)
+      let errorMessage = err.message || 'שגיאה ביצירת הארגון'
+      
+      // Translate common database errors to Hebrew
+      if (errorMessage.includes('duplicate key value violates unique constraint')) {
+        if (errorMessage.includes('organizations_email_key')) {
+          errorMessage = 'אימייל הארגון כבר קיים במערכת. אנא בחר אימייל אחר.'
+        } else {
+          errorMessage = 'הנתונים שהוזנו כבר קיימים במערכת. אנא בדוק את הפרטים.'
+        }
+      } else if (errorMessage.includes('violates foreign key constraint')) {
+        errorMessage = 'שגיאה בקשרים בין הנתונים. אנא בדוק את הפרטים שהוזנו.'
+      } else if (errorMessage.includes('permission denied')) {
+        errorMessage = 'אין הרשאה לבצע פעולה זו. אנא פנה למנהל המערכת.'
+      }
+      
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
-  if (success && createdOrg) {
-    return (
-      <div className="p-8">
-        <div className="mx-auto max-w-2xl">
-          <div className="rounded-xl bg-white p-8 shadow-sm text-center">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
-              <CheckCircle2 className="h-10 w-10 text-green-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-text-primary mb-2">הארגון נוצר בהצלחה!</h1>
-            <p className="text-text-secondary mb-6">
-              מספר ארגון: <span className="font-mono font-bold text-primary">{createdOrg.org_number}</span>
-            </p>
-            {createdOrg.emailSent ? (
-              <div className="bg-blue-50 rounded-lg p-4 mb-6 text-right border border-blue-200">
-                <div className="flex items-center gap-2 text-blue-800 mb-2">
-                  <Mail className="h-5 w-5" />
-                  <span className="font-medium">הודעה נשלחה למנהל המערכת</span>
-                </div>
-                <p className="text-sm text-blue-700">
-                  מייל עם קישור לאיפוס סיסמה נשלח ל-{formData.admin_email}
-                </p>
-              </div>
-            ) : (
-              <div className="bg-amber-50 rounded-lg p-4 mb-6 text-right border border-amber-200">
-                <div className="flex items-center gap-2 text-amber-800 mb-2">
-                  <Mail className="h-5 w-5" />
-                  <span className="font-medium">המייל לא נשלח</span>
-                </div>
-                <p className="text-sm text-amber-700 mb-3">
-                  לא ניתן לשלוח מייל אוטומטי ל-{formData.admin_email}
-                </p>
-                {createdOrg.emailError && (
-                  <p className="text-xs text-amber-600 mb-3 bg-amber-100 p-2 rounded">
-                    שגיאה: {createdOrg.emailError}
-                  </p>
-                )}
-                <p className="text-xs text-amber-600 mb-3">
-                  💡 ניתן לשלוח מייל מחדש מדף הארגון
-                </p>
-              </div>
-            )}
-            <div className="flex gap-4 justify-center">
-              <Link
-                href={`/admin/organizations/${createdOrg.id}`}
-                className="rounded-lg bg-primary px-6 py-2 text-white hover:bg-primary-dark"
-              >
-                צפה בארגון
-              </Link>
-              <Link
-                href="/admin/organizations"
-                className="rounded-lg border border-gray-300 px-6 py-2 text-text-primary hover:bg-gray-50"
-              >
-                חזור לרשימה
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const tabs = [
+    { id: 'organization' as TabType, label: 'פרטי הארגון', icon: Building2 },
+    { id: 'subscription' as TabType, label: 'סוג מנוי', icon: Package },
+    { id: 'modules' as TabType, label: 'מודולים', icon: Package },
+  ]
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-6xl mx-auto">
+      {/* Header */}
       <div className="mb-8">
-        <Link
-          href="/admin/organizations"
-          className="mb-4 inline-flex items-center gap-2 text-primary hover:text-primary-dark"
+        <button
+          onClick={() => router.back()}
+          className="text-text-secondary hover:text-text-primary mb-4 flex items-center gap-2 transition-colors"
         >
-          <ArrowRight className="h-4 w-4" />
-          חזור לרשימת הארגונים
-        </Link>
-        <h1 className="text-3xl font-bold text-text-primary">הקמת ארגון חדש</h1>
-        <p className="mt-2 text-text-secondary">מלא את הפרטים ליצירת ארגון חדש במערכת</p>
-      </div>
-
-      {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-center">
-          {steps.map((step, index) => {
-            const Icon = step.icon
-            const isActive = currentStep === step.id
-            const isCompleted = currentStep > step.id
-            
-            return (
-              <div key={step.id} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <div className={`
-                    flex h-12 w-12 items-center justify-center rounded-full border-2 transition-colors
-                    ${isActive ? 'border-primary bg-primary text-white' : ''}
-                    ${isCompleted ? 'border-primary bg-primary-light text-primary' : ''}
-                    ${!isActive && !isCompleted ? 'border-gray-300 bg-white text-gray-400' : ''}
-                  `}>
-                    {isCompleted ? <Check className="h-6 w-6" /> : <Icon className="h-6 w-6" />}
-                  </div>
-                  <span className={`mt-2 text-sm font-medium ${isActive ? 'text-primary' : 'text-text-secondary'}`}>
-                    {step.name}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`mx-4 h-1 w-16 rounded ${currentStep > step.id ? 'bg-primary' : 'bg-gray-200'}`} />
-                )}
-              </div>
-            )
-          })}
+          <ArrowRight className="w-4 h-4" />
+          חזרה לרשימת ארגונים
+        </button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-text-primary">יצירת ארגון חדש</h1>
+            <p className="text-text-secondary mt-2">מלא את הפרטים להקמת ארגון חדש במערכת</p>
+          </div>
         </div>
       </div>
 
-      {/* Form Content */}
-      <div className="mx-auto max-w-3xl">
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-        {error && (
-            <div className="mb-6 rounded-lg bg-red-50 p-4 text-red-800">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+          <XCircle className="w-5 h-5 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
-          {/* Step 1: Organization Details */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-text-primary mb-4">פרטי הארגון</h2>
+      {/* Tabs Navigation */}
+      <div className="bg-white rounded-xl shadow-sm mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px" aria-label="Tabs">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              const status = getTabStatus(tab.id)
+              const isActive = activeTab === tab.id
               
-              <div className="grid gap-6 md:grid-cols-2">
-          <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    שם הארגון (עברית) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="לדוגמה: חברת הייטק בע״מ"
-            />
-          </div>
-          <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-              שם הארגון (אנגלית)
-            </label>
-            <input
-              type="text"
-              value={formData.name_en}
-              onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="e.g. HiTech Company Ltd."
-                    dir="ltr"
-            />
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors
+                    ${isActive
+                      ? 'border-primary text-primary bg-primary-light'
+                      : 'border-transparent text-text-secondary hover:text-text-primary hover:border-gray-300'
+                    }
+                  `}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{tab.label}</span>
+                  {status === 'complete' && (
+                    <CheckCircle2 className="w-4 h-4 text-success" />
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-8">
+          {/* Organization Tab */}
+          {activeTab === 'organization' && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-primary" />
                 </div>
-          </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-          <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    אימייל ארגוני <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="info@company.com"
-                    dir="ltr"
-            />
-          </div>
-          <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-              טלפון
-            </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="03-1234567"
-                    dir="ltr"
-            />
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary">פרטי הארגון</h2>
+                  <p className="text-sm text-text-secondary">מידע בסיסי על הארגון</p>
                 </div>
-          </div>
+              </div>
 
-          <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
-              כתובת
-            </label>
-            <textarea
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  rows={2}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="רחוב, עיר, מיקוד"
-            />
-          </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Logo Section */}
+                <div className="lg:col-span-1">
+                  <label className="block text-sm font-medium text-text-primary mb-3">
+                    לוגו הארגון
+                  </label>
+                  <div className="space-y-3">
+                    {logoPreview ? (
+                      <div className="relative group">
+                        <img 
+                          src={logoPreview} 
+                          alt="Logo preview" 
+                          className="w-full aspect-square object-cover rounded-xl border-2 border-gray-200" 
+                        />
+                        <button
+                          onClick={() => {
+                            setLogoPreview('')
+                            setLogoFile(null)
+                          }}
+                          className="absolute top-2 left-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="block cursor-pointer">
+                        <div className="w-full aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center hover:border-primary transition-colors bg-gray-50">
+                          <Upload className="w-12 h-12 text-text-muted mb-2" />
+                          <span className="text-sm text-text-secondary">העלה לוגו</span>
+                          <span className="text-xs text-text-muted mt-1">PNG, JPG עד 5MB</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
 
-          <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">
-              סוג מנוי
-            </label>
-                <div className="grid gap-4 md:grid-cols-3">
-                  {['basic', 'professional', 'enterprise'].map((tier) => (
-                    <button
-                      key={tier}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, subscription_tier: tier })}
+                {/* Form Fields */}
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        שם הארגון (עברית) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        placeholder="לדוגמה: חברת טכנולוגיה בע״מ"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        שם הארגון (אנגלית)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nameEn}
+                        onChange={(e) => handleInputChange('nameEn', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        placeholder="Example: Tech Company Ltd."
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      <Mail className="inline w-4 h-4 ml-1" />
+                      אימייל הארגון <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                      placeholder="info@company.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        <Phone className="inline w-4 h-4 ml-1" />
+                        טלפון
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        placeholder="03-1234567"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        <MapPin className="inline w-4 h-4 ml-1" />
+                        כתובת
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.address}
+                        onChange={(e) => handleInputChange('address', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        placeholder="רחוב, עיר, מיקוד"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Subscription Tab */}
+          {activeTab === 'subscription' && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center">
+                  <Package className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary">סוג מנוי</h2>
+                  <p className="text-sm text-text-secondary">בחר את סוג המנוי המתאים לארגון</p>
+                </div>
+              </div>
+
+              {subscriptionTiers.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                  <Package className="w-16 h-16 mx-auto mb-4 text-text-muted" />
+                  <p className="text-text-secondary mb-4">אין סוגי מנויים זמינים</p>
+                  <Link 
+                    href="/admin/subscription-tiers/new" 
+                    className="inline-flex items-center gap-2 text-primary hover:text-primary-dark font-medium"
+                  >
+                    צור סוג מנוי חדש
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {subscriptionTiers.map((tier) => (
+                    <div
+                      key={tier.id}
+                      onClick={() => handleTierChange(tier.id)}
                       className={`
-                        rounded-lg border-2 p-4 text-center transition-colors
-                        ${formData.subscription_tier === tier 
-                          ? 'border-primary bg-primary-light' 
-                          : 'border-gray-200 hover:border-gray-300'
+                        p-6 border-2 rounded-xl cursor-pointer transition-all
+                        ${formData.subscriptionTierId === tier.id
+                          ? 'border-primary bg-primary-light shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                         }
                       `}
                     >
-                      <div className="font-medium text-text-primary capitalize">{tier}</div>
-                      <div className="text-sm text-text-secondary">
-                        {tier === 'basic' && 'עד 50 עובדים'}
-                        {tier === 'professional' && 'עד 200 עובדים'}
-                        {tier === 'enterprise' && 'ללא הגבלה'}
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-text-primary">{tier.name}</h3>
+                          {tier.name_en && (
+                            <p className="text-sm text-text-secondary">{tier.name_en}</p>
+                          )}
+                        </div>
+                        {formData.subscriptionTierId === tier.id && (
+                          <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
+                        )}
                       </div>
-                    </button>
+                      <div className="mb-4">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-primary">
+                            {tier.price.toLocaleString('he-IL')}
+                          </span>
+                          <span className="text-sm text-text-secondary">
+                            {tier.currency} / {tier.billing_period === 'monthly' ? 'חודש' : 'שנה'}
+                          </span>
+                        </div>
+                        {tier.description && (
+                          <p className="text-sm text-text-secondary mt-2">{tier.description}</p>
+                        )}
+                      </div>
+                      {tier.max_employees ? (
+                        <p className="text-xs text-text-muted">עד {tier.max_employees.toLocaleString('he-IL')} עובדים</p>
+                      ) : (
+                        <p className="text-xs text-text-muted">ללא הגבלת עובדים</p>
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* Step 2: Modules */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-text-primary">בחירת מודולים</h2>
-                <p className="text-sm text-text-secondary mt-1">בחר את המודולים שיהיו זמינים לארגון. CLICK Core הוא חובה לכל ארגון.</p>
-              </div>
-
-              <div className="space-y-3">
-                {modules.map((module) => {
-                  const isSelected = formData.active_modules.includes(module.id)
-                  const IconComponent = moduleIcons[module.icon] || Package
-                  
-                  const getTagColor = (tag?: string) => {
-                    if (!tag) return 'bg-gray-100 text-gray-600'
-                    if (tag.includes('חובה')) return 'bg-primary text-white'
-                    if (tag.includes('נמכר')) return 'bg-green-100 text-green-700'
-                    if (tag.includes('Premium')) return 'bg-purple-100 text-purple-700'
-                    return 'bg-blue-100 text-blue-700'
-                  }
-                  
-                  return (
-                    <button
-                      key={module.id}
-                      type="button"
-                      onClick={() => handleModuleToggle(module.id, module.is_core)}
-                      disabled={module.is_core}
-                      className={`
-                        relative w-full rounded-xl border-2 p-5 text-right transition-all
-                        ${isSelected 
-                          ? 'border-primary bg-primary/5 shadow-sm' 
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }
-                        ${module.is_core ? 'cursor-default' : 'cursor-pointer'}
-                      `}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`
-                          mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors
-                          ${isSelected 
-                            ? 'border-primary bg-primary text-white' 
-                            : 'border-gray-300 bg-white'
-                          }
-                        `}>
-                          {isSelected && <Check className="h-4 w-4" />}
-                        </div>
-                        
-                        <div className={`
-                          flex h-12 w-12 shrink-0 items-center justify-center rounded-xl
-                          ${isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'}
-                        `}>
-                          <IconComponent className="h-6 w-6" />
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-text-primary text-lg">{module.name}</span>
-                            {module.tag && (
-                              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${getTagColor(module.tag)}`}>
-                                {module.tag}
-                              </span>
-                            )}
-                          </div>
-                          {module.target_audience && (
-                            <p className="text-sm text-primary font-medium mt-0.5">{module.target_audience}</p>
-                          )}
-                          <p className="text-sm text-text-secondary mt-1">{module.description}</p>
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-          </div>
-
-              <div className="rounded-lg bg-gray-50 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-text-primary">
-                    מודולים נבחרים: {formData.active_modules.length}
-                  </span>
+              {selectedTier && (
+                <div className="mt-6 p-6 bg-primary-light rounded-xl border border-primary/20">
+                  <h3 className="font-semibold text-text-primary mb-3">מודולים כלולים בסוג מנוי זה:</h3>
                   <div className="flex flex-wrap gap-2">
-                    {formData.active_modules.map(id => {
-                      const mod = modules.find(m => m.id === id)
-                      return mod ? (
-                        <span key={id} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                          {mod.name}
-                        </span>
-                      ) : null
-                    })}
+                    {selectedTier.included_modules?.map((module: string) => (
+                      <span
+                        key={module}
+                        className="px-3 py-1 bg-white text-primary text-sm rounded-lg font-medium"
+                      >
+                        {module}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
-          {/* Step 3: Admin User */}
-          {currentStep === 3 && (
+          {/* Modules Tab */}
+          {activeTab === 'modules' && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-text-primary">מנהל מערכת הארגון</h2>
-                <p className="text-sm text-text-secondary mt-1">
-                  הזן את פרטי מנהל המערכת. הוא יקבל מייל עם קישור להגדרת סיסמה.
-                </p>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center">
+                  <Package className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary">מודולים פעילים</h2>
+                  <p className="text-sm text-text-secondary">בחר את המודולים שיהיו פעילים בארגון</p>
+                </div>
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-blue-800">
-                  <Mail className="h-5 w-5" />
-                  <span className="font-medium">מייל אוטומטי</span>
-                </div>
-                <p className="text-sm text-blue-700 mt-1">
-                  לאחר יצירת הארגון, מנהל המערכת יקבל מייל עם קישור לאיפוס סיסמה וכניסה למערכת.
-                </p>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    שם פרטי <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.admin_first_name}
-                    onChange={(e) => setFormData({ ...formData, admin_first_name: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="שם פרטי"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    שם משפחה <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.admin_last_name}
-                    onChange={(e) => setFormData({ ...formData, admin_last_name: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="שם משפחה"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    אימייל <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.admin_email}
-                    onChange={(e) => setFormData({ ...formData, admin_email: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="admin@company.com"
-                    dir="ltr"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-2">
-                    טלפון
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.admin_phone}
-                    onChange={(e) => setFormData({ ...formData, admin_phone: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="050-1234567"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Summary */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-text-primary">סיכום ואישור</h2>
-              
-              <div className="space-y-4">
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <h3 className="font-medium text-text-primary mb-3 flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    פרטי ארגון
-                  </h3>
-                  <div className="grid gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">שם:</span>
-                      <span className="font-medium">{formData.name}</span>
-                    </div>
-                    {formData.name_en && (
-                      <div className="flex justify-between">
-                        <span className="text-text-secondary">שם באנגלית:</span>
-                        <span className="font-medium">{formData.name_en}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {AVAILABLE_MODULES.map((module) => (
+                  <div
+                    key={module.id}
+                    onClick={() => toggleModule(module.id)}
+                    className={`
+                      p-5 border-2 rounded-xl cursor-pointer transition-all
+                      ${formData.activeModules.includes(module.id)
+                        ? 'border-primary bg-primary-light shadow-md'
+                        : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                      }
+                      ${module.id === 'core' ? 'opacity-60 cursor-not-allowed' : ''}
+                    `}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-text-primary">{module.name}</h3>
+                        <p className="text-xs text-text-secondary">{module.nameEn}</p>
                       </div>
+                      {formData.activeModules.includes(module.id) && (
+                        <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-sm text-text-secondary mb-2">{module.description}</p>
+                    {module.premium && (
+                      <span className="inline-block text-xs bg-warning/20 text-warning px-2 py-1 rounded">
+                        Premium
+                      </span>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">אימייל:</span>
-                      <span className="font-medium" dir="ltr">{formData.email}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">סוג מנוי:</span>
-                      <span className="font-medium capitalize">{formData.subscription_tier}</span>
-                    </div>
                   </div>
-                </div>
-
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <h3 className="font-medium text-text-primary mb-3 flex items-center gap-2">
-                    <Package className="h-5 w-5 text-primary" />
-                    מודולים נבחרים ({formData.active_modules.length})
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.active_modules.map(moduleId => {
-                      const module = modules.find(m => m.id === moduleId)
-                      return module ? (
-                        <span key={moduleId} className="rounded-full bg-primary-light px-3 py-1 text-sm text-primary">
-                          {module.name}
-                        </span>
-                      ) : null
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <h3 className="font-medium text-text-primary mb-3 flex items-center gap-2">
-                    <UserCog className="h-5 w-5 text-primary" />
-                    מנהל מערכת
-                  </h3>
-                  <div className="grid gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">שם:</span>
-                      <span className="font-medium">{formData.admin_first_name} {formData.admin_last_name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">אימייל:</span>
-                      <span className="font-medium" dir="ltr">{formData.admin_email}</span>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
+        </div>
+      </div>
 
-          {/* Navigation Buttons */}
-          <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-6">
+      {/* Footer Actions */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-text-secondary">
+            {tabs.filter(t => getTabStatus(t.id) === 'complete').length} מתוך {tabs.length} לשוניות הושלמו
+          </div>
+          <div className="flex items-center gap-4">
             <button
-              type="button"
-              onClick={handleBack}
-              disabled={currentStep === 1}
-              className="flex items-center gap-2 rounded-lg border border-gray-300 px-6 py-2 text-text-primary transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => router.back()}
+              className="px-6 py-3 border border-gray-300 rounded-lg text-text-primary hover:bg-gray-50 transition-colors font-medium"
             >
-              <ArrowRight className="h-4 w-4" />
-              הקודם
+              ביטול
             </button>
-
-            {currentStep < 4 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2 text-white transition-colors hover:bg-primary-dark"
-              >
-                הבא
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={loading}
-                className="flex items-center gap-2 rounded-lg bg-primary px-8 py-2 text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium shadow-md"
             >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    יוצר ארגון...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    צור ארגון
-                  </>
-                )}
-              </button>
-            )}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  יוצר ארגון...
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5" />
+                  צור ארגון
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>

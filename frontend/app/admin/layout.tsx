@@ -1,19 +1,48 @@
-import { Sidebar } from '@/components/admin/Sidebar'
-import { NavigationProgress } from '@/components/admin/NavigationProgress'
-import { requireSuperAdmin } from '@/lib/auth'
+'use client'
 
-export default async function AdminLayout({
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Sidebar from '@/components/admin/Sidebar'
+import { isSuperAdmin } from '@/lib/auth'
+
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  await requireSuperAdmin()
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const isSA = await isSuperAdmin()
+        if (!isSA) {
+          router.push('/unauthorized')
+          return
+        }
+      } catch (error) {
+        router.push('/login')
+        return
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkAuth()
+  }, [router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex h-screen bg-bg-main" dir="rtl">
-      <NavigationProgress />
+    <div className="flex h-screen bg-bg-main">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto mr-64">
         {children}
       </main>
     </div>

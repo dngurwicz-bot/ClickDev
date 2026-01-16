@@ -1,29 +1,47 @@
-import type { Metadata } from "next";
-import { Rubik } from "next/font/google";
-import "./globals.css";
-import { MaintenanceBanner } from "@/components/admin/MaintenanceBanner";
-
-const rubik = Rubik({
-  subsets: ["latin", "hebrew"],
-  variable: "--font-rubik",
-});
+import type { Metadata } from 'next'
+import { Toaster } from 'react-hot-toast'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: "CLICK - HR Platform",
-  description: "SaaS HR Platform",
-};
+  title: 'CLICK - מערכת ניהול משאבי אנוש',
+  description: 'מערכת ניהול משאבי אנוש Multi-Tenant',
+}
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="he" dir="rtl" className={rubik.variable}>
-      <body className="font-sans antialiased">
-        <MaintenanceBanner />
+    <html lang="he" dir="rtl">
+      <body>
         {children}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#fff',
+              color: '#2C3E50',
+              borderRadius: '12px',
+              padding: '16px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            },
+            success: {
+              iconTheme: {
+                primary: '#27AE60',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#E74C3C',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </body>
     </html>
-  );
+  )
 }

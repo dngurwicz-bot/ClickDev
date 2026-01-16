@@ -1,99 +1,116 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { Logo } from "@/components/ui/Logo";
-import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
+import { useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
+import { useRouter } from 'next/navigation'
+import { Mail, Lock } from 'lucide-react'
+import Logo from '@/components/Logo'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-  const supabase = createClient();
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const router = useRouter()
+  
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    }
+  )
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    e.preventDefault()
+    setLoading(true)
+    setError('')
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      });
+      })
 
-      if (signInError) {
-        setError(signInError.message);
-        return;
+      if (error) {
+        setError(error.message)
+        return
       }
 
-      if (data.user) {
-        router.push("/admin");
+      if (data?.user) {
+        router.push('/admin/dashboard')
+        router.refresh()
       }
-    } catch (err) {
-      setError("שגיאה בהתחברות");
+    } catch (error: any) {
+      setError(error.message || 'שגיאה בהתחברות')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <Logo />
+    <div className="min-h-screen bg-bg-main flex items-center justify-center p-6">
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+        <div className="mb-8 flex justify-center">
+          <Logo size="lg" />
         </div>
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <h1 className="text-2xl font-bold text-center mb-6 text-secondary">
-            התחברות
-          </h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                אימייל
-              </label>
+
+        <h1 className="text-3xl font-bold text-text-primary mb-2">ברוך הבא</h1>
+        <p className="text-text-secondary mb-8">התחבר לחשבון שלך</p>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-2">
+              אימייל
+            </label>
+            <div className="relative">
+              <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-muted w-5 h-5" />
               <input
-                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="your@email.com"
+                className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="you@example.com"
               />
             </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                סיסמה
-              </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-2">
+              סיסמה
+            </label>
+            <div className="relative">
+              <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-muted w-5 h-5" />
               <input
-                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="••••••••"
               />
             </div>
-            {error && (
-              <div className="text-red-600 text-sm text-center">
-                {error}
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 px-4 rounded-md text-white font-medium"
-              style={{ backgroundColor: "#00A896" }}
-            >
-              {loading ? "מתחבר..." : "התחבר"}
-            </button>
-          </form>
-        </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'מתחבר...' : 'התחבר'}
+          </button>
+        </form>
       </div>
     </div>
-  );
+  )
 }
