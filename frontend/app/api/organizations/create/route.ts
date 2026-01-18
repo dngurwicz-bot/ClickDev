@@ -4,14 +4,14 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST(request: NextRequest) {
   try {
     // Get environment variables
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SECRET_API_KEY!
 
     // Verify environment variables are set
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseKey) {
       console.error('Missing Supabase credentials')
       console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Set' : 'Missing')
-      console.error('SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? 'Set' : 'Missing')
+      console.error('SUPABASE_SECRET_API_KEY:', supabaseKey ? 'Set' : 'Missing')
       return NextResponse.json(
         { error: 'Server configuration error: Missing Supabase credentials. Please check environment variables.' },
         { status: 500 }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // Step 2: CRITICAL - Create admin user in Supabase Auth
     // This is essential for Supabase to recognize the user and send password reset emails
     console.log('Creating admin user in Supabase Auth:', adminData.email)
-    
+
     const { data: adminUser, error: userError } = await supabaseAdmin.auth.admin.createUser({
       email: adminData.email,
       password: Math.random().toString(36).slice(-12) + 'A1!', // Temporary password
@@ -70,13 +70,13 @@ export async function POST(request: NextRequest) {
       console.error('Error creating admin user in Supabase Auth:', userError)
       // Rollback: delete organization if user creation fails
       await supabaseAdmin.from('organizations').delete().eq('id', org.id)
-      
+
       // Translate common errors
       let errorMessage = userError.message || 'Failed to create admin user'
       if (errorMessage.includes('already registered') || errorMessage.includes('already exists')) {
         errorMessage = 'האימייל כבר קיים במערכת. המשתמש כבר רשום ב-Supabase Auth.'
       }
-      
+
       return NextResponse.json(
         { error: errorMessage },
         { status: 400 }

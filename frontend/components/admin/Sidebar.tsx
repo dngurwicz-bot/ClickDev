@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  Building2, 
-  Users, 
-  BarChart3, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  BarChart3,
+  Settings,
   LogOut,
-  Package
+  Package,
+  ArrowRight
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -57,16 +58,15 @@ export default function Sidebar() {
         {menuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
-          
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-primary text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-              }`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                ? 'bg-primary text-white'
+                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
             >
               <Icon className="w-5 h-5" />
               <span>{item.label}</span>
@@ -81,6 +81,13 @@ export default function Sidebar() {
           <p className="text-gray-300 text-sm">{userEmail}</p>
           <span className="text-primary text-xs font-medium">Super Admin</span>
         </div>
+        <Link
+          href="/dashboard"
+          className="w-full flex items-center gap-3 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition-colors"
+        >
+          <ArrowRight className="w-5 h-5" />
+          <span>חזרה למערכת</span>
+        </Link>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition-colors"

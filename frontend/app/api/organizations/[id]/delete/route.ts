@@ -29,18 +29,16 @@ export async function DELETE(
     }
 
     // Force Authorization header to ensure service role is used
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      },
-      global: {
-        headers: {
-          Authorization: `Bearer ${supabaseServiceKey}`
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SECRET_API_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
         }
       }
-    })
-
+    )
     // Handle both Next.js 15 (Promise) and older versions
     const resolvedParams = params instanceof Promise ? await params : params
     const orgId = resolvedParams.id

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+
 import { useRouter } from 'next/navigation'
 import { Mail, Lock } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import Logo from '@/components/Logo'
 
 export default function LoginPage() {
@@ -13,16 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      }
-    }
-  )
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,7 +42,7 @@ export default function LoginPage() {
         const isSuperAdmin = userRoles?.some(r => r.role === 'super_admin')
 
         if (isSuperAdmin) {
-          router.push('/admin/dashboard')
+          router.push('/dashboard')
         } else {
           router.push('/dashboard')
         }

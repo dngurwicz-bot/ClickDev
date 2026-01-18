@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Users, FileText, Calendar, TrendingUp } from 'lucide-react'
 
@@ -8,14 +9,19 @@ export default function DashboardPage() {
     const [user, setUser] = useState<any>(null)
     const [loading, setLoading] = useState(true)
 
+    const router = useRouter()
+
     useEffect(() => {
+
+
         const getUser = async () => {
+
             const { data: { user } } = await supabase.auth.getUser()
             setUser(user)
             setLoading(false)
         }
         getUser()
-    }, [])
+    }, [router])
 
     if (loading) {
         return (

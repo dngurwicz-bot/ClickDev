@@ -15,7 +15,7 @@ export async function getUserRoles() {
     .eq('user_id', user.id)
 
   if (error) {
-    console.error('Error fetching user roles:', error)
+    console.error('Error fetching user roles:', JSON.stringify(error, null, 2))
     return []
   }
 

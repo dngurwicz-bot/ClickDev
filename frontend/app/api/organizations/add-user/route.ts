@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
 
     // SECURITY CHECK: Verify user permissions
     const cookieStore = await cookies()
-    const supabaseUser = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           get(name: string) {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         },
       }
     )
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
       return NextResponse.json(
