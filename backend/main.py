@@ -35,7 +35,13 @@ if not supabase_url or not supabase_anon_key:
     raise ValueError("Missing Supabase environment variables")
 
 supabase: Client = create_client(supabase_url, supabase_anon_key)
-supabase_admin: Client = create_client(supabase_url, supabase_service_key)
+try:
+    if not supabase_service_key or "PLACEHOLDER" in supabase_service_key:
+        raise ValueError("Invalid Service Key")
+    supabase_admin: Client = create_client(supabase_url, supabase_service_key)
+except Exception as e:
+    print(f"WARNING: Failed to create admin client: {e}. Falling back to anon client.", flush=True)
+    supabase_admin: Client = supabase
 
 security = HTTPBearer()
 

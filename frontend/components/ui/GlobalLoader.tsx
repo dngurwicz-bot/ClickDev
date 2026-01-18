@@ -16,7 +16,7 @@ export default function GlobalLoader() {
             transition: {
                 delay: i * 0.1,
                 duration: 0.5,
-                type: "spring",
+                type: "spring" as const,
                 stiffness: 100,
             },
         }),
@@ -42,13 +42,15 @@ export default function GlobalLoader() {
                         <motion.div
                             initial={{ scale: 0, opacity: 0 }}
                             animate={{
-                                scale: [0, 1.2, 1],
+                                scale: 1,
                                 opacity: 1,
                             }}
                             transition={{
                                 delay: 0.6,
                                 duration: 0.6,
-                                type: "spring",
+                                type: "spring" as const,
+                                stiffness: 200,
+                                damping: 10
                             }}
                             className="w-4 h-4 rounded-full"
                             style={{ backgroundColor: primaryColor }}

@@ -343,7 +343,7 @@ export default function UsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm
-                            ${user.role === 'Super Admin' ? 'bg-purple-100 text-purple-600' : 'bg-primary/10 text-primary'}`}>
+                            ${user.role === 'super_admin' || user.role === 'Super Admin' ? 'bg-purple-100 text-purple-600' : 'bg-primary/10 text-primary'}`}>
                           {(user.user_metadata?.first_name?.[0]) || user.email[0]?.toUpperCase()}
                         </div>
                         <div className="mr-3">
@@ -365,10 +365,10 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-medium rounded-full items-center gap-1.5 border
-                            ${user.role === 'Super Admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                            ${user.role === 'super_admin' || user.role === 'Super Admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
                           user.role === 'organization_admin' || user.role === 'Org Admin' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-50 text-gray-600 border-gray-100'}`}>
-                        {user.role === 'Super Admin' && <Shield className="w-3 h-3 fill-current opacity-50" />}
-                        {user.role === 'Super Admin' ? 'Super Admin' : (user.role === 'organization_admin' || user.role === 'Org Admin') ? 'Org Admin' : 'User'}
+                        {(user.role === 'super_admin' || user.role === 'Super Admin') && <Shield className="w-3 h-3 fill-current opacity-50" />}
+                        {(user.role === 'super_admin' || user.role === 'Super Admin') ? 'Super Admin' : (user.role === 'organization_admin' || user.role === 'Org Admin') ? 'Org Admin' : 'User'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
