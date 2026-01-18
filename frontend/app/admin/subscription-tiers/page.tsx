@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Plus, Search, Package, Edit, Trash2, CheckCircle2, XCircle, LayoutGrid, List } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
+import GlobalLoader from '@/components/ui/GlobalLoader'
 
 interface SubscriptionTier {
   id: string
@@ -96,18 +97,7 @@ export default function SubscriptionTiersPage() {
   )
 
   if (loading) {
-    return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="grid grid-cols-3 gap-6 mt-8">
-            <div className="h-64 bg-gray-200 rounded-xl"></div>
-            <div className="h-64 bg-gray-200 rounded-xl"></div>
-            <div className="h-64 bg-gray-200 rounded-xl"></div>
-          </div>
-        </div>
-      </div>
-    )
+    return <GlobalLoader />
   }
 
   return (
@@ -179,8 +169,8 @@ export default function SubscriptionTiersPage() {
                 <div
                   key={tier.id}
                   className={`bg-white rounded-xl shadow-sm p-6 border-2 transition-all hover:shadow-md ${tier.is_active
-                      ? 'border-transparent ring-1 ring-gray-100 hover:ring-primary/50'
-                      : 'border-gray-100 opacity-75 grayscale-[0.5]'
+                    ? 'border-transparent ring-1 ring-gray-100 hover:ring-primary/50'
+                    : 'border-gray-100 opacity-75 grayscale-[0.5]'
                     }`}
                 >
                   {/* Header */}
@@ -192,8 +182,8 @@ export default function SubscriptionTiersPage() {
                       )}
                     </div>
                     <div className={`px-2.5 py-1 rounded-full text-xs font-semibold ${tier.is_active
-                        ? 'bg-green-50 text-green-700 border border-green-100'
-                        : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      ? 'bg-green-50 text-green-700 border border-green-100'
+                      : 'bg-gray-100 text-gray-600 border border-gray-200'
                       }`}>
                       {tier.is_active ? 'פעיל' : 'לא פעיל'}
                     </div>
@@ -257,8 +247,8 @@ export default function SubscriptionTiersPage() {
                     <button
                       onClick={() => handleToggleActive(tier.id, tier.is_active)}
                       className={`p-2 rounded-lg transition-colors border ${tier.is_active
-                          ? 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                          : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                        ? 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
                         }`}
                       title={tier.is_active ? 'השבת מנוי' : 'הפעל מנוי'}
                     >

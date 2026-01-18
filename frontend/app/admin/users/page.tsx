@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Users, Search, Filter, Shield, Building2, Calendar, Mail, CheckCircle2, XCircle, Trash2, Edit2, Plus, X, Loader2, MoreVertical, Lock } from 'lucide-react'
+import { Users, Search, Filter, Shield, Building2, Calendar, Mail, CheckCircle2, XCircle, Trash2, Edit2, Plus, X, Loader2, MoreVertical, Lock, Key } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import React from 'react'
@@ -56,7 +56,6 @@ export default function UsersPage() {
   // Form States
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
     first_name: '',
     last_name: '',
     role: 'user',
@@ -103,7 +102,7 @@ export default function UsersPage() {
   }
 
   const resetForm = () => {
-    setFormData({ email: '', password: '', first_name: '', last_name: '', role: 'user', organization_id: '' })
+    setFormData({ email: '', first_name: '', last_name: '', role: 'user', organization_id: '' })
     setSelectedUser(null)
   }
 
@@ -140,7 +139,7 @@ export default function UsersPage() {
     setSelectedUser(user)
     setFormData({
       email: user.email,
-      password: '',
+
       first_name: user.user_metadata?.first_name || '',
       last_name: user.user_metadata?.last_name || '',
       role: mapRoleToValue(user.role),
@@ -211,6 +210,29 @@ export default function UsersPage() {
       }
     } catch (error) {
       toast.error('שגיאה במחיקה')
+    }
+  }
+
+
+  const handleResetPassword = async (userId: string) => {
+    if (!confirm('האם לשלוח מייל לאיפוס סיסמה למשתמש זה?')) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const response = await fetch(`http://localhost:8000/api/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+
+      if (response.ok) {
+        toast.success('מייל לאיפוס סיסמה נשלח בהצלחה')
+      } else {
+        toast.error('שגיאה בשליחת המייל')
+      }
+    } catch (error) {
+      toast.error('שגיאה בשליחת המייל')
     }
   }
 
@@ -358,6 +380,7 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
+
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); openEdit(user); }}
@@ -365,6 +388,13 @@ export default function UsersPage() {
                           title="ערוך פרטים"
                         >
                           <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleResetPassword(user.id); }}
+                          className="p-1.5 hover:bg-amber-50 rounded-md text-gray-400 hover:text-amber-500 transition-all opacity-0 group-hover:opacity-100"
+                          title="אפס סיסמה"
+                        >
+                          <Key className="w-4 h-4" />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(user.id); }}
@@ -461,20 +491,7 @@ const UserForm = ({ data, setData, onSubmit, organizations, isSubmitting, mode, 
         />
       </div>
 
-      {mode === 'create' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">סיסמה זמנית</label>
-          <input
-            required
-            type="text"
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none bg-gray-50 font-mono text-sm"
-            placeholder="לדוגמה: Welcome123!"
-            value={data.password}
-            onChange={e => setData({ ...data, password: e.target.value })}
-          />
-          <p className="text-xs text-gray-500 mt-1">העתק סיסמה זו ושלח למשתמש</p>
-        </div>
-      )}
+
 
       <div className="border-t pt-4 mt-4">
         <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">

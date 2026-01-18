@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Search, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import GlobalLoader from '@/components/ui/GlobalLoader'
 
 interface Organization {
   id: string
@@ -53,13 +54,7 @@ export default function OrganizationsPage() {
   )
 
   if (loading) {
-    return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-        </div>
-      </div>
-    )
+    return <GlobalLoader />
   }
 
   return (

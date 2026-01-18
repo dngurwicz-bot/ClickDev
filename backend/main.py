@@ -359,7 +359,6 @@ async def get_all_users(user = Depends(require_super_admin)):
 
 class UserInvite(BaseModel):
     email: str
-    password: str
     first_name: str
     last_name: str
     role: str # 'super_admin', 'org_admin', 'user'
@@ -374,23 +373,22 @@ class UserUpdate(BaseModel):
 @app.post("/api/users")
 async def invite_user(invite: UserInvite, user = Depends(require_super_admin)):
     try:
-        # 1. Create user in Supabase Auth
-        user_attributes = {
-            "email": invite.email,
-            "password": invite.password,
-            "email_confirm": True,
-            "user_metadata": {
-                "first_name": invite.first_name,
-                "last_name": invite.last_name,
-                "organization_id": invite.organization_id
+        # 1. Invite user in Supabase Auth (sends email)
+        # Note: invite_user_by_email takes email and options (data, redirect_to)
+        auth_response = supabase_admin.auth.admin.invite_user_by_email(
+            invite.email,
+            options={
+                "data": {
+                    "first_name": invite.first_name,
+                    "last_name": invite.last_name,
+                    "organization_id": invite.organization_id
+                }
             }
-        }
-        
-        auth_response = supabase_admin.auth.admin.create_user(user_attributes)
+        )
         new_user = auth_response.user
         
         if not new_user:
-             raise HTTPException(status_code=400, detail="Failed to create user in Auth")
+             raise HTTPException(status_code=400, detail="Failed to invite user")
 
         # 2. Assign Role in user_roles table
         role_data = {
@@ -406,6 +404,7 @@ async def invite_user(invite: UserInvite, user = Depends(require_super_admin)):
         
         if not role_response.data:
             # Rollback?
+            # supabase_admin.auth.admin.delete_user(new_user.id) # Maybe don't delete if invite sent? But better to keep consistent state.
             supabase_admin.auth.admin.delete_user(new_user.id)
             raise HTTPException(status_code=400, detail="Failed to assign role")
             
@@ -481,6 +480,29 @@ async def update_user(user_id: str, updates: UserUpdate, user = Depends(require_
         print(f"Error updating user: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/users/{user_id}/reset-password")
+async def reset_password(user_id: str, user = Depends(require_super_admin)):
+    try:
+        # Get user email
+        user_response = supabase_admin.auth.admin.get_user_by_id(user_id)
+        if not user_response.user:
+             raise HTTPException(status_code=404, detail="User not found")
+        
+        email = user_response.user.email
+        
+        # Trigger password reset email
+        # Note: This sends an email if Supabase SMTP is configured. 
+        # In local dev, it might just log or return the link if using Inbucket (standard supabase CLI).
+        # We assume standard behavior.
+        
+        # Using sending the recovery email via auth api
+        supabase.auth.reset_password_for_email(email)
+        
+        return {"message": "Password reset email sent successfully"}
+    except Exception as e:
+        print(f"Error sending reset password email: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
