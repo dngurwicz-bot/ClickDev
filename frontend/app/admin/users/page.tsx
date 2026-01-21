@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Users, Search, Filter, Shield, Building2, Calendar, Mail, CheckCircle2, XCircle, Trash2, Edit2, Plus, X, Loader2, MoreVertical, Lock, Key } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -37,6 +38,7 @@ const Modal = ({ isOpen, onClose, title, children }: any) => {
 }
 
 import GlobalLoader from '@/components/ui/GlobalLoader'
+import ActivityLog from '@/components/admin/ActivityLog'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([])
@@ -50,8 +52,8 @@ export default function UsersPage() {
 
   // Modal States
   const [showInviteModal, setShowInviteModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
+  // const [showEditModal, setShowEditModal] = useState(false) // Removed
+  // const [selectedUser, setSelectedUser] = useState<UserData | null>(null) // Removed
 
   // Form States
   const [formData, setFormData] = useState({
@@ -73,7 +75,7 @@ export default function UsersPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const response = await fetch('http://localhost:8000/api/users', {
+      const response = await fetch('/api/users', {
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
       if (response.ok) {
@@ -91,7 +93,7 @@ export default function UsersPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
-      const response = await fetch('http://localhost:8000/api/organizations', {
+      const response = await fetch('/api/organizations', {
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
       if (response.ok) {
@@ -103,7 +105,7 @@ export default function UsersPage() {
 
   const resetForm = () => {
     setFormData({ email: '', first_name: '', last_name: '', role: 'user', organization_id: '' })
-    setSelectedUser(null)
+    // setSelectedUser(null) // Removed
   }
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -113,7 +115,7 @@ export default function UsersPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const response = await fetch('http://localhost:8000/api/users', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,60 +137,8 @@ export default function UsersPage() {
     }
   }
 
-  const openEdit = (user: UserData) => {
-    setSelectedUser(user)
-    setFormData({
-      email: user.email,
+  // openEdit and handleUpdate removed
 
-      first_name: user.user_metadata?.first_name || '',
-      last_name: user.user_metadata?.last_name || '',
-      role: mapRoleToValue(user.role),
-      organization_id: user.organization_id || ''
-    })
-    setShowEditModal(true)
-  }
-
-  const mapRoleToValue = (displayRole: string) => {
-    if (displayRole === 'Super Admin') return 'super_admin'
-    if (displayRole === 'organization_admin' || displayRole === 'Org Admin') return 'organization_admin'
-    return 'user'
-  }
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedUser) return
-    setIsSubmitting(true)
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-
-      const response = await fetch(`http://localhost:8000/api/users/${selectedUser.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          role: formData.role,
-          organization_id: formData.organization_id
-        })
-      })
-
-      if (!response.ok) throw new Error('Failed')
-
-      toast.success('פרטי משתמש עודכנו')
-      setShowEditModal(false)
-      fetchUsers()
-      resetForm()
-    } catch (error) {
-      toast.error('שגיאה בעדכון משתמש')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   const handleDelete = async (userId: string) => {
     if (!confirm('האם אתה בטוח שברצונך למחוק משתמש זה? פעולה זו אינה הפיכה.')) return
@@ -197,7 +147,7 @@ export default function UsersPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const response = await fetch(`http://localhost:8000/api/users/${userId}`, {
+      const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
@@ -221,7 +171,7 @@ export default function UsersPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const response = await fetch(`http://localhost:8000/api/users/${userId}/reset-password`, {
+      const response = await fetch(`/api/users/${userId}/reset-password`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
@@ -338,7 +288,7 @@ export default function UsersPage() {
                   <tr
                     key={user.id}
                     className="hover:bg-gray-50/50 transition-colors group cursor-pointer relative"
-                    onClick={() => openEdit(user)}
+                    onClick={() => window.location.href = `/admin/users/${user.id}`} // Using simplified navigation for row click, or standard Link would require structural change to table row
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -382,13 +332,14 @@ export default function UsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
 
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEdit(user); }}
+                        <Link
+                          href={`/admin/users/${user.id}`}
+                          onClick={(e) => { e.stopPropagation(); }}
                           className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-primary transition-all opacity-0 group-hover:opacity-100"
                           title="ערוך פרטים"
                         >
                           <Edit2 className="w-4 h-4" />
-                        </button>
+                        </Link>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleResetPassword(user.id); }}
                           className="p-1.5 hover:bg-amber-50 rounded-md text-gray-400 hover:text-amber-500 transition-all opacity-0 group-hover:opacity-100"
@@ -438,27 +389,17 @@ export default function UsersPage() {
         />
       </Modal>
 
-      {/* Edit Modal */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="עריכת משתמש">
-        <UserForm
-          data={formData}
-          setData={setFormData}
-          onSubmit={handleUpdate}
-          organizations={organizations}
-          isSubmitting={isSubmitting}
-          mode="edit"
-          onCancel={() => setShowEditModal(false)}
-        />
-      </Modal>
+      {/* Edit Modal Removed - Navigates to dedicated page */}
     </div>
   )
 }
 
 // Reusable Form Component
-const UserForm = ({ data, setData, onSubmit, organizations, isSubmitting, mode, onCancel }: any) => {
+const UserForm = ({ data, setData, onSubmit, organizations, isSubmitting, mode, onCancel, userId }: any) => {
   return (
     <form onSubmit={onSubmit} className="space-y-4 text-right" dir="rtl">
       <div className="grid grid-cols-2 gap-4">
+        {/* ... inputs ... */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">שם פרטי</label>
           <input
@@ -531,6 +472,18 @@ const UserForm = ({ data, setData, onSubmit, organizations, isSubmitting, mode, 
           )}
         </div>
       </div>
+
+      {mode === 'edit' && userId && (
+        <div className="border-t pt-4 mt-4">
+          <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            היסטוריית פעולות
+          </h4>
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+            <ActivityLog userId={userId} />
+          </div>
+        </div>
+      )}
 
       <div className="pt-6 flex justify-end gap-3 border-t mt-4">
         <button type="button" onClick={onCancel} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium">ביטול</button>

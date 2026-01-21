@@ -30,8 +30,8 @@ export async function DELETE(
 
     // Force Authorization header to ensure service role is used
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SECRET_API_KEY!,
+      supabaseUrl,
+      supabaseServiceKey,
       {
         auth: {
           autoRefreshToken: false,
@@ -52,7 +52,7 @@ export async function DELETE(
     }
 
     // Verify existence (and read permissions) first
-    const { data: existingOrg, error: findError } = await supabaseAdmin
+    const { data: existingOrg, error: findError } = await supabase
       .from('organizations')
       .select('id')
       .eq('id', orgId)

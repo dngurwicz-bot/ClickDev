@@ -184,32 +184,33 @@ export default function NewOrganizationPage() {
         }
       }
 
-      // Step 2: Create organization (without admin user)
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
+      // Step 2: Create organization via Backend API (Bypasses RLS)
+      const apiResponse = await fetch('http://127.0.0.1:8000/api/organizations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({
           name: formData.name,
           name_en: formData.nameEn || null,
           email: formData.email,
           phone: formData.phone || null,
           address: formData.address || null,
-          logo_url: logoUrl,
           active_modules: formData.activeModules,
           subscription_tier_id: formData.subscriptionTierId,
-          subscription_tier: selectedTier?.name || null,
-          is_active: true,
-          created_by: user.id,
+          subscription_tier: selectedTier?.name || 'Basic',
+          admin_email: user.email, // Required by backend model
+          logo_url: logoUrl
         })
-        .select()
-        .single()
+      })
 
-      if (orgError) {
-        // Handle duplicate email error
-        if (orgError.code === '23505' && (orgError.message?.includes('organizations_email_key') || orgError.message?.includes('email'))) {
-          throw new Error('אימייל הארגון כבר קיים במערכת. אנא בחר אימייל אחר.')
-        }
-        throw orgError
+      if (!apiResponse.ok) {
+        const errorData = await apiResponse.json()
+        throw new Error(errorData.detail || 'Failed to create organization')
       }
+
+      const org = await apiResponse.json()
 
       // Automatically assign the creator as an Organization Admin
       // We use the add-user API for this to ensure consistency and bypass RLS if needed

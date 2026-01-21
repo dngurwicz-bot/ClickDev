@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, HelpCircle, Mail } from 'lucide-react'
 import { isSuperAdmin } from '@/lib/auth'
 
 export default function TopBar() {
@@ -21,9 +21,19 @@ export default function TopBar() {
         checkRole()
     }, [])
 
+    // Always show top bar, simplified content for non-admins could go here
     return (
-        <div className="bg-white border-b border-gray-100 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
-            <h1 className="text-xl font-semibold text-gray-800"></h1>
+        <div className="bg-white border-b border-gray-100 px-8 py-4 flex justify-between items-center sticky top-0 z-10 w-full mb-6">
+            <div className="flex items-center gap-4">
+                <button className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors text-sm font-medium">
+                    <HelpCircle className="w-4 h-4" />
+                    <span>מרכז עזרה</span>
+                </button>
+                <a href="mailto:support@click-hr.com" className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors text-sm font-medium">
+                    <Mail className="w-4 h-4" />
+                    <span>צור קשר</span>
+                </a>
+            </div>
 
             <div className="flex items-center gap-4">
                 {showAdminLink && (

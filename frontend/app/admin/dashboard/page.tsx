@@ -29,7 +29,7 @@ export default function DashboardPage() {
         throw new Error('No session')
       }
 
-      const response = await fetch('http://localhost:8000/api/stats/dashboard', {
+      const response = await fetch('http://127.0.0.1:8000/api/stats/dashboard', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }

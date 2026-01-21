@@ -141,6 +141,13 @@ export default function OrganizationDetailPage() {
     role: 'manager' as 'organization_admin' | 'manager' | 'employee',
   })
 
+  const [editingUser, setEditingUser] = useState<string | null>(null)
+  const [editUserForm, setEditUserForm] = useState({
+    firstName: '',
+    lastName: '',
+    role: 'manager' as 'organization_admin' | 'manager' | 'employee',
+  })
+
   useEffect(() => {
     fetchData()
   }, [orgId])
@@ -353,10 +360,13 @@ export default function OrganizationDetailPage() {
     setError('')
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+
       const response = await fetch('/api/organizations/add-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`
         },
         body: JSON.stringify({
           organizationId: orgId,
@@ -407,6 +417,49 @@ export default function OrganizationDetailPage() {
       toast.error(err.message || 'שגיאה בשליחת המייל')
     } finally {
       setSendingEmail(false)
+    }
+  }
+
+  const handleUpdateUser = async () => {
+    if (!editingUser || !editUserForm.firstName || !editUserForm.lastName) {
+      setError('יש למלא את כל השדות')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const response = await fetch(`/api/users/${editingUser}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`
+        },
+        body: JSON.stringify({
+          firstName: editUserForm.firstName,
+          lastName: editUserForm.lastName,
+          role: editUserForm.role,
+          organizationId: orgId,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update user')
+      }
+
+      toast.success('פרטי המשתמש עודכנו בהצלחה!')
+      setEditingUser(null)
+      await fetchOrganizationUsers()
+    } catch (err: any) {
+      console.error('Error updating user:', err)
+      setError(err.message || 'שגיאה בעדכון המשתמש')
+      toast.error(err.message || 'שגיאה בעדכון המשתמש')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -1023,29 +1076,117 @@ export default function OrganizationDetailPage() {
                 ) : (
                   organizationUsers.map((user) => (
                     <div key={user.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-text-primary">
-                          {user.first_name && user.last_name
-                            ? `${user.first_name} ${user.last_name}`
-                            : 'ללא שם'}
-                        </p>
-                        <p className="text-sm text-text-secondary">{user.email}</p>
-                        <span className={`inline-block mt-2 px-2 py-1 rounded text-xs ${user.role === 'organization_admin' ? 'bg-purple-100 text-purple-800' :
-                          user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                          {user.role === 'organization_admin' ? 'מנהל ארגון' :
-                            user.role === 'manager' ? 'מנהל' : 'עובד'}
-                        </span>
+                      {editingUser === user.user_id ? (
+                        <div className="flex-1 mr-4">
+                          <div className="mb-3">
+                            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">אימייל</span>
+                            <p className="text-text-primary text-sm font-medium">{user.email}</p>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-text-secondary mb-1">שם פרטי</label>
+                              <input
+                                type="text"
+                                value={editUserForm.firstName}
+                                onChange={(e) => setEditUserForm({ ...editUserForm, firstName: e.target.value })}
+                                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-text-secondary mb-1">שם משפחה</label>
+                              <input
+                                type="text"
+                                value={editUserForm.lastName}
+                                onChange={(e) => setEditUserForm({ ...editUserForm, lastName: e.target.value })}
+                                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-text-secondary mb-1">תפקיד</label>
+                              <select
+                                value={editUserForm.role}
+                                onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value as any })}
+                                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-primary text-sm"
+                              >
+                                <option value="organization_admin">מנהל ארגון</option>
+                                <option value="manager">מנהל</option>
+                                <option value="employee">עובד</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="font-medium text-text-primary">
+                            {user.first_name && user.last_name
+                              ? `${user.first_name} ${user.last_name}`
+                              : 'ללא שם'}
+                          </p>
+                          <p className="text-sm text-text-secondary">{user.email}</p>
+                          <span className={`inline-block mt-2 px-2 py-1 rounded text-xs ${user.role === 'organization_admin' ? 'bg-purple-100 text-purple-800' :
+                            user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                            {user.role === 'organization_admin' ? 'מנהל ארגון' :
+                              user.role === 'manager' ? 'מנהל' : 'עובד'}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        {editingUser === user.user_id ? (
+                          <>
+                            <button
+                              onClick={() => setEditingUser(null)}
+                              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                              title="ביטול"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleUpdateUser}
+                              disabled={saving}
+                              className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
+                              title="שמור"
+                            >
+                              {saving ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingUser(user.user_id)
+                                setEditUserForm({
+                                  firstName: user.first_name || '',
+                                  lastName: user.last_name || '',
+                                  role: user.role as any,
+                                })
+                              }}
+                              className="p-2 text-primary hover:bg-primary-light rounded-lg transition-colors"
+                              title="ערוך"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleSendInvite(user.email || '')}
+                              disabled={sendingEmail}
+                              className="p-2 text-text-secondary hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                              title="שלח מייל הזמנה"
+                            >
+                              {sendingEmail ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Send className="w-4 h-4" />
+                              )}
+                            </button>
+                          </>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleSendInvite(user.email || '')}
-                        disabled={sendingEmail}
-                        className="px-3 py-2 bg-primary-light text-primary rounded-lg hover:bg-primary hover:text-white transition-colors disabled:opacity-50 flex items-center gap-2"
-                      >
-                        <Send className="w-4 h-4" />
-                        שלח מייל
-                      </button>
                     </div>
                   ))
                 )}

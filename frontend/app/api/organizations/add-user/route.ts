@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { logActivity } from '@/lib/activity-logger'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -31,19 +32,34 @@ export async function POST(request: NextRequest) {
     }
 
     // SECURITY CHECK: Verify user permissions
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
+    let user = null
+    let authError = null
+
+    // Check for Authorization header first (SPA/Client-side fetch)
+    const authHeader = request.headers.get('Authorization')
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '')
+      const { data: { user: u }, error: e } = await supabaseAdmin.auth.getUser(token)
+      user = u
+      authError = e
+    } else {
+      // Fallback to cookies (Server Component/Action)
+      const cookieStore = await cookies()
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return cookieStore.get(name)?.value
+            },
           },
-        },
-      }
-    )
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+        }
+      )
+      const { data: { user: u }, error: e } = await supabase.auth.getUser()
+      user = u
+      authError = e
+    }
 
     if (authError || !user) {
       return NextResponse.json(
@@ -152,6 +168,16 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('User role already exists, skipping creation')
     }
+
+    // Log Activity
+    await logActivity(
+      user.id,
+      'INVITE_USER',
+      'USER',
+      authUser.user.id,
+      { email: userData.email, role: userData.role, organization_id: organizationId },
+      organizationId
+    )
 
     return NextResponse.json({
       success: true,

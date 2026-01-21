@@ -20,7 +20,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,6 +64,31 @@ async def require_super_admin(user = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Super admin access required")
     return user
 
+# Activity Logging Helper
+async def log_activity(user_id: str, action_type: str, entity_type: str, entity_id: Optional[str] = None, details: dict = {}, organization_id: Optional[str] = None):
+    try:
+        log_data = {
+            "user_id": user_id,
+            "action_type": action_type,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "details": details,
+            "organization_id": organization_id,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        supabase_admin.table("user_activity_logs").insert(log_data).execute()
+    except Exception as e:
+        print(f"Error logging activity: {str(e)}")
+
+# Activity Log Endpoint
+@app.get("/api/activity-logs/{user_id}")
+async def get_user_activity_logs(user_id: str, user = Depends(require_super_admin)):
+    try:
+        response = supabase_admin.table("user_activity_logs").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Pydantic models
 class OrganizationCreate(BaseModel):
     name: str
@@ -74,6 +99,9 @@ class OrganizationCreate(BaseModel):
     active_modules: Optional[List[str]] = ["core"]
     subscription_tier: Optional[str] = "basic"
     admin_email: str
+    subscription_tier_id: Optional[str] = None
+    logo_url: Optional[str] = None
+    org_number: Optional[str] = None
 
 class OrganizationResponse(BaseModel):
     id: str
@@ -82,9 +110,36 @@ class OrganizationResponse(BaseModel):
     email: str
     phone: Optional[str]
     logo_url: Optional[str]
+    org_number: Optional[str]
     address: Optional[str]
     active_modules: List[str]
     subscription_tier: str
+    is_active: bool
+    created_at: datetime
+
+class AnnouncementCreate(BaseModel):
+    title: str
+    content: str
+    type: Optional[str] = 'info'  # info, warning, success, update
+    target_type: Optional[str] = 'all'  # all, specific
+    target_organizations: Optional[List[str]] = None
+    is_active: Optional[bool] = True
+
+class AnnouncementUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    type: Optional[str] = None
+    target_type: Optional[str] = None
+    target_organizations: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+
+class AnnouncementResponse(BaseModel):
+    id: str
+    title: str
+    content: str
+    type: str
+    target_type: str
+    target_organizations: Optional[List[str]]
     is_active: bool
     created_at: datetime
 
@@ -132,9 +187,34 @@ async def get_organizations(user = Depends(require_super_admin)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def generate_org_number():
+    """Generate a unique 5-digit organization number"""
+    try:
+        # Get the highest existing org_number
+        response = supabase_admin.table("organizations").select("org_number").order("org_number", desc=True).limit(1).execute()
+        
+        if response.data and response.data[0].get("org_number"):
+            # Increment the highest number
+            max_num = int(response.data[0]["org_number"])
+            new_num = max_num + 1
+        else:
+            # Start from 10000 if no organizations exist
+            new_num = 10000
+        
+        # Ensure it's 5 digits
+        return str(new_num).zfill(5)
+    except Exception as e:
+        print(f"Error generating org_number: {e}")
+        # Fallback to random 5-digit number
+        import random
+        return str(random.randint(10000, 99999))
+
 @app.post("/api/organizations", response_model=OrganizationResponse)
 async def create_organization(org: OrganizationCreate, user = Depends(require_super_admin)):
     try:
+        # Auto-generate org_number if not provided
+        org_number = org.org_number if org.org_number else generate_org_number()
+        
         # Create organization
         org_data = {
             "name": org.name,
@@ -143,7 +223,10 @@ async def create_organization(org: OrganizationCreate, user = Depends(require_su
             "phone": org.phone,
             "address": org.address,
             "active_modules": org.active_modules,
+            "subscription_tier_id": org.subscription_tier_id,
             "subscription_tier": org.subscription_tier,
+            "logo_url": org.logo_url,
+            "org_number": org_number,
             "created_by": user.id
         }
         
@@ -158,7 +241,17 @@ async def create_organization(org: OrganizationCreate, user = Depends(require_su
         # This would typically involve:
         # 1. Creating user in auth.users (via Supabase Admin API)
         # 2. Creating user_roles entry
+        # ...
         
+        # Log Activity
+        await log_activity(
+            user_id=user.id,
+            action_type="CREATE_ORGANIZATION",
+            entity_type="ORGANIZATION",
+            entity_id=response.data[0]["id"],
+            details={"name": org.name}
+        )
+
         return response.data[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -182,6 +275,15 @@ async def update_organization(org_id: str, updates: dict, user = Depends(require
         response = supabase_admin.table("organizations").update(updates).eq("id", org_id).execute()
         if not response.data:
             raise HTTPException(status_code=404, detail="Organization not found")
+        
+        await log_activity(
+            user_id=user.id,
+            action_type="UPDATE_ORGANIZATION",
+            entity_type="ORGANIZATION",
+            entity_id=org_id,
+            details=updates
+        )
+
         return response.data[0]
     except HTTPException:
         raise
@@ -192,6 +294,14 @@ async def update_organization(org_id: str, updates: dict, user = Depends(require
 async def delete_organization(org_id: str, user = Depends(require_super_admin)):
     try:
         response = supabase_admin.table("organizations").delete().eq("id", org_id).execute()
+        
+        await log_activity(
+            user_id=user.id,
+            action_type="DELETE_ORGANIZATION",
+            entity_type="ORGANIZATION",
+            entity_id=org_id
+        )
+
         return {"message": "Organization deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -411,9 +521,17 @@ async def invite_user(invite: UserInvite, user = Depends(require_super_admin)):
         
         if not role_response.data:
             # Rollback?
-            # supabase_admin.auth.admin.delete_user(new_user.id) # Maybe don't delete if invite sent? But better to keep consistent state.
             supabase_admin.auth.admin.delete_user(new_user.id)
             raise HTTPException(status_code=400, detail="Failed to assign role")
+            
+        await log_activity(
+            user_id=user.id,
+            action_type="INVITE_USER",
+            entity_type="USER",
+            entity_id=new_user.id,
+            details={"email": invite.email, "role": invite.role, "organization_id": invite.organization_id},
+            organization_id=invite.organization_id
+        )
             
         return {"message": "User invited successfully", "user_id": new_user.id}
 
@@ -424,10 +542,6 @@ async def invite_user(invite: UserInvite, user = Depends(require_super_admin)):
 @app.delete("/api/users/{user_id}")
 async def delete_user(user_id: str, user = Depends(require_super_admin)):
     try:
-        # Supabase Auth Admin delete cascades if configured, but let's be sure.
-        # We might need to manually delete from user_roles if no cascade constraint exists
-        # But usually we rely on foreign keys. Let's assume cascade or manual cleanup.
-        
         # 0. Cleanup dependencies manually (since cascade might fail via API)
         # Check and delete from related tables
         supabase_admin.table("user_roles").delete().eq("user_id", user_id).execute()
@@ -509,6 +623,91 @@ async def reset_password(user_id: str, user = Depends(require_super_admin)):
         return {"message": "Password reset email sent successfully"}
     except Exception as e:
         print(f"Error sending reset password email: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Announcements endpoints
+@app.get("/api/announcements", response_model=List[AnnouncementResponse])
+async def get_announcements(user = Depends(get_current_user)):
+    """Get announcements for current user's organization"""
+    try:
+        # Get user's organization
+        user_roles = supabase_admin.table("user_roles").select("organization_id").eq("user_id", user.id).execute()
+        
+        if not user_roles.data:
+            return []
+        
+        org_id = user_roles.data[0]["organization_id"]
+        
+        # Get announcements (RLS will filter automatically)
+        response = supabase_admin.table("announcements").select("*").eq("is_active", True).order("created_at", desc=True).execute()
+        
+        # Additional filtering for specific targeting
+        filtered = []
+        for announcement in response.data:
+            if announcement["target_type"] == "all":
+                filtered.append(announcement)
+            elif announcement["target_type"] == "specific" and announcement.get("target_organizations"):
+                if org_id in announcement["target_organizations"]:
+                    filtered.append(announcement)
+        
+        return filtered
+    except Exception as e:
+        print(f"Error fetching announcements: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/announcements", response_model=AnnouncementResponse)
+async def create_announcement(announcement: AnnouncementCreate, user = Depends(require_super_admin)):
+    """Create a new announcement (Super Admin only)"""
+    try:
+        announcement_data = {
+            "title": announcement.title,
+            "content": announcement.content,
+            "type": announcement.type,
+            "target_type": announcement.target_type,
+            "target_organizations": announcement.target_organizations,
+            "is_active": announcement.is_active,
+            "created_by": user.id
+        }
+        
+        response = supabase_admin.table("announcements").insert(announcement_data).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=400, detail="Failed to create announcement")
+        
+        return response.data[0]
+    except Exception as e:
+        print(f"Error creating announcement: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/announcements/{announcement_id}", response_model=AnnouncementResponse)
+async def update_announcement(announcement_id: str, announcement: AnnouncementUpdate, user = Depends(require_super_admin)):
+    """Update an announcement (Super Admin only)"""
+    try:
+        update_data = {k: v for k, v in announcement.dict().items() if v is not None}
+        update_data["updated_at"] = datetime.utcnow().isoformat()
+        
+        response = supabase_admin.table("announcements").update(update_data).eq("id", announcement_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Announcement not found")
+        
+        return response.data[0]
+    except Exception as e:
+        print(f"Error updating announcement: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/announcements/{announcement_id}")
+async def delete_announcement(announcement_id: str, user = Depends(require_super_admin)):
+    """Delete an announcement (Super Admin only)"""
+    try:
+        response = supabase_admin.table("announcements").delete().eq("id", announcement_id).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Announcement not found")
+        
+        return {"message": "Announcement deleted successfully"}
+    except Exception as e:
+        print(f"Error deleting announcement: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

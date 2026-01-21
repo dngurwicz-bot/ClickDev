@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SECRET_API_KEY!
 
-const supabase = createClient(supabaseUrl, supabaseKey, {
+const supabase = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -28,37 +28,38 @@ export async function POST(
       )
     }
 
-    // Find the user by email and verify they belong to this organization
-    const { data: userRole, error: roleError } = await supabaseAdmin
+    // 1. Get user by email to find their ID
+    const { data: { users }, error: userError } = await supabase.auth.admin.listUsers()
+    const user = users.find(u => u.email === email)
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    // 2. Verify they belong to this organization
+    const { data: userRole, error: roleError } = await supabase
       .from('user_roles')
       .select('user_id, organization_id, role')
       .eq('organization_id', orgId)
-      .eq('role', 'organization_admin')
+      .eq('user_id', user.id)
       .single()
 
     if (roleError || !userRole) {
       return NextResponse.json(
-        { error: 'Organization admin not found' },
-        { status: 404 }
-      )
-    }
-
-    // Get user details
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userRole.user_id)
-
-    if (userError || !user || user.email !== email) {
-      return NextResponse.json(
-        { error: 'User not found or email mismatch' },
-        { status: 404 }
+        { error: 'User does not belong to this organization' },
+        { status: 403 }
       )
     }
 
     // Generate password reset link
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/set-password`,
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/update-password`,
       },
     })
 

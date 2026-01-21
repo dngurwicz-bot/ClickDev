@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/admin/Sidebar'
 import { isSuperAdmin } from '@/lib/auth'
 
+// Force HMR update
 export default function AdminLayout({
   children,
 }: {

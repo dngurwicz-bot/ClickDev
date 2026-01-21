@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
+  User,
   LayoutDashboard,
   Building2,
   Users,
@@ -29,13 +30,25 @@ const menuItems = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const [userEmail, setUserEmail] = useState<string>('')
+  const [userData, setUserData] = useState<{
+    email: string
+    fullName: string
+    avatarUrl: string | null
+  }>({
+    email: '',
+    fullName: '',
+    avatarUrl: null
+  })
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        setUserEmail(user.email || '')
+        setUserData({
+          email: user.email || '',
+          fullName: user.user_metadata?.full_name || 'Admin User',
+          avatarUrl: user.user_metadata?.avatar_url || null
+        })
       }
     }
     getUser()
@@ -77,10 +90,24 @@ export default function Sidebar() {
 
       {/* User info and logout */}
       <div className="p-4 border-t border-gray-700">
-        <div className="mb-3">
-          <p className="text-gray-300 text-sm">{userEmail}</p>
-          <span className="text-primary text-xs font-medium">Super Admin</span>
+        <div className="mb-4 flex items-center gap-3 px-2">
+          {userData.avatarUrl ? (
+            <img
+              src={userData.avatarUrl}
+              alt={userData.fullName}
+              className="w-10 h-10 rounded-full object-cover border-2 border-primary"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600 text-gray-300">
+              <User className="w-6 h-6" />
+            </div>
+          )}
+          <div className="flex flex-col">
+            <span className="text-white font-medium text-sm">{userData.fullName}</span>
+            <span className="text-primary text-xs font-medium">Super Admin</span>
+          </div>
         </div>
+
         <Link
           href="/dashboard"
           className="w-full flex items-center gap-3 px-4 py-2 mb-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg transition-colors"
