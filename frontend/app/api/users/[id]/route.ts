@@ -50,8 +50,8 @@ export async function GET(
       id: user.id,
       email: user.email,
       user_metadata: {
-        first_name: user.user_metadata?.first_name,
-        last_name: user.user_metadata?.last_name,
+        first_name: user.user_metadata?.first_name || '',
+        last_name: user.user_metadata?.last_name || '',
       },
       created_at: user.created_at,
       last_sign_in_at: user.last_sign_in_at,

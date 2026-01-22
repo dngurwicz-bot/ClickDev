@@ -11,7 +11,8 @@ import {
   Settings,
   LogOut,
   Package,
-  ArrowRight
+  ArrowRight,
+  Bell
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -23,6 +24,7 @@ const menuItems = [
   { href: '/admin/organizations', label: 'ארגונים', icon: Building2 },
   { href: '/admin/subscription-tiers', label: 'סוגי מנויים', icon: Package },
   { href: '/admin/users', label: 'משתמשים', icon: Users },
+  { href: '/admin/announcements', label: 'הודעות', icon: Bell },
   { href: '/admin/analytics', label: 'אנליטיקס', icon: BarChart3 },
   { href: '/admin/settings', label: 'הגדרות', icon: Settings },
 ]

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
     User, Mail, Building2, Shield, Calendar, Clock,
-    ArrowRight, Save, Trash2, Key, AlertTriangle, CheckCircle2
+    ArrowRight, Save, Trash2, Key, AlertTriangle, CheckCircle2, Plus, X, Star
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -21,6 +21,13 @@ interface UserData {
     organization_name: string
     organization_id: string
     user_metadata: any
+}
+
+interface UserOrganization {
+    organization_id: string
+    organization_name: string
+    role: string
+    is_primary: boolean
 }
 
 interface Organization {
@@ -40,8 +47,10 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
     const [userId, setUserId] = useState<string>('')
     const [user, setUser] = useState<UserData | null>(null)
     const [organizations, setOrganizations] = useState<Organization[]>([])
+    const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [showAddOrgModal, setShowAddOrgModal] = useState(false)
     const router = useRouter()
 
     const [formData, setFormData] = useState({
@@ -49,6 +58,12 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
         last_name: '',
         role: 'user',
         organization_id: ''
+    })
+
+    const [addOrgData, setAddOrgData] = useState({
+        organization_id: '',
+        role: 'user',
+        is_primary: false
     })
 
     useEffect(() => {
@@ -68,6 +83,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                 const { data: { session } } = await supabase.auth.getSession()
                 if (!session) return
 
+
                 const [userRes, orgsRes] = await Promise.all([
                     fetch(`/api/users/${userId}`, {
                         headers: { Authorization: `Bearer ${session.access_token}` }
@@ -77,27 +93,49 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                     })
                 ])
 
-                if (userRes.ok && orgsRes.ok) {
-                    const allUsersRes = await fetch('/api/users', {
-                        headers: { Authorization: `Bearer ${session.access_token}` }
+                if (!userRes.ok) {
+                    console.error('User fetch failed:', userRes.status, await userRes.text())
+                    toast.error('שגיאה בטעינת פרטי משתמש')
+                    setLoading(false)
+                    return
+                }
+
+                if (!orgsRes.ok) {
+                    console.error('Orgs fetch failed:', orgsRes.status)
+                }
+
+                const userData = await userRes.json()
+                console.log('Fetched user data:', userData)
+                console.log('user_metadata:', userData.user_metadata)
+                console.log('first_name:', userData.user_metadata?.first_name)
+                console.log('last_name:', userData.user_metadata?.last_name)
+
+                if (userData) {
+                    setUser(userData)
+                    setFormData({
+                        first_name: userData.user_metadata?.first_name || '',
+                        last_name: userData.user_metadata?.last_name || '',
+                        role: mapRoleToValue(userData.role),
+                        organization_id: userData.organization_id ? String(userData.organization_id) : ''
                     })
-                    const allUsers = await allUsersRes.json()
-                    const fullUser = allUsers.find((u: any) => u.id === userId)
+                    console.log('Form data set:', {
+                        first_name: userData.user_metadata?.first_name || '',
+                        last_name: userData.user_metadata?.last_name || '',
+                        organization_id: userData.organization_id,
+                        role: userData.role
+                    })
+                }
 
-                    if (fullUser) {
-                        setUser(fullUser)
-                        setFormData({
-                            first_name: fullUser.user_metadata?.first_name || '',
-                            last_name: fullUser.user_metadata?.last_name || '',
-                            role: mapRoleToValue(fullUser.role),
-                            organization_id: fullUser.organization_id || ''
-                        })
-                    }
 
+                if (orgsRes.ok) {
                     const orgsData = await orgsRes.json()
+                    console.log('Organizations loaded:', orgsData)
                     setOrganizations(orgsData)
+                } else {
+                    console.error('Failed to load organizations')
                 }
             } catch (error) {
+                console.error('Error in fetchData:', error)
                 toast.error('שגיאה בטעינת נתונים')
             } finally {
                 setLoading(false)

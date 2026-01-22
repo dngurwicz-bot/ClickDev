@@ -19,7 +19,9 @@ import {
     AlertCircle,
     CheckCircle,
     Info,
-    Megaphone
+    Megaphone,
+    X,
+    Search
 } from 'lucide-react'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 
@@ -120,6 +122,8 @@ export default function DashboardPage() {
     const [user, setUser] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [announcements, setAnnouncements] = useState<Announcement[]>([])
+    const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null)
+    const [searchTerm, setSearchTerm] = useState('')
     const { currentOrg, isLoading: orgLoading } = useOrganization()
     const router = useRouter()
 
@@ -208,8 +212,8 @@ export default function DashboardPage() {
                 onClick={() => isActive && router.push(module.href)}
                 disabled={!isActive}
                 className={`group relative bg-white rounded-xl shadow-sm transition-all duration-300 p-4 text-center overflow-hidden ${isActive
-                        ? 'hover:shadow-lg transform hover:-translate-y-1 cursor-pointer'
-                        : 'opacity-60 cursor-not-allowed'
+                    ? 'hover:shadow-lg transform hover:-translate-y-1 cursor-pointer'
+                    : 'opacity-60 cursor-not-allowed'
                     }`}
             >
                 {isActive && (
@@ -246,27 +250,46 @@ export default function DashboardPage() {
                         <h2 className="text-lg font-bold text-text-primary">הודעות ועדכונים</h2>
                     </div>
 
-                    <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
-                        {announcements.length === 0 ? (
+                    {/* Search Input */}
+                    <div className="relative mb-4">
+                        <input
+                            type="text"
+                            placeholder="חיפוש הודעות..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-4 py-2 pr-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm"
+                        />
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    </div>
+
+                    <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                        {announcements.filter(announcement =>
+                            announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
+                        ).length === 0 ? (
                             <div className="text-center py-8 text-text-muted">
                                 <Bell className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                                <p className="text-sm">אין הודעות חדשות</p>
+                                <p className="text-sm">{searchTerm ? 'לא נמצאו תוצאות' : 'אין הודעות חדשות'}</p>
                             </div>
                         ) : (
-                            announcements.map((announcement) => {
+                            announcements.filter(announcement =>
+                                announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
+                            ).map((announcement) => {
                                 const Icon = getAnnouncementIcon(announcement.type)
                                 const colorClass = getAnnouncementColor(announcement.type)
 
                                 return (
                                     <div
                                         key={announcement.id}
-                                        className={`p-3 rounded-lg border ${colorClass}`}
+                                        onClick={() => setSelectedAnnouncement(announcement)}
+                                        className={`p-3 rounded-lg border ${colorClass} cursor-pointer hover:opacity-80 transition-opacity`}
                                     >
                                         <div className="flex items-start gap-2 mb-2">
                                             <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
                                             <h3 className="font-semibold text-sm">{announcement.title}</h3>
                                         </div>
-                                        <p className="text-xs opacity-90 mb-2">{announcement.content}</p>
+                                        <p className="text-xs opacity-90 mb-2 line-clamp-2">{announcement.content}</p>
                                         <p className="text-xs opacity-60">
                                             {new Date(announcement.created_at).toLocaleDateString('he-IL')}
                                         </p>
@@ -315,6 +338,51 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Announcement Modal */}
+            {selectedAnnouncement && (
+                <div
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                    onClick={() => setSelectedAnnouncement(null)}
+                >
+                    <div
+                        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-6 border-b border-gray-200 flex items-start justify-between">
+                            <div className="flex-1">
+                                <h2 className="text-2xl font-bold mb-2">{selectedAnnouncement.title}</h2>
+                                <p className="text-sm text-gray-500">
+                                    {new Date(selectedAnnouncement.created_at).toLocaleDateString('he-IL', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    })}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedAnnouncement(null)}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                {selectedAnnouncement.content}
+                            </p>
+                        </div>
+                        <div className="p-6 border-t border-gray-100 bg-gray-50">
+                            <button
+                                onClick={() => setSelectedAnnouncement(null)}
+                                className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                            >
+                                סגור
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
