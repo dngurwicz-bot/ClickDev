@@ -56,7 +56,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-8">
           <div className="flex flex-col items-center text-center">
             <div className="mb-6 transform hover:scale-105 transition-transform duration-300">
-              <Logo size="xl" />
+              <Logo size="lg" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">
               ברוך הבא
