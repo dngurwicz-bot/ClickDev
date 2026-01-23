@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/admin/Sidebar'
-import { isSuperAdmin } from '@/lib/auth'
+import { isSuperAdmin, getCurrentUser } from '@/lib/auth'
 
 // Force HMR update
 export default function AdminLayout({
@@ -17,6 +17,12 @@ export default function AdminLayout({
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        const user = await getCurrentUser()
+        if (!user) {
+          router.push('/login')
+          return
+        }
+
         const isSA = await isSuperAdmin()
         if (!isSA) {
           router.push('/unauthorized')

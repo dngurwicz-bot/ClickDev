@@ -49,6 +49,8 @@ export async function GET(
     return NextResponse.json({
       id: user.id,
       email: user.email,
+      first_name: user.user_metadata?.first_name || '',
+      last_name: user.user_metadata?.last_name || '',
       user_metadata: {
         first_name: user.user_metadata?.first_name || '',
         last_name: user.user_metadata?.last_name || '',
@@ -57,7 +59,7 @@ export async function GET(
       last_sign_in_at: user.last_sign_in_at,
       role: userRoles?.role || 'user',
       organization_id: userRoles?.organization_id || null,
-      organization_name: userRoles?.organizations?.name || null,
+      organization_name: Array.isArray(userRoles?.organizations) ? userRoles.organizations[0]?.name : (userRoles?.organizations as any)?.name || null,
     })
   } catch (error: any) {
     console.error('Error fetching user:', error)
@@ -76,14 +78,12 @@ export async function PUT(
     const { id } = await params
     const userId = id
     const body = await request.json()
-    const { firstName, lastName, role, organizationId } = body
+    const { first_name, last_name, role, organization_id } = body
 
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 400 }
-      )
-    }
+    // Map snake_case to camelCase for internal logic if needed, or just use variables directly
+    const firstName = first_name
+    const lastName = last_name
+    const organizationId = organization_id
 
     // CHECK AUTH
     const authHeader = request.headers.get('Authorization')
@@ -125,13 +125,22 @@ export async function PUT(
       throw updateError
     }
 
-    // 2. Update Role in Database
-    if (role) {
+    // 2. Update Role/Organization in Database
+    if (role || organizationId !== undefined) {
+      const updates: any = { user_id: userId }
+      if (role) updates.role = role
+
+      // Handle organization_id: convert empty string to null, allow explicit null
+      if (organizationId === '' || organizationId === null) {
+        updates.organization_id = null
+      } else {
+        updates.organization_id = organizationId
+      }
+
+      // Use upsert to handle cases where user_role might be missing
       const { error: roleError } = await supabase
         .from('user_roles')
-        .update({ role })
-        .eq('user_id', userId)
-        .eq('organization_id', organizationId)
+        .upsert(updates, { onConflict: 'user_id' })
 
       if (roleError) {
         throw roleError
@@ -144,8 +153,8 @@ export async function PUT(
       'UPDATE_USER',
       'USER',
       userId,
-      { first_name: firstName, last_name: lastName, role: role },
-      organizationId
+      { first_name: firstName, last_name: lastName, role: role, organization_id: organizationId },
+      organizationId || 'system' // Use system if no org provided
     )
 
     return NextResponse.json({ success: true })

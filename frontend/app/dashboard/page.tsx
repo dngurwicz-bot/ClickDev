@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import CriticalAnnouncementModal from '@/components/CriticalAnnouncementModal'
 import {
     Users,
     FileText,
@@ -40,6 +41,8 @@ interface Announcement {
     title: string
     content: string
     type: string
+    is_critical: boolean
+    scheduled_for: string | null
     created_at: string
 }
 
@@ -50,7 +53,7 @@ const ALL_MODULES: ModuleTile[] = [
         nameEn: 'Core',
         icon: Building2,
         color: 'from-blue-400 to-blue-600',
-        href: '/dashboard/employees',
+        href: '/dashboard/core',
         description: 'ניהול עובדים ומשאבי אנוש'
     },
     {
@@ -123,6 +126,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true)
     const [announcements, setAnnouncements] = useState<Announcement[]>([])
     const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null)
+    const [criticalAnnouncement, setCriticalAnnouncement] = useState<Announcement | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const { currentOrg, isLoading: orgLoading } = useOrganization()
     const router = useRouter()
@@ -148,14 +152,106 @@ export default function DashboardPage() {
                 if (response.ok) {
                     const data = await response.json()
                     setAnnouncements(data)
+
+                    // Check for unread critical announcements
+                    await checkCriticalAnnouncements(data)
                 }
             } catch (error) {
                 console.error('Error fetching announcements:', error)
             }
         }
 
+        const checkCriticalAnnouncements = async (allAnnouncements: Announcement[]) => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+
+                // Filter critical announcements that should be shown
+                const criticalAnnouncements = allAnnouncements.filter(a =>
+                    a.is_critical &&
+                    (!a.scheduled_for || new Date(a.scheduled_for) <= new Date())
+                )
+
+                if (criticalAnnouncements.length === 0) return
+
+                // Check which ones haven't been read or dismissed
+                const { data: reads } = await supabase
+                    .from('announcement_reads')
+                    .select('announcement_id, dismissed')
+                    .eq('user_id', user.id)
+                    .in('announcement_id', criticalAnnouncements.map(a => a.id))
+
+                const readIds = new Set(reads?.map(r => r.announcement_id) || [])
+
+                // Find first unread critical announcement
+                const unreadCritical = criticalAnnouncements.find(a => !readIds.has(a.id))
+
+                if (unreadCritical) {
+                    setCriticalAnnouncement(unreadCritical)
+                }
+            } catch (error) {
+                console.error('Error checking critical announcements:', error)
+            }
+        }
+
         if (!loading && user) {
             fetchAnnouncements()
+
+            // Subscribe to real-time announcements
+            const channel = supabase
+                .channel('announcements-changes')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'announcements'
+                    },
+                    async (payload) => {
+                        console.log('Announcement change detected:', payload)
+
+                        if (payload.eventType === 'INSERT') {
+                            const newAnnouncement = payload.new as Announcement
+
+                            // Check if it's critical and should be shown
+                            if (newAnnouncement.is_critical &&
+                                (!newAnnouncement.scheduled_for || new Date(newAnnouncement.scheduled_for) <= new Date())) {
+
+                                // Check if user hasn't read it yet
+                                const { data: reads } = await supabase
+                                    .from('announcement_reads')
+                                    .select('announcement_id')
+                                    .eq('user_id', user.id)
+                                    .eq('announcement_id', newAnnouncement.id)
+                                    .single()
+
+                                if (!reads) {
+                                    // Show the critical announcement immediately
+                                    setCriticalAnnouncement(newAnnouncement)
+                                }
+                            }
+
+                            // Add to announcements list
+                            setAnnouncements(prev => [newAnnouncement, ...prev])
+                        } else if (payload.eventType === 'UPDATE') {
+                            // Update announcement in list
+                            setAnnouncements(prev =>
+                                prev.map(a => a.id === payload.new.id ? payload.new as Announcement : a)
+                            )
+                        } else if (payload.eventType === 'DELETE') {
+                            // Remove from list
+                            setAnnouncements(prev =>
+                                prev.filter(a => a.id !== payload.old.id)
+                            )
+                        }
+                    }
+                )
+                .subscribe()
+
+            // Cleanup subscription on unmount
+            return () => {
+                supabase.removeChannel(channel)
+            }
         }
     }, [loading, user])
 
@@ -272,30 +368,52 @@ export default function DashboardPage() {
                                 <p className="text-sm">{searchTerm ? 'לא נמצאו תוצאות' : 'אין הודעות חדשות'}</p>
                             </div>
                         ) : (
-                            announcements.filter(announcement =>
-                                announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
-                            ).map((announcement) => {
-                                const Icon = getAnnouncementIcon(announcement.type)
-                                const colorClass = getAnnouncementColor(announcement.type)
+                            <>
+                                {announcements.filter(announcement =>
+                                    announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
+                                ).slice(0, 7).map((announcement) => {
+                                    const Icon = getAnnouncementIcon(announcement.type)
+                                    const colorClass = getAnnouncementColor(announcement.type)
 
-                                return (
-                                    <div
-                                        key={announcement.id}
-                                        onClick={() => setSelectedAnnouncement(announcement)}
-                                        className={`p-3 rounded-lg border ${colorClass} cursor-pointer hover:opacity-80 transition-opacity`}
-                                    >
-                                        <div className="flex items-start gap-2 mb-2">
-                                            <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                            <h3 className="font-semibold text-sm">{announcement.title}</h3>
+                                    return (
+                                        <div
+                                            key={announcement.id}
+                                            onClick={() => setSelectedAnnouncement(announcement)}
+                                            className={`p-3 rounded-lg border ${colorClass} cursor-pointer hover:opacity-80 transition-opacity`}
+                                        >
+                                            <div className="flex items-start gap-2 mb-2">
+                                                <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                                <h3 className="font-semibold text-sm">{announcement.title}</h3>
+                                            </div>
+                                            <div
+                                                className="text-xs opacity-90 mb-2 line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0 [&>p]:text-xs"
+                                                dangerouslySetInnerHTML={{ __html: announcement.content }}
+                                            />
+                                            <p className="text-xs opacity-60">
+                                                {new Date(announcement.created_at).toLocaleDateString('he-IL')}
+                                            </p>
                                         </div>
-                                        <p className="text-xs opacity-90 mb-2 line-clamp-2">{announcement.content}</p>
-                                        <p className="text-xs opacity-60">
-                                            {new Date(announcement.created_at).toLocaleDateString('he-IL')}
-                                        </p>
-                                    </div>
-                                )
-                            })
+                                    )
+                                })}
+
+                                {/* Show "View All" button if more than 7 announcements */}
+                                {announcements.filter(announcement =>
+                                    announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
+                                ).length > 7 && (
+                                        <button
+                                            onClick={() => router.push('/announcements')}
+                                            className="w-full py-3 px-4 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                        >
+                                            <Bell className="w-4 h-4" />
+                                            הצג את כל ההודעות ({announcements.filter(announcement =>
+                                                announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
+                                            ).length})
+                                        </button>
+                                    )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -368,9 +486,10 @@ export default function DashboardPage() {
                             </button>
                         </div>
                         <div className="p-6">
-                            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                {selectedAnnouncement.content}
-                            </p>
+                            <div
+                                className="text-gray-700 leading-relaxed prose prose-sm max-w-none"
+                                dangerouslySetInnerHTML={{ __html: selectedAnnouncement.content }}
+                            />
                         </div>
                         <div className="p-6 border-t border-gray-100 bg-gray-50">
                             <button
@@ -382,6 +501,15 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Critical Announcement Modal */}
+            {criticalAnnouncement && (
+                <CriticalAnnouncementModal
+                    announcement={criticalAnnouncement}
+                    onClose={() => setCriticalAnnouncement(null)}
+                    onDismiss={() => setCriticalAnnouncement(null)}
+                />
             )}
         </div>
     )

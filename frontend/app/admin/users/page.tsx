@@ -1,10 +1,14 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Users, Search, Filter, Shield, Building2, Calendar, Mail, CheckCircle2, XCircle, Trash2, Edit2, Plus, X, Loader2, MoreVertical, Lock, Key } from 'lucide-react'
+import { Users, Search, Shield, Building2, Calendar, Plus, X, Loader2, Lock, Trash2, Edit2, Key } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import React from 'react'
+import GlobalLoader from '@/components/ui/GlobalLoader'
+import DataTable from '@/components/DataTable'
+import ExportModal from '@/components/ExportModal'
+import { ColumnDef } from '@tanstack/react-table'
 
 interface UserData {
   id: string
@@ -37,25 +41,13 @@ const Modal = ({ isOpen, onClose, title, children }: any) => {
   )
 }
 
-import GlobalLoader from '@/components/ui/GlobalLoader'
-import ActivityLog from '@/components/admin/ActivityLog'
-
 export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
-  const [orgFilter, setOrgFilter] = useState('')
-
-  // Organizations for dropdown
   const [organizations, setOrganizations] = useState<Organization[]>([])
-
-  // Modal States
   const [showInviteModal, setShowInviteModal] = useState(false)
-  // const [showEditModal, setShowEditModal] = useState(false) // Removed
-  // const [selectedUser, setSelectedUser] = useState<UserData | null>(null) // Removed
+  const [showExportModal, setShowExportModal] = useState(false)
 
-  // Form States
   const [formData, setFormData] = useState({
     email: '',
     first_name: '',
@@ -103,11 +95,6 @@ export default function UsersPage() {
     } catch (e) { console.error(e) }
   }
 
-  const resetForm = () => {
-    setFormData({ email: '', first_name: '', last_name: '', role: 'user', organization_id: '' })
-    // setSelectedUser(null) // Removed
-  }
-
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -129,7 +116,7 @@ export default function UsersPage() {
       toast.success('משתמש הוזמן בהצלחה')
       setShowInviteModal(false)
       fetchUsers()
-      resetForm()
+      setFormData({ email: '', first_name: '', last_name: '', role: 'user', organization_id: '' })
     } catch (error) {
       toast.error('שגיאה בהזמנת משתמש')
     } finally {
@@ -137,21 +124,15 @@ export default function UsersPage() {
     }
   }
 
-  // openEdit and handleUpdate removed
-
-
   const handleDelete = async (userId: string) => {
     if (!confirm('האם אתה בטוח שברצונך למחוק משתמש זה? פעולה זו אינה הפיכה.')) return
-
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
-
       const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
-
       if (response.ok) {
         toast.success('משתמש נמחק')
         setUsers(users.filter(u => u.id !== userId))
@@ -163,19 +144,15 @@ export default function UsersPage() {
     }
   }
 
-
   const handleResetPassword = async (userId: string) => {
     if (!confirm('האם לשלוח מייל לאיפוס סיסמה למשתמש זה?')) return
-
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
-
       const response = await fetch(`/api/users/${userId}/reset-password`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
-
       if (response.ok) {
         toast.success('מייל לאיפוס סיסמה נשלח בהצלחה')
       } else {
@@ -186,27 +163,160 @@ export default function UsersPage() {
     }
   }
 
-  const filteredUsers = users.filter(user => {
-    const fullName = `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.toLowerCase()
-    const matchesSearch =
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.organization_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fullName.includes(searchTerm.toLowerCase())
+  const exportToExcel = (type: 'all' | 'filtered' | 'custom' = 'all', customCount?: number) => {
+    try {
+      const XLSX = require('xlsx')
+      let dataToExport = type === 'all' ? users : users.slice(0, customCount || users.length)
 
-    const matchesRole = roleFilter ? user.role === roleFilter : true
-    const matchesOrg = orgFilter ? user.organization_name === orgFilter : true
+      const excelData = dataToExport.map(user => ({
+        'שם פרטי': user.user_metadata?.first_name || '',
+        'שם משפחה': user.user_metadata?.last_name || '',
+        'אימייל': user.email,
+        'תפקיד': user.role === 'admin' ? 'אדמין' : 'משתמש',
+        'ארגון': user.organization_name || '-',
+        'תאריך הצטרפות': new Date(user.created_at).toLocaleDateString('he-IL'),
+        'כניסה אחרונה': user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('he-IL') : '-'
+      }))
 
-    return matchesSearch && matchesRole && matchesOrg
-  })
-
-  // Get unique filters
-  const uniqueOrgs = Array.from(new Set(users.map(u => u.organization_name))).filter(Boolean)
-  const uniqueRoles = Array.from(new Set(users.map(u => u.role))).filter(Boolean)
-
-  if (loading) {
-    return <GlobalLoader />
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.json_to_sheet(excelData)
+      XLSX.utils.book_append_sheet(wb, ws, 'משתמשים')
+      XLSX.writeFile(wb, `משתמשים_${new Date().toLocaleDateString('he-IL').replace(/\//g, '-')}.xlsx`)
+      toast.success(`${dataToExport.length} משתמשים יוצאו בהצלחה!`)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('שגיאה ביצוא הקובץ')
+    }
   }
+
+  const columns: ColumnDef<UserData>[] = [
+    {
+      accessorFn: (row) => `${row.user_metadata?.first_name || ''} ${row.user_metadata?.last_name || ''}`,
+      id: 'fullName',
+      header: 'שם מלא',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+            {row.original.user_metadata?.first_name?.[0] || row.original.email[0].toUpperCase()}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-medium text-text-primary">
+              {row.original.user_metadata?.first_name} {row.original.user_metadata?.last_name}
+            </span>
+            <span className="text-xs text-text-muted md:hidden">{row.original.email}</span>
+          </div>
+        </div>
+      ),
+      enableSorting: true,
+      enableColumnFilter: true,
+    },
+    {
+      accessorKey: 'email',
+      header: 'אימייל',
+      enableSorting: true,
+      enableColumnFilter: true,
+    },
+    {
+      accessorKey: 'role',
+      header: 'תפקיד',
+      cell: ({ row }) => {
+        const role = row.original.role
+        let colorClass = 'bg-gray-100 text-gray-800'
+        let icon = <Users className="w-3 h-3 ml-1" />
+        let label = 'משתמש'
+
+        switch (role) {
+          case 'super_admin':
+            colorClass = 'bg-purple-100 text-purple-800'
+            icon = <Shield className="w-3 h-3 ml-1" />
+            label = 'Super Admin'
+            break
+          case 'organization_admin':
+            colorClass = 'bg-indigo-100 text-indigo-800'
+            icon = <Building2 className="w-3 h-3 ml-1" />
+            label = 'מנהל ארגון'
+            break
+          case 'manager':
+            colorClass = 'bg-blue-100 text-blue-800'
+            icon = <Shield className="w-3 h-3 ml-1" />
+            label = 'מנהל'
+            break
+          case 'employee':
+            colorClass = 'bg-green-100 text-green-800'
+            icon = <Users className="w-3 h-3 ml-1" />
+            label = 'עובד'
+            break
+        }
+
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+            {icon} {label}
+          </span>
+        )
+      },
+      enableSorting: true,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      meta: {
+        filterVariant: 'select',
+        filterOptions: [
+          { label: 'Super Admin', value: 'super_admin' },
+          { label: 'מנהל ארגון', value: 'organization_admin' },
+          { label: 'מנהל', value: 'manager' },
+          { label: 'עובד', value: 'employee' },
+          { label: 'משתמש', value: 'user' },
+        ],
+      },
+    },
+    {
+      accessorKey: 'organization_name',
+      header: 'ארגון',
+      cell: ({ row }) => (
+        <div className="flex items-center text-sm text-text-secondary">
+          <Building2 className="w-4 h-4 ml-2 text-text-muted" />
+          {row.original.organization_name || '-'}
+        </div>
+      ),
+      enableSorting: true,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => (value as string[]).includes(row.getValue(id)),
+      meta: {
+        filterVariant: 'select',
+        filterOptions: organizations.map(org => ({ label: org.name, value: org.name })),
+      },
+    },
+    {
+      accessorKey: 'created_at',
+      header: 'הצטרף',
+      cell: ({ row }) => new Date(row.original.created_at).toLocaleDateString('he-IL'),
+      enableSorting: true,
+      enableColumnFilter: true,
+    },
+    {
+      id: 'actions',
+      header: 'פעולות',
+      cell: ({ row }) => (
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleResetPassword(row.original.id)}
+            className="p-1 hover:bg-yellow-50 rounded text-yellow-600 transition-colors"
+            title="אפס סיסמה"
+          >
+            <Key className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(row.original.id)}
+            className="p-1 hover:bg-red-50 rounded text-red-500 transition-colors"
+            title="מחק"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
+  ]
+
+  if (loading) return <GlobalLoader />
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto">
@@ -221,7 +331,14 @@ export default function UsersPage() {
             <span>סה״כ: {users.length}</span>
           </div>
           <button
-            onClick={() => { resetForm(); setShowInviteModal(true) }}
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all shadow-sm hover:shadow-md active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            יצוא לאקסל
+          </button>
+          <button
+            onClick={() => setShowInviteModal(true)}
             className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-all shadow-sm hover:shadow-md active:scale-95"
           >
             <Plus className="w-4 h-4" />
@@ -231,271 +348,56 @@ export default function UsersPage() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Filters and Search Bar */}
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50 gap-4 flex flex-col md:flex-row justify-between items-center">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="חיפוש לפי שם, אימייל או ארגון..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pr-10 pl-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
-            />
-          </div>
-
-          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-            <div className="relative min-w-[150px]">
-              <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <select
-                className="w-full appearance-none pr-9 pl-8 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-primary cursor-pointer hover:bg-gray-50"
-                value={orgFilter}
-                onChange={(e) => setOrgFilter(e.target.value)}
-              >
-                <option value="">כל הארגונים</option>
-                {uniqueOrgs.map(org => <option key={org} value={org}>{org}</option>)}
-              </select>
-            </div>
-            <div className="relative min-w-[150px]">
-              <Shield className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <select
-                className="w-full appearance-none pr-9 pl-8 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-primary cursor-pointer hover:bg-gray-50"
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-              >
-                <option value="">כל התפקידים</option>
-                {uniqueRoles.map(role => <option key={role} value={role}>{role}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Users Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">משתמש</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">ארגון</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">תפקיד</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">הצטרף ב</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">פעולות</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="hover:bg-gray-50/50 transition-colors group cursor-pointer relative"
-                    onClick={() => window.location.href = `/admin/users/${user.id}`} // Using simplified navigation for row click, or standard Link would require structural change to table row
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm
-                            ${user.role === 'super_admin' || user.role === 'Super Admin' ? 'bg-purple-100 text-purple-600' : 'bg-primary/10 text-primary'}`}>
-                          {(user.user_metadata?.first_name?.[0]) || user.email[0]?.toUpperCase()}
-                        </div>
-                        <div className="mr-3">
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.user_metadata?.first_name ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` : 'משתמש ללא שם'}
-                          </div>
-                          <div className="text-xs text-gray-500 flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {user.email}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Building2 className="w-4 h-4 ml-2 text-gray-400" />
-                        {user.organization_name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-medium rounded-full items-center gap-1.5 border
-                            ${user.role === 'super_admin' || user.role === 'Super Admin' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                          user.role === 'organization_admin' || user.role === 'Org Admin' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-50 text-gray-600 border-gray-100'}`}>
-                        {(user.role === 'super_admin' || user.role === 'Super Admin') && <Shield className="w-3 h-3 fill-current opacity-50" />}
-                        {(user.role === 'super_admin' || user.role === 'Super Admin') ? 'Super Admin' : (user.role === 'organization_admin' || user.role === 'Org Admin') ? 'Org Admin' : 'User'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex flex-col">
-                        <span>{new Date(user.created_at).toLocaleDateString('he-IL')}</span>
-                        <span className="text-xs text-gray-400">
-                          {user.last_sign_in_at ? `נראה לאחרונה: ${new Date(user.last_sign_in_at).toLocaleDateString('he-IL')}` : 'טרם התחבר'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-
-                      <div className="flex items-center justify-center gap-2">
-                        <Link
-                          href={`/admin/users/${user.id}`}
-                          onClick={(e) => { e.stopPropagation(); }}
-                          className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-primary transition-all opacity-0 group-hover:opacity-100"
-                          title="ערוך פרטים"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleResetPassword(user.id); }}
-                          className="p-1.5 hover:bg-amber-50 rounded-md text-gray-400 hover:text-amber-500 transition-all opacity-0 group-hover:opacity-100"
-                          title="אפס סיסמה"
-                        >
-                          <Key className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(user.id); }}
-                          className="p-1.5 hover:bg-red-50 rounded-md text-gray-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                          title="מחק משתמש"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center text-gray-500">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <div className="bg-gray-50 p-4 rounded-full">
-                        <Search className="w-8 h-8 text-gray-300" />
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900">לא נמצאו תוצאות</h3>
-                      <p className="text-sm text-gray-400">נסה לשנות את מילות החיפוש או הסינון</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={columns} data={users} onRowClick={(user) => window.location.href = `/admin/users/${user.id}`} />
       </div>
 
-      {/* Invite Modal */}
-      <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} title="הזמנת משתמש חדש">
-        <UserForm
-          data={formData}
-          setData={setFormData}
-          onSubmit={handleInvite}
-          organizations={organizations}
-          isSubmitting={isSubmitting}
-          mode="create"
-          onCancel={() => setShowInviteModal(false)}
+      {showExportModal && (
+        <ExportModal
+          onClose={() => setShowExportModal(false)}
+          onExport={exportToExcel}
+          totalCount={users.length}
+          filteredCount={users.length} // DataTable handles filtering internally, so just pass full count or implement external filtering if needed (for now simple)
+          hasFilters={false}
         />
-      </Modal>
-
-      {/* Edit Modal Removed - Navigates to dedicated page */}
-    </div>
-  )
-}
-
-// Reusable Form Component
-const UserForm = ({ data, setData, onSubmit, organizations, isSubmitting, mode, onCancel, userId }: any) => {
-  return (
-    <form onSubmit={onSubmit} className="space-y-4 text-right" dir="rtl">
-      <div className="grid grid-cols-2 gap-4">
-        {/* ... inputs ... */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">שם פרטי</label>
-          <input
-            required
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-            value={data.first_name}
-            onChange={e => setData({ ...data, first_name: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">שם משפחה</label>
-          <input
-            required
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-            value={data.last_name}
-            onChange={e => setData({ ...data, last_name: e.target.value })}
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">אימייל {mode === 'edit' && '(לקריאה בלבד)'}</label>
-        <input
-          required
-          type="email"
-          disabled={mode === 'edit'}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all ${mode === 'edit' ? 'bg-gray-100 text-gray-500' : ''}`}
-          value={data.email}
-          onChange={e => setData({ ...data, email: e.target.value })}
-        />
-      </div>
-
-
-
-      <div className="border-t pt-4 mt-4">
-        <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <Lock className="w-4 h-4 text-gray-400" />
-          הרשאות גישה
-        </h4>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">תפקיד במערכת</label>
-            <select
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none bg-white"
-              value={data.role}
-              onChange={e => setData({ ...data, role: e.target.value })}
-            >
-              <option value="user">משתמש רגיל (User)</option>
-              <option value="organization_admin">מנהל ארגון (Org Admin)</option>
-              <option value="super_admin">מנהל מערכת (Super Admin)</option>
-            </select>
-          </div>
-
-          {data.role !== 'super_admin' && (
-            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-              <label className="block text-sm font-medium text-gray-700 mb-1">שיוך לארגון</label>
-              <select
-                required={data.role !== 'super_admin'}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 outline-none bg-white"
-                value={data.organization_id}
-                onChange={e => setData({ ...data, organization_id: e.target.value })}
-              >
-                <option value="">בחר ארגון...</option>
-                {organizations.map((org: Organization) => (
-                  <option key={org.id} value={org.id}>{org.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {mode === 'edit' && userId && (
-        <div className="border-t pt-4 mt-4">
-          <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            היסטוריית פעולות
-          </h4>
-          <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-            <ActivityLog userId={userId} />
-          </div>
-        </div>
       )}
 
-      <div className="pt-6 flex justify-end gap-3 border-t mt-4">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium">ביטול</button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 flex items-center gap-2 font-medium shadow-sm hover:shadow transition-all"
-        >
-          {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-          {mode === 'create' ? 'שלח הזמנה' : 'שמור שינויים'}
-        </button>
-      </div>
-    </form>
+      <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} title="הזמנת משתמש חדש">
+        <form onSubmit={handleInvite} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">אימייל</label>
+            <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 border rounded-lg" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">שם פרטי</label>
+              <input type="text" required value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} className="w-full px-4 py-2 border rounded-lg" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">שם משפחה</label>
+              <input type="text" required value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} className="w-full px-4 py-2 border rounded-lg" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">תפקיד</label>
+            <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-4 py-2 border rounded-lg">
+              <option value="user">משתמש</option>
+              <option value="organization_admin">מנהל ארגון</option>
+              <option value="super_admin">אדמין</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ארגון</label>
+            <select required value={formData.organization_id} onChange={(e) => setFormData({ ...formData, organization_id: e.target.value })} className="w-full px-4 py-2 border rounded-lg">
+              <option value="">בחר ארגון...</option>
+              {organizations.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}
+            </select>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button type="button" onClick={() => setShowInviteModal(false)} className="px-4 py-2 text-gray-600">ביטול</button>
+            <button type="submit" disabled={isSubmitting} className="bg-primary text-white px-6 py-2 rounded-lg">{isSubmitting ? <Loader2 className="animate-spin" /> : 'שלח'}</button>
+          </div>
+        </form>
+      </Modal>
+    </div>
   )
 }

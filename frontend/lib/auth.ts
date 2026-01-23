@@ -19,7 +19,6 @@ export async function getUserRoles() {
     return []
   }
 
-  console.log('User roles for', user.id, ':', data) // DEBUG: Check what roles are returned
   return data
 }
 

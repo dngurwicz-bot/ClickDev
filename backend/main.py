@@ -8,6 +8,9 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import httpx
+import csv
+import io
+from fastapi.responses import StreamingResponse
 
 load_dotenv()
 
@@ -115,7 +118,35 @@ class OrganizationResponse(BaseModel):
     active_modules: List[str]
     subscription_tier: str
     is_active: bool
+    hierarchy_levels: Optional[List[str]]
+    config_lock: bool
     created_at: datetime
+
+class OrganizationSetup(BaseModel):
+    hierarchy_levels: List[str]
+    lock_configuration: bool
+
+# Core Models
+class JobGradeCreate(BaseModel):
+    name: str
+    level: int
+
+class JobTitleCreate(BaseModel):
+    title: str
+    default_grade_id: Optional[str] = None
+
+class OrgUnitCreate(BaseModel):
+    name: str
+    type: str
+    parent_id: Optional[str] = None
+    manager_id: Optional[str] = None
+
+class PositionCreate(BaseModel):
+    org_unit_id: Optional[str] = None
+    job_title_id: str
+    is_manager_position: bool = False
+    occupant_id: Optional[str] = None
+
 
 class AnnouncementCreate(BaseModel):
     title: str
@@ -306,6 +337,189 @@ async def delete_organization(org_id: str, user = Depends(require_super_admin)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/organizations/{org_id}/setup")
+async def setup_organization(org_id: str, setup: OrganizationSetup, user = Depends(require_super_admin)):
+    try:
+        # 1. Fetch current org
+        current_org = supabase_admin.table("organizations").select("*").eq("id", org_id).execute()
+        if not current_org.data:
+            raise HTTPException(status_code=404, detail="Organization not found")
+        
+        org_data = current_org.data[0]
+        
+        # 2. Check Lock
+        if org_data.get("config_lock") is True:
+            # If requesting to change hierarchy levels, fail
+            # Note: We compare lists roughly.
+            current_levels = org_data.get("hierarchy_levels") or []
+            if setup.hierarchy_levels != current_levels:
+                 raise HTTPException(status_code=400, detail="Organization Configuration is Locked. Cannot change hierarchy levels.")
+
+        # 3. Update
+        updates = {
+            "hierarchy_levels": setup.hierarchy_levels,
+            "config_lock": setup.lock_configuration,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        response = supabase_admin.table("organizations").update(updates).eq("id", org_id).execute()
+        
+        await log_activity(
+            user_id=user.id,
+            action_type="SETUP_ORGANIZATION",
+            entity_type="ORGANIZATION",
+            entity_id=org_id,
+            details={"hierarchy_levels": setup.hierarchy_levels, "locked": setup.lock_configuration}
+        )
+        
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# Core Module CRUD Endpoints
+
+# Job Grades
+@app.get("/api/organizations/{org_id}/job-grades")
+async def get_job_grades(org_id: str, user = Depends(require_super_admin)):
+    try:
+        response = supabase_admin.table("job_grades").select("*").eq("organization_id", org_id).order("level").execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/organizations/{org_id}/job-grades")
+async def create_job_grade_in_org(org_id: str, grade: JobGradeCreate, user = Depends(require_super_admin)):
+    try:
+        data = {
+            "organization_id": org_id,
+            "name": grade.name,
+            "level": grade.level
+        }
+        response = supabase_admin.table("job_grades").insert(data).execute()
+        return response.data[0]
+    except Exception as e:
+         raise HTTPException(status_code=500, detail=str(e))
+
+# Job Titles
+@app.get("/api/organizations/{org_id}/job-titles")
+async def get_job_titles(org_id: str, user = Depends(require_super_admin)):
+    try:
+        response = supabase_admin.table("job_titles").select("*, job_grades(name, level)").eq("organization_id", org_id).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/organizations/{org_id}/job-titles")
+async def create_job_title_in_org(org_id: str, title: JobTitleCreate, user = Depends(require_super_admin)):
+    try:
+        data = {
+            "organization_id": org_id,
+            "title": title.title,
+            "default_grade_id": title.default_grade_id
+        }
+        response = supabase_admin.table("job_titles").insert(data).execute()
+        return response.data[0]
+    except Exception as e:
+         raise HTTPException(status_code=500, detail=str(e))
+
+# Org Units
+@app.get("/api/organizations/{org_id}/org-units")
+async def get_org_units(org_id: str, user = Depends(require_super_admin)):
+    try:
+        # Fetch all units, frontend constructs tree
+        response = supabase_admin.table("org_units").select("*").eq("organization_id", org_id).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/organizations/{org_id}/org-units")
+async def create_org_unit(org_id: str, unit: OrgUnitCreate, user = Depends(require_super_admin)):
+    try:
+        data = {
+            "organization_id": org_id,
+            "name": unit.name,
+            "type": unit.type,
+            "parent_id": unit.parent_id,
+            "manager_id": unit.manager_id
+        }
+        response = supabase_admin.table("org_units").insert(data).execute()
+        return response.data[0]
+    except Exception as e:
+         raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/org-units/{unit_id}")
+async def update_org_unit(unit_id: str, updates: dict, user = Depends(require_super_admin)):
+    try:
+        # Validate whitelist of fields
+        allowed = {"name", "parent_id", "manager_id", "type"}
+        data = {k: v for k, v in updates.items() if k in allowed}
+        data["updated_at"] = datetime.utcnow().isoformat()
+        
+        response = supabase_admin.table("org_units").update(data).eq("id", unit_id).execute()
+        if not response.data:
+             raise HTTPException(status_code=404, detail="Unit not found")
+        return response.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/org-units/{unit_id}")
+async def delete_org_unit(unit_id: str, user = Depends(require_super_admin)):
+    try:
+        response = supabase_admin.table("org_units").delete().eq("id", unit_id).execute()
+        return {"message": "Org Unit deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Positions
+@app.get("/api/organizations/{org_id}/positions")
+async def get_positions(org_id: str, user = Depends(require_super_admin)):
+    try:
+        response = supabase_admin.table("positions").select("*, job_titles(title), employees(first_name, last_name, email)").eq("organization_id", org_id).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/organizations/{org_id}/positions")
+async def create_position(org_id: str, pos: PositionCreate, user = Depends(require_super_admin)):
+    try:
+        data = {
+            "organization_id": org_id,
+            "org_unit_id": pos.org_unit_id,
+            "job_title_id": pos.job_title_id,
+            "is_manager_position": pos.is_manager_position,
+            "occupant_id": pos.occupant_id
+        }
+        response = supabase_admin.table("positions").insert(data).execute()
+        return response.data[0]
+    except Exception as e:
+         raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/positions/{pos_id}")
+async def update_position(pos_id: str, updates: dict, user = Depends(require_super_admin)):
+    try:
+        allowed = {"org_unit_id", "job_title_id", "is_manager_position", "occupant_id"}
+        data = {k: v for k, v in updates.items() if k in allowed}
+        data["updated_at"] = datetime.utcnow().isoformat()
+        
+        response = supabase_admin.table("positions").update(data).eq("id", pos_id).execute()
+        if not response.data:
+             raise HTTPException(status_code=404, detail="Position not found")
+        return response.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/positions/{pos_id}")
+async def delete_position(pos_id: str, user = Depends(require_super_admin)):
+    try:
+        response = supabase_admin.table("positions").delete().eq("id", pos_id).execute()
+        return {"message": "Position deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Employees endpoints
 @app.get("/api/organizations/{org_id}/employees")
 async def get_employees(org_id: str, user = Depends(require_super_admin)):
@@ -362,6 +576,179 @@ async def get_dashboard_stats(user = Depends(require_super_admin)):
             "recent_activity": recent_activity
         }
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stats/analytics")
+async def get_analytics_data(user = Depends(require_super_admin)):
+    try:
+        # Mocking time series data for now as we don't have historical data in a separate table yet
+        # ideally we would query a metrics table or aggregated logs
+        
+        # 1. Growth Data (Last 6 months)
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        current_month = datetime.now().month
+        
+        # Rotated months to show last 6
+        display_months = []
+        for i in range(5, -1, -1):
+            idx = (current_month - 1 - i) % 12
+            display_months.append(months[idx])
+            
+        # Get actual counts if possible, for now we mock the trend to look realistic based on total
+        # Fetch actual totals
+        orgs_response = supabase_admin.table("organizations").select("id, created_at, subscription_tier, is_active").execute()
+        employees_response = supabase_admin.table("employees").select("id, created_at").execute()
+        
+        orgs = orgs_response.data if orgs_response.data else []
+        employees = employees_response.data if employees_response.data else []
+        
+        total_orgs = len(orgs)
+        total_employees = len(employees)
+        
+        # Mock growth data
+        growth_data = [
+            {"name": m, "organizations": int(total_orgs * (0.5 + 0.1 * i)), "employees": int(total_employees * (0.5 + 0.1 * i))} 
+            for i, m in enumerate(display_months)
+        ]
+        # Make the last one match actuals
+        growth_data[-1]["organizations"] = total_orgs
+        growth_data[-1]["employees"] = total_employees
+
+        # 2. Distribution Data (Subscription Tiers)
+        tiers = {"basic": 0, "pro": 0, "enterprise": 0}
+        org_status = {"active": 0, "inactive": 0}
+
+        for org in orgs:
+            tier = org.get("subscription_tier", "basic")
+            if tier in tiers:
+                tiers[tier] += 1
+            else:
+                tiers["basic"] += 1 # Default or unknown
+            
+            if org.get("is_active"):
+                org_status["active"] += 1
+            else:
+                org_status["inactive"] += 1
+                
+        distribution_data = [
+            {"name": "Basic", "value": tiers["basic"]},
+            {"name": "Pro", "value": tiers["pro"]},
+            {"name": "Enterprise", "value": tiers["enterprise"]},
+        ]
+        
+        # 3. Key Metrics
+        inactive_orgs = org_status["inactive"]
+        churn_rate = (inactive_orgs / total_orgs * 100) if total_orgs > 0 else 0
+        
+        avg_employees = (total_employees / total_orgs) if total_orgs > 0 else 0
+        
+        return {
+            "growth_data": growth_data,
+            "distribution_data": distribution_data,
+            "metrics": {
+                "churn_rate": round(churn_rate, 1),
+                "avg_employees_per_org": round(avg_employees, 1),
+                "total_orgs": total_orgs,
+                "active_orgs": org_status["active"]
+            }
+        }
+    except Exception as e:
+        print(f"Error in analytics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    except Exception as e:
+        print(f"Error in analytics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# History Endpoints
+
+@app.get("/api/org-units/{unit_id}/history")
+async def get_org_unit_history(unit_id: str, user = Depends(require_super_admin)):
+    try:
+        response = supabase_admin.table("org_unit_history").select("*").eq("org_unit_id", unit_id).order("valid_from", desc=True).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/positions/{pos_id}/history")
+async def get_position_history(pos_id: str, user = Depends(require_super_admin)):
+    try:
+        response = supabase_admin.table("position_history").select("*").eq("position_id", pos_id).order("valid_from", desc=True).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ReportRequest(BaseModel):
+    report_type: str  # organizations, employees
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    filters: Optional[dict] = {}
+
+@app.post("/api/stats/reports/generate")
+async def generate_report(request: ReportRequest, user = Depends(require_super_admin)):
+    try:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        if request.report_type == 'organizations':
+            # Columns
+            writer.writerow(['ID', 'Name', 'Email', 'Subscription', 'Created At', 'Status'])
+            
+            # Fetch data (mock or real)
+            query = supabase_admin.table("organizations").select("*").order("created_at", desc=True)
+            if request.start_date:
+                query = query.gte("created_at", request.start_date)
+            if request.end_date:
+                query = query.lte("created_at", request.end_date)
+            
+            response = query.execute()
+            
+            for org in response.data:
+                writer.writerow([
+                    org.get('id'),
+                    org.get('name'),
+                    org.get('email'),
+                    org.get('subscription_tier'),
+                    org.get('created_at'),
+                    'Active' if org.get('is_active') else 'Inactive'
+                ])
+                
+        elif request.report_type == 'employees':
+             # Columns
+            writer.writerow(['ID', 'Name', 'Email', 'Job Title', 'Organization ID', 'Hired Date'])
+            
+            # Fetch data
+            query = supabase_admin.table("employees").select("*").order("created_at", desc=True)
+            if request.start_date:
+                 query = query.gte("created_at", request.start_date) # Assuming created_at exists, or use hire_date
+            
+            response = query.execute()
+            
+            for emp in response.data:
+                writer.writerow([
+                    emp.get('id'),
+                    f"{emp.get('first_name')} {emp.get('last_name')}",
+                    emp.get('email'),
+                    emp.get('job_title'),
+                    emp.get('organization_id'),
+                    emp.get('hire_date')
+                ])
+        
+        else:
+            raise HTTPException(status_code=400, detail="Invalid report type")
+            
+        output.seek(0)
+        
+        response = StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv"
+        )
+        response.headers["Content-Disposition"] = f"attachment; filename=report_{request.report_type}.csv"
+        return response
+
+    except Exception as e:
+        print(f"Error generating report: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Task Management Endpoints

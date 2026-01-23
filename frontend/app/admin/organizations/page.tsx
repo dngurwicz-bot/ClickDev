@@ -6,6 +6,11 @@ import { useRouter } from 'next/navigation'
 import { Plus, Search, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import GlobalLoader from '@/components/ui/GlobalLoader'
+import DataTable from '@/components/DataTable'
+import ExportModal from '@/components/ExportModal'
+import { ColumnDef } from '@tanstack/react-table'
+import { FacetedFilter } from '@/components/FacetedFilter'
+import toast from 'react-hot-toast'
 
 interface Organization {
   id: string
@@ -47,6 +52,145 @@ export default function OrganizationsPage() {
     }
   }
 
+  const [showExportModal, setShowExportModal] = useState(false)
+
+  const exportToExcel = (type: 'all' | 'filtered' | 'custom' = 'all', customCount?: number) => {
+    try {
+      const XLSX = require('xlsx')
+
+      let dataToExport = type === 'all' ? organizations : organizations.slice(0, customCount || organizations.length)
+
+      const excelData = dataToExport.map(org => ({
+        'מספר ארגון': org.org_number || '',
+        'שם הארגון': org.name,
+        'שם באנגלית': org.name_en || '',
+        'אימייל': org.email,
+        'טלפון': org.phone || '',
+        'מנוי': org.subscription_tier,
+        'סטטוס': org.is_active ? 'פעיל' : 'לא פעיל',
+        'מודולים פעילים': org.active_modules?.length || 0,
+        'תאריך יצירה': new Date(org.created_at).toLocaleDateString('he-IL'),
+        'שעה': new Date(org.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+      }))
+
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.json_to_sheet(excelData)
+
+      const colWidths = [
+        { wch: 15 }, { wch: 30 }, { wch: 30 }, { wch: 30 },
+        { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 15 },
+        { wch: 15 }, { wch: 10 }
+      ]
+      ws['!cols'] = colWidths
+
+      XLSX.utils.book_append_sheet(wb, ws, 'ארגונים')
+      XLSX.writeFile(wb, `ארגונים_${new Date().toLocaleDateString('he-IL').replace(/\//g, '-')}.xlsx`)
+
+      toast.success(`${dataToExport.length} ארגונים יוצאו בהצלחה!`)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('שגיאה ביצוא הקובץ')
+    }
+  }
+
+  // Define columns for DataTable
+  const columns: ColumnDef<Organization>[] = [
+    {
+      accessorKey: 'org_number',
+      header: 'מספר ארגון',
+      enableSorting: true,
+      enableColumnFilter: true,
+    },
+    {
+      accessorKey: 'name',
+      header: 'שם הארגון',
+      cell: ({ row }) => (
+        <div className="font-medium text-text-primary">{row.original.name}</div>
+      ),
+      enableSorting: true,
+      enableColumnFilter: true,
+    },
+    {
+      accessorKey: 'email',
+      header: 'אימייל',
+      enableSorting: true,
+      enableColumnFilter: true,
+    },
+    {
+      accessorKey: 'phone',
+      header: 'טלפון',
+      enableSorting: false,
+      enableColumnFilter: false,
+    },
+    {
+      accessorKey: 'subscription_tier',
+      header: 'מנוי',
+      cell: ({ row }) => (
+        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          {row.original.subscription_tier}
+        </span>
+      ),
+      enableSorting: true,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        return (value as string[]).includes(row.getValue(id))
+      },
+      meta: {
+        filterVariant: 'select',
+      },
+    },
+    {
+      accessorKey: 'is_active',
+      header: 'סטטוס',
+      cell: ({ row }) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${row.original.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+          }`}>
+          {row.original.is_active ? 'פעיל' : 'לא פעיל'}
+        </span>
+      ),
+      enableSorting: true,
+      enableColumnFilter: true,
+      filterFn: (row, id, value) => {
+        return (value as string[]).includes((row.getValue(id) as boolean).toString())
+      },
+      meta: {
+        filterVariant: 'select',
+        filterOptions: [
+          { label: 'פעיל', value: 'true' },
+          { label: 'לא פעיל', value: 'false' },
+        ],
+      },
+    },
+    {
+      accessorKey: 'created_at',
+      header: 'תאריך יצירה',
+      cell: ({ row }) => (
+        <div className="text-sm">
+          <div>{new Date(row.original.created_at).toLocaleDateString('he-IL')}</div>
+          <div className="text-xs text-gray-500">
+            {new Date(row.original.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+      ),
+      enableSorting: true,
+      enableColumnFilter: true,
+    },
+    {
+      id: 'actions',
+      header: 'פעולות',
+      cell: ({ row }) => (
+        <Link
+          href={`/admin/organizations/${row.original.id}`}
+          className="text-primary hover:text-primary-dark font-medium text-sm"
+        >
+          צפה בפרטים
+        </Link>
+      ),
+      enableSorting: false,
+      enableColumnFilter: false,
+    },
+  ]
+
   const filteredOrgs = organizations.filter(org =>
     org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     org.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,98 +205,43 @@ export default function OrganizationsPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-text-primary">ארגונים</h1>
-        <Link
-          href="/admin/organizations/new"
-          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          <span>ארגון חדש</span>
-        </Link>
-      </div>
-
-      {/* Search */}
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-muted w-5 h-5" />
-          <input
-            type="text"
-            placeholder="חפש לפי שם או אימייל..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-          />
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            יצוא לאקסל
+          </button>
+          <Link
+            href="/admin/organizations/new"
+            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            <span>ארגון חדש</span>
+          </Link>
         </div>
       </div>
 
-      {/* Organizations Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-bg-main">
-            <tr>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-text-primary">מספר ארגון</th>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-text-primary">שם הארגון</th>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-text-primary">אימייל</th>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-text-primary">טלפון</th>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-text-primary">מנוי</th>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-text-primary">סטטוס</th>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-text-primary">פעולות</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredOrgs.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-text-secondary">
-                  <Building2 className="w-12 h-12 mx-auto mb-4 text-text-muted" />
-                  <p>אין ארגונים להצגה</p>
-                </td>
-              </tr>
-            ) : (
-              filteredOrgs.map((org) => (
-                <tr
-                  key={org.id}
-                  onClick={() => router.push(`/admin/organizations/${org.id}`)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <span className="font-mono font-semibold text-primary">
-                      {org.org_number || '-'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="font-medium text-text-primary">{org.name}</div>
-                      {org.name_en && (
-                        <div className="text-sm text-text-secondary">{org.name_en}</div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-text-secondary">{org.email}</td>
-                  <td className="px-6 py-4 text-text-secondary">{org.phone || '-'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${org.subscription_tier === 'enterprise' ? 'bg-purple-100 text-purple-800' :
-                      org.subscription_tier === 'professional' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                      {org.subscription_tier}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${org.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                      {org.is_active ? 'פעיל' : 'לא פעיל'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-primary hover:text-primary-dark font-medium">
-                      צפה
-                    </span>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* DataTable */}
+      <DataTable
+        columns={columns}
+        data={organizations}
+        onRowClick={(org) => router.push(`/admin/organizations/${org.id}`)}
+      />
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <ExportModal
+          onClose={() => setShowExportModal(false)}
+          onExport={(type, customCount) => exportToExcel(type, customCount)}
+          totalCount={organizations.length}
+          filteredCount={organizations.length}
+          hasFilters={false}
+        />
+      )}
     </div>
   )
 }
+
+

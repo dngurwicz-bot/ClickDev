@@ -2,13 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { Organization } from '@/lib/types/models'
 
-interface Organization {
-    id: string
-    name: string
-    active_modules?: string[]
-    // Add other fields as needed
-}
+
 
 interface OrganizationContextType {
     currentOrg: Organization | null

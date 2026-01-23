@@ -53,3 +53,37 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* TipTap Editor Styles */
+.ProseMirror ul {
+  list-style-type: disc !important;
+  padding-right: 1.5rem !important;
+  margin: 0.5rem 0 !important;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal !important;
+  padding-right: 1.5rem !important;
+  margin: 0.5rem 0 !important;
+}
+
+.ProseMirror blockquote {
+  border-right: 3px solid #dfe2e5 !important;
+  padding-right: 1rem !important;
+  margin: 0.5rem 0 !important;
+  margin-right: 0.5rem !important;
+  color: #606f7b;
+  font-style: italic;
+  background: #f9f9f9;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.ProseMirror p {
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror:focus {
+  outline: none;
+}
