@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "install:all": "npm install && cd frontend && npm install && cd .. && pip install -r backend/requirements.txt",
+        "install:all": "npm install && cd frontend && npm install --legacy-peer-deps && cd .. && pip install -r backend/requirements.txt",
         "dev:frontend": "cd frontend && npm run dev",
         "dev:backend": "cd backend && uvicorn main:app --reload",
         "lint:frontend": "cd frontend && npm run lint",
