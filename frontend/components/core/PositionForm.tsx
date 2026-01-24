@@ -115,7 +115,7 @@ export function PositionForm({ initialData, onSuccess, onCancel }: PositionFormP
             </div>
 
             {/* Form Body - Record View Layout */}
-            <form id="position-form" onSubmit={handleSubmit(onSubmit, onError)} className="p-6 space-y-8 flex-1 overflow-y-auto">
+            <form id="position-form" onSubmit={handleSubmit(onSubmit, onError)} className="p-8 pt-10 space-y-12 flex-1 overflow-y-auto relative">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 max-w-4xl">
 
                     {/* Right Column */}

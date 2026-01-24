@@ -134,15 +134,16 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
             }
             onSuccess()
         } catch (error: any) {
-            console.error('Error saving org unit:', error)
-            toast.error(`שגיאה בשמירה: ${error.message || 'שגיאה כללית'}`)
+            console.error('Full Error Object:', error)
+            const errorMsg = error.message || error.details || JSON.stringify(error)
+            toast.error(`שגיאה בשמירה: ${errorMsg}`)
         } finally {
             setLoading(false)
         }
     }
 
     const onError = (errors: any) => {
-        console.error('Validation Errors:', errors)
+        console.warn('Validation Errors:', errors)
         toast.error('יש למלא את כל שדות החובה המסומנים')
     }
 
@@ -162,7 +163,7 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
             </div>
 
             {/* Form Body - Record View Layout */}
-            <form id="org-unit-form" onSubmit={handleSubmit(onSubmit, onError)} className="p-6 space-y-8 flex-1 overflow-y-auto">
+            <form id="org-unit-form" onSubmit={handleSubmit(onSubmit, onError)} className="p-8 pt-10 space-y-12 flex-1 overflow-y-auto relative">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 max-w-4xl">
 
                     {/* Right Column (Labels on the right because RTL) */}

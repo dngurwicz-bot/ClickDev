@@ -117,7 +117,7 @@ export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד
             </div>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg p-2 min-h-[100px] max-h-[300px] overflow-auto">
+                <div className="absolute top-full left-0 z-50 w-full mt-1 bg-white border rounded-sm shadow-xl p-2 min-h-[100px] max-h-[300px] overflow-auto">
                     <Input
                         autoFocus
                         value={search}

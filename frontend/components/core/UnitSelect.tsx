@@ -104,7 +104,7 @@ export function UnitSelect({ value, onChange, type, placeholder = "בחר יחי
             </Button>
 
             {open && (
-                <div className="absolute top-full lg:top-auto lg:bottom-full left-0 z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
+                <div className="absolute top-full left-0 z-50 mt-1 w-full rounded-md border bg-white shadow-xl">
                     <div className="flex items-center border-b px-3">
                         <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                         <input
