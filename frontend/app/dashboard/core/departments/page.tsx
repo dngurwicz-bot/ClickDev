@@ -40,7 +40,7 @@ export default function DepartmentsPage() {
             // Simplified query - removed manager join
             const { data: units, error } = await supabase
                 .from('org_units')
-                .select('*, parent:org_units(name)')
+                .select('*, parent:parent_id(name)')
                 .eq('organization_id', currentOrg.id)
                 .in('type', ['Department', 'מחלקה'])
                 .order('name', { ascending: true })
@@ -68,13 +68,14 @@ export default function DepartmentsPage() {
             id: 'parent',
             header: 'שייך ל-',
             cell: ({ row }) => {
-                const parent = row.original.parent
+                const parentData = row.original.parent
+                const parent = Array.isArray(parentData) ? parentData[0] : parentData
                 return parent ? (
                     <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-gray-400" />
-                        <span>{parent.name}</span>
+                        <Building2 className="w-4 h-4 text-[#00A896]/60" />
+                        <span className="text-gray-700">{parent.name}</span>
                     </div>
-                ) : <span className="text-gray-400">-</span>
+                ) : <span className="text-gray-400 italic text-xs">עצמאי</span>
             }
         },
         // {

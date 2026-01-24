@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -39,6 +39,8 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
         register,
         handleSubmit,
         formState: { errors },
+        setValue,
+        watch,
     } = useForm<JobGradeFormValues>({
         resolver: zodResolver(jobGradeSchema),
         defaultValues: {
@@ -48,6 +50,25 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
             expiry_date: initialData?.expiry_date || null,
         },
     })
+
+    useEffect(() => {
+        if (!currentOrg || initialData) return
+
+        const fetchMaxLevel = async () => {
+            const { data, error } = await supabase
+                .from('job_grades')
+                .select('level')
+                .eq('organization_id', currentOrg.id)
+                .order('level', { ascending: false })
+                .limit(1)
+
+            if (!error && data && data.length > 0) {
+                setValue('level', data[0].level + 1)
+            }
+        }
+
+        fetchMaxLevel()
+    }, [currentOrg, initialData, setValue])
 
     const onSubmit = async (data: JobGradeFormValues) => {
         if (!currentOrg) return
@@ -67,10 +88,22 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
                     .from('job_grades')
                     .update(payload)
                     .eq('id', initialData.id)
-                if (error) throw error
+                if (error) {
+                    if (error.code === '23505') {
+                        toast.error('רמת דירוג זו כבר קיימת במערכת במחלקת הליבה')
+                    } else {
+                        throw error
+                    }
+                }
             } else {
                 const { error } = await supabase.from('job_grades').insert(payload)
-                if (error) throw error
+                if (error) {
+                    if (error.code === '23505') {
+                        toast.error('רמת דירוג זו כבר קיימת במערכת במחלקת הליבה')
+                    } else {
+                        throw error
+                    }
+                }
             }
             onSuccess()
         } catch (error: any) {

@@ -7,7 +7,7 @@ import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import DataTable from '@/components/DataTable'
 import { ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
-import { User, Plus } from 'lucide-react'
+import { User, Plus, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { OrgUnitForm } from '@/components/core/OrgUnitForm'
@@ -18,6 +18,9 @@ interface OrgUnit {
     name: string
     type: string
     created_at: string
+    parent?: {
+        name: string
+    } | null
     // manager?: {
     //     first_name: string
     //     last_name: string
@@ -38,7 +41,7 @@ export default function WingsPage() {
             // Removed join to debug loading issue
             const { data: units, error } = await supabase
                 .from('org_units')
-                .select('*')
+                .select('*, parent:parent_id(name)')
                 .eq('organization_id', currentOrg.id)
                 .in('type', ['Wing', 'אגף'])
                 .in('type', ['Wing', 'אגף'])
@@ -69,6 +72,20 @@ export default function WingsPage() {
             accessorKey: 'name',
             header: 'שם האגף',
             cell: ({ row }) => <span className="font-medium">{row.original.name}</span>
+        },
+        {
+            id: 'parent',
+            header: 'שייך ל-',
+            cell: ({ row }) => {
+                const parentData = (row.original as any).parent
+                const parent = Array.isArray(parentData) ? parentData[0] : parentData
+                return parent ? (
+                    <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-[#00A896]/60" />
+                        <span className="text-gray-700">{parent.name}</span>
+                    </div>
+                ) : <span className="text-gray-400 italic text-xs">עצמאי</span>
+            }
         },
         // {
         //     id: 'manager',

@@ -134,7 +134,7 @@ export default function DataTable<TData>({
 
                     {/* ERP Date Range Filter */}
                     <div className="flex items-center gap-2 border-r border-gray-300 pr-4 mr-2">
-                        <Filter className="w-3.5 h-3.5 text-blue-600" />
+                        <Filter className="w-3.5 h-3.5 text-[#00A896]" />
                         <span className="text-xs font-bold text-gray-600">סינון תאריכים:</span>
                         <div className="flex items-center gap-1">
                             <span className="text-[10px] text-gray-500">מ-</span>

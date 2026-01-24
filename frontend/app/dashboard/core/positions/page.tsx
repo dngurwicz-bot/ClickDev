@@ -36,7 +36,7 @@ export default function PositionsPage() {
             // Fetch positions with joins
             const { data: positions, error } = await supabase
                 .from('positions')
-                .select('*, org_unit:org_units(name, type), job_title:job_titles(title)')
+                .select('*, org_unit:org_unit_id(name, type), job_title:job_title_id(title)')
                 .eq('organization_id', currentOrg.id)
                 .order('created_at', { ascending: false })
 
@@ -58,7 +58,10 @@ export default function PositionsPage() {
             cell: ({ row }) => (
                 <div className="flex items-center gap-2 font-medium">
                     <Briefcase className="w-4 h-4 text-gray-400" />
-                    {row.original.job_title?.title || 'ללא תפקיד'}
+                    {(() => {
+                        const jt = Array.isArray(row.original.job_title) ? row.original.job_title[0] : row.original.job_title
+                        return jt?.title || 'ללא תפקיד'
+                    })()}
                 </div>
             )
         },
@@ -68,7 +71,10 @@ export default function PositionsPage() {
             cell: ({ row }) => (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Network className="w-4 h-4 text-gray-400" />
-                    {row.original.org_unit?.name} ({row.original.org_unit?.type})
+                    {(() => {
+                        const unit = Array.isArray(row.original.org_unit) ? row.original.org_unit[0] : row.original.org_unit
+                        return unit ? `${unit.name} (${unit.type})` : 'ללא שיוך'
+                    })()}
                 </div>
             )
         },

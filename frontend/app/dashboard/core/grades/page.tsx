@@ -7,7 +7,7 @@ import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import DataTable from '@/components/DataTable'
 import { ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
-import { Plus, Trash2, Edit2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, Award, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
@@ -70,7 +70,12 @@ export default function JobGradesPage() {
             accessorKey: 'level',
             header: 'רמה',
             size: 80,
-            cell: ({ getValue }) => <div className="font-mono">{getValue() as number}</div>
+            cell: ({ getValue }) => (
+                <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-[#00A896]/60" />
+                    <span className="font-mono font-bold text-[#00A896] bg-[#E0F5F3] px-2 py-0.5 rounded text-xs">{getValue() as number}</span>
+                </div>
+            )
         },
         {
             accessorKey: 'name',
