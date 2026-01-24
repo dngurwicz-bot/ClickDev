@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import DataTable from '@/components/DataTable'
@@ -56,8 +57,6 @@ export default function RolesPage() {
     useEffect(() => {
         fetchData()
     }, [currentOrg])
-
-    const router = useRouter()
 
     const columns: ColumnDef<Role>[] = [
         {

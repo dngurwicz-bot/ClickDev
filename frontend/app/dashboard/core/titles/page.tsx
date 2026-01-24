@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import DataTable from '@/components/DataTable'
 import { ColumnDef } from '@tanstack/react-table'
+import { format } from 'date-fns'
 import { Plus, Trash2, Edit2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,15 +44,6 @@ export default function JobTitlesPage() {
 
             if (error) throw error
             setData(data || [])
-
-            // Fetch grades for dropdown
-            const { data: gradesData } = await supabase
-                .from('job_grades')
-                .select('*')
-                .eq('organization_id', currentOrg.id)
-                .order('level')
-
-            setGrades(gradesData || [])
 
         } catch (err) {
             console.error('Error fetching titles:', err)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import DataTable from '@/components/DataTable'
@@ -26,6 +27,7 @@ interface OrgUnit {
 }
 
 export default function DepartmentsPage() {
+    const router = useRouter()
     const { currentOrg } = useOrganization()
     const [data, setData] = useState<OrgUnit[]>([])
     const [loading, setLoading] = useState(true)

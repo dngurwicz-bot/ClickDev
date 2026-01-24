@@ -30,6 +30,17 @@ export default function DataTable<TData>({
     const [globalFilter, setGlobalFilter] = useState('')
     const [columnFilters, setColumnFilters] = useState<any[]>([])
 
+    // Default to current month
+    const [fromDate, setFromDate] = useState<string>(() => {
+        const d = new Date()
+        return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-01`
+    })
+    const [toDate, setToDate] = useState<string>(() => {
+        const d = new Date()
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+        return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${lastDay}`
+    })
+
     const table = useReactTable({
         data,
         columns,
@@ -37,6 +48,23 @@ export default function DataTable<TData>({
         getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        filterFns: {
+            dateRange: (row, columnId, filterValue) => {
+                const { from, to } = filterValue
+                const rowEffective = row.getValue('effective_date') as string
+                const rowExpiry = row.getValue('expiry_date') as string | null
+
+                if (!rowEffective) return true // If no logic, don't filter out
+
+                const rowStart = rowEffective
+                const rowEnd = rowExpiry || '9999-12-31'
+
+                const filterStart = from || '0001-01-01'
+                const filterEnd = to || '9999-12-31'
+
+                return rowStart <= filterEnd && rowEnd >= filterStart
+            }
+        },
         getFacetedUniqueValues: (table, columnId) => () => {
             const map = new Map()
             table.getPreFilteredRowModel().flatRows.forEach(row => {
@@ -60,34 +88,86 @@ export default function DataTable<TData>({
         },
     })
 
+    // Apply date range filter manually since it's a cross-column global concept for this specific ERP use case
+    const filteredData = table.getRowModel().rows.filter(row => {
+        if (!fromDate && !toDate) return true
+
+        const rowEffective = row.getValue('effective_date') as string
+        const rowExpiry = row.getValue('expiry_date') as string | null
+
+        if (!rowEffective) return true
+
+        const rowStart = rowEffective
+        const rowEnd = rowExpiry || '9999-12-31'
+
+        const filterStart = fromDate || '0001-01-01'
+        const filterEnd = toDate || '9999-12-31'
+
+        return rowStart <= filterEnd && rowEnd >= filterStart
+    })
+
     return (
         <div className="space-y-3 font-sans" dir="rtl">
             {/* Toolbar - Compact & Professional */}
             <div className="flex items-center justify-between gap-4 bg-white p-2 border border-gray-300 shadow-sm rounded-sm">
                 {/* Global Search - Compact */}
-                {showSearch && (
-                    <div className="relative max-w-sm w-full">
-                        <input
-                            value={globalFilter ?? ''}
-                            onChange={(e) => setGlobalFilter(e.target.value)}
-                            placeholder="חיפוש מהיר..."
-                            className="w-full h-8 pl-8 pr-2 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-sm outline-none transition-all placeholder:text-gray-400"
-                        />
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                        {globalFilter && (
+                <div className="flex items-center gap-6 flex-1">
+                    {showSearch && (
+                        <div className="relative max-w-sm w-full">
+                            <input
+                                value={globalFilter ?? ''}
+                                onChange={(e) => setGlobalFilter(e.target.value)}
+                                placeholder="חיפוש מהיר..."
+                                className="w-full h-8 pl-8 pr-2 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-sm outline-none transition-all placeholder:text-gray-400"
+                            />
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                            {globalFilter && (
+                                <button
+                                    onClick={() => setGlobalFilter('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ERP Date Range Filter */}
+                    <div className="flex items-center gap-2 border-r border-gray-300 pr-4 mr-2">
+                        <Filter className="w-3.5 h-3.5 text-blue-600" />
+                        <span className="text-xs font-bold text-gray-600">סינון תאריכים:</span>
+                        <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-gray-500">מ-</span>
+                            <input
+                                type="date"
+                                value={fromDate}
+                                onChange={(e) => setFromDate(e.target.value)}
+                                className="h-7 text-[11px] border border-gray-300 rounded-sm px-1 outline-none focus:border-blue-500"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-gray-500">עד-</span>
+                            <input
+                                type="date"
+                                value={toDate}
+                                onChange={(e) => setToDate(e.target.value)}
+                                className="h-7 text-[11px] border border-gray-300 rounded-sm px-1 outline-none focus:border-blue-500"
+                            />
+                        </div>
+                        {(fromDate || toDate) && (
                             <button
-                                onClick={() => setGlobalFilter('')}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                onClick={() => { setFromDate(''); setToDate(''); }}
+                                className="text-[10px] text-red-500 hover:underline font-bold"
                             >
-                                <X className="w-3 h-3" />
+                                ביטול
                             </button>
                         )}
                     </div>
-                )}
+                </div>
 
                 {/* Pagination Stats - Compact */}
                 <div className="text-xs text-gray-600 font-medium">
-                    סה"כ: <span className="font-bold text-gray-900">{table.getFilteredRowModel().rows.length}</span> רשומות
+                    סה"כ: <span className="font-bold text-gray-900">{filteredData.length}</span> רשומות
                 </div>
             </div>
 
@@ -126,7 +206,7 @@ export default function DataTable<TData>({
 
                         {/* Body - Compact, Crisp Grids */}
                         <tbody>
-                            {table.getRowModel().rows.length === 0 ? (
+                            {filteredData.length === 0 ? (
                                 <tr>
                                     <td
                                         colSpan={columns.length}
@@ -136,7 +216,7 @@ export default function DataTable<TData>({
                                     </td>
                                 </tr>
                             ) : (
-                                table.getRowModel().rows.map((row, i) => (
+                                filteredData.map((row, i) => (
                                     <tr
                                         key={row.id}
                                         onClick={() => onRowClick?.(row.original)}
