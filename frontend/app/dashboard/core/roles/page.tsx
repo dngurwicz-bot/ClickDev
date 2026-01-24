@@ -10,7 +10,7 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { JobTitleForm } from '@/components/core/JobTitleForm'
-import { Plus } from 'lucide-react'
+import { Plus, Briefcase, Award } from 'lucide-react'
 
 interface Role {
     id: string
@@ -41,7 +41,7 @@ export default function RolesPage() {
 
             const { data: roles, error } = await supabase
                 .from('job_titles')
-                .select('*') // Removed join: grade:job_grades(name, level)
+                .select('*, grade:job_grades(name, level)')
                 .eq('organization_id', currentOrg.id)
                 .order('title', { ascending: true })
 
@@ -62,15 +62,27 @@ export default function RolesPage() {
         {
             accessorKey: 'title',
             header: 'שם התפקיד',
+            cell: ({ getValue }) => (
+                <div className="flex items-center gap-2 font-medium">
+                    <Briefcase className="w-4 h-4 text-[#00A896]/60" />
+                    <span>{getValue() as string}</span>
+                </div>
+            )
         },
-        // {
-        //     accessorKey: 'grade.name',
-        //     header: 'דירוג ברירת מחדל',
-        //     cell: ({ row }) => {
-        //         const grade = row.original.grade
-        //         return grade ? `${grade.name} (${grade.level})` : '-'
-        //     }
-        // },
+        {
+            id: 'grade',
+            header: 'דירוג ברירת מחדל',
+            cell: ({ row }) => {
+                const gradeData = (row.original as any).grade
+                const grade = Array.isArray(gradeData) ? gradeData[0] : gradeData
+                return grade ? (
+                    <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-amber-500/60" />
+                        <span className="text-gray-700">{grade.name} ({grade.level})</span>
+                    </div>
+                ) : <span className="text-gray-400 italic text-xs">ללא דירוג</span>
+            }
+        },
         {
             accessorKey: 'created_at',
             header: 'נוצר בתאריך',

@@ -76,10 +76,22 @@ export function JobTitleForm({ initialData, onSuccess, onCancel }: JobTitleFormP
                     .from('job_titles')
                     .update(payload)
                     .eq('id', initialData.id)
-                if (error) throw error
+                if (error) {
+                    if (error.code === '23505') {
+                        toast.error('שם תפקיד זה כבר קיים במערכת')
+                    } else {
+                        throw error
+                    }
+                }
             } else {
                 const { error } = await supabase.from('job_titles').insert(payload)
-                if (error) throw error
+                if (error) {
+                    if (error.code === '23505') {
+                        toast.error('שם תפקיד זה כבר קיים במערכת')
+                    } else {
+                        throw error
+                    }
+                }
             }
             onSuccess()
         } catch (error: any) {

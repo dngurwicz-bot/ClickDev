@@ -105,7 +105,10 @@ export default function OrganizationsPage() {
       accessorKey: 'name',
       header: 'שם הארגון',
       cell: ({ row }) => (
-        <div className="font-medium text-text-primary">{row.original.name}</div>
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-[#00A896]/60" />
+          <div className="font-medium text-text-primary">{row.original.name}</div>
+        </div>
       ),
       enableSorting: true,
       enableColumnFilter: true,
@@ -126,7 +129,7 @@ export default function OrganizationsPage() {
       accessorKey: 'subscription_tier',
       header: 'מנוי',
       cell: ({ row }) => (
-        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        <span className="px-2 py-1 rounded-full text-xs font-bold bg-[#E0F5F3] text-[#00A896]">
           {row.original.subscription_tier}
         </span>
       ),
@@ -179,12 +182,15 @@ export default function OrganizationsPage() {
       id: 'actions',
       header: 'פעולות',
       cell: ({ row }) => (
-        <Link
-          href={`/admin/organizations/${row.original.id}`}
-          className="text-primary hover:text-primary-dark font-medium text-sm"
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/admin/organizations/${row.original.id}`);
+          }}
+          className="text-[#00A896] hover:text-[#008f80] font-bold text-xs underline"
         >
-          צפה בפרטים
-        </Link>
+          פרטים >>
+        </button>
       ),
       enableSorting: false,
       enableColumnFilter: false,

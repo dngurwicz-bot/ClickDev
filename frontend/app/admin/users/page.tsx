@@ -195,15 +195,14 @@ export default function UsersPage() {
       id: 'fullName',
       header: 'שם מלא',
       cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-[#E0F5F3] flex items-center justify-center text-[#00A896] font-bold text-[10px] shrink-0">
             {row.original.user_metadata?.first_name?.[0] || row.original.email[0].toUpperCase()}
           </div>
-          <div className="flex flex-col">
-            <span className="font-medium text-text-primary">
+          <div className="flex flex-col truncate">
+            <span className="font-medium text-text-primary text-xs">
               {row.original.user_metadata?.first_name} {row.original.user_metadata?.last_name}
             </span>
-            <span className="text-xs text-text-muted md:hidden">{row.original.email}</span>
           </div>
         </div>
       ),
@@ -272,9 +271,9 @@ export default function UsersPage() {
       accessorKey: 'organization_name',
       header: 'ארגון',
       cell: ({ row }) => (
-        <div className="flex items-center text-sm text-text-secondary">
-          <Building2 className="w-4 h-4 ml-2 text-text-muted" />
-          {row.original.organization_name || '-'}
+        <div className="flex items-center text-xs text-gray-700">
+          <Building2 className="w-3.5 h-3.5 ml-1.5 text-[#00A896]/50" />
+          <span className="truncate">{row.original.organization_name || '-'}</span>
         </div>
       ),
       enableSorting: true,
@@ -296,20 +295,20 @@ export default function UsersPage() {
       id: 'actions',
       header: 'פעולות',
       cell: ({ row }) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1 justify-center">
           <button
             onClick={() => handleResetPassword(row.original.id)}
-            className="p-1 hover:bg-yellow-50 rounded text-yellow-600 transition-colors"
+            className="p-1 hover:bg-[#E0F5F3] rounded text-[#00A896] transition-colors"
             title="אפס סיסמה"
           >
-            <Key className="w-4 h-4" />
+            <Key className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => handleDelete(row.original.id)}
             className="p-1 hover:bg-red-50 rounded text-red-500 transition-colors"
             title="מחק"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       ),

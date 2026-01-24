@@ -118,7 +118,7 @@ export default function DataTable<TData>({
                                 value={globalFilter ?? ''}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
                                 placeholder="חיפוש מהיר..."
-                                className="w-full h-8 pl-8 pr-2 text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-sm outline-none transition-all placeholder:text-gray-400"
+                                className="w-full h-8 pl-8 pr-2 text-sm border border-gray-300 focus:border-[#00A896] focus:ring-1 focus:ring-[#00A896] rounded-sm outline-none transition-all placeholder:text-gray-400"
                             />
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                             {globalFilter && (
@@ -142,7 +142,7 @@ export default function DataTable<TData>({
                                 type="date"
                                 value={fromDate}
                                 onChange={(e) => setFromDate(e.target.value)}
-                                className="h-7 text-[11px] border border-gray-300 rounded-sm px-1 outline-none focus:border-blue-500"
+                                className="h-7 text-[11px] border border-gray-300 rounded-sm px-1 outline-none focus:border-[#00A896]"
                             />
                         </div>
                         <div className="flex items-center gap-1">
@@ -151,7 +151,7 @@ export default function DataTable<TData>({
                                 type="date"
                                 value={toDate}
                                 onChange={(e) => setToDate(e.target.value)}
-                                className="h-7 text-[11px] border border-gray-300 rounded-sm px-1 outline-none focus:border-blue-500"
+                                className="h-7 text-[11px] border border-gray-300 rounded-sm px-1 outline-none focus:border-[#00A896]"
                             />
                         </div>
                         {(fromDate || toDate) && (
@@ -178,7 +178,7 @@ export default function DataTable<TData>({
                         {/* Header - ERP Style: Light blue-gray, Bold, Crisp Borders */}
                         <thead>
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <tr key={headerGroup.id} className="bg-[#e2e8f0] border-b-[1.5px] border-gray-400">
+                                <tr key={headerGroup.id} className="bg-[#E0F5F3] border-b-[1.5px] border-gray-400">
                                     {headerGroup.headers.map((header) => (
                                         <th
                                             key={header.id}
@@ -186,7 +186,7 @@ export default function DataTable<TData>({
                                             style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                                         >
                                             <div
-                                                className={`flex items-center justify-between gap-1 ${header.column.getCanSort() ? 'cursor-pointer hover:text-blue-700' : ''}`}
+                                                className={`flex items-center justify-between gap-1 ${header.column.getCanSort() ? 'cursor-pointer hover:text-[#00A896]' : ''}`}
                                                 onClick={header.column.getToggleSortingHandler()}
                                             >
                                                 <span className="truncate">
@@ -223,7 +223,7 @@ export default function DataTable<TData>({
                                         className={`
                                             border-b border-gray-300 last:border-b-0 transition-colors h-7
                                             ${i % 2 === 0 ? 'bg-white' : 'bg-[#f8fafc]'} 
-                                            ${onRowClick ? 'hover:bg-blue-50 cursor-pointer' : ''}
+                                            ${onRowClick ? 'hover:bg-[#E0F5F3] cursor-pointer' : ''}
                                         `}
                                     >
                                         {row.getVisibleCells().map((cell) => (
