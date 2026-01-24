@@ -92,86 +92,45 @@ export default function DataTable<TData>({
             </div>
 
             {/* Table Container - ERP Style */}
-            <div className="border border-gray-400 overflow-hidden bg-white shadow-sm">
+            <div className="border-[1.5px] border-gray-400 overflow-hidden bg-white shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-sm">
-                        {/* Header - ERP Style: Gradient/Solid, Bold, Borders */}
+                    <table className="w-full border-collapse text-[13px]">
+                        {/* Header - ERP Style: Light blue-gray, Bold, Crisp Borders */}
                         <thead>
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <tr key={headerGroup.id} className="bg-gradient-to-b from-gray-100 to-gray-200 border-b border-gray-400">
+                                <tr key={headerGroup.id} className="bg-[#e2e8f0] border-b-[1.5px] border-gray-400">
                                     {headerGroup.headers.map((header) => (
                                         <th
                                             key={header.id}
-                                            className="px-2 py-1.5 min-w-[120px] text-right text-xs font-bold text-gray-800 border-l border-gray-300 last:border-l-0 select-none relative group"
+                                            className="px-2 py-1 text-right text-[12px] font-bold text-gray-800 border-l border-gray-300 last:border-l-0 select-none relative group h-8"
                                             style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                                         >
-                                            <div className="flex flex-col gap-1">
-                                                {/* Header Content */}
-                                                <div
-                                                    className={`flex items-center justify-between gap-1 px-1 ${header.column.getCanSort() ? 'cursor-pointer hover:text-blue-700' : ''}`}
-                                                    onClick={header.column.getToggleSortingHandler()}
-                                                >
-                                                    <span className="truncate" title={header.column.columnDef.header as string}>
-                                                        {flexRender(header.column.columnDef.header, header.getContext())}
-                                                    </span>
-                                                    {header.column.getCanSort() && (
-                                                        <div className="w-3 flex flex-col items-center opacity-50 group-hover:opacity-100">
-                                                            {header.column.getIsSorted() === 'asc' ? (
-                                                                <ChevronUp className="w-3 h-3 text-blue-600" />
-                                                            ) : header.column.getIsSorted() === 'desc' ? (
-                                                                <ChevronDown className="w-3 h-3 text-blue-600" />
-                                                            ) : (
-                                                                <div className="flex flex-col -space-y-1">
-                                                                    <ChevronUp className="w-2 h-2 text-gray-400" />
-                                                                    <ChevronDown className="w-2 h-2 text-gray-400" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Filter Input - Directly inside header for ERP feel */}
-                                                {header.column.getCanFilter() && (
-                                                    <div className="mt-0.5 px-0.5" onClick={(e) => e.stopPropagation()}>
-                                                        {(header.column.columnDef.meta as any)?.filterVariant === 'select' ? (
-                                                            <div className="h-6">
-                                                                <FacetedFilter
-                                                                    column={header.column}
-                                                                    title="הכל"
-                                                                    options={(header.column.columnDef.meta as any)?.filterOptions}
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="relative">
-                                                                <input
-                                                                    value={(header.column.getFilterValue() as string) ?? ''}
-                                                                    onChange={(e) => header.column.setFilterValue(e.target.value)}
-                                                                    className="w-full h-6 px-1.5 text-xs border border-gray-300 rounded-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-sm outline-none bg-white"
-                                                                    placeholder=""
-                                                                />
-                                                                {!header.column.getFilterValue() && (
-                                                                    <Filter className="absolute left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-gray-300 pointer-events-none" />
-                                                                )}
-                                                            </div>
-                                                        )}
+                                            <div
+                                                className={`flex items-center justify-between gap-1 ${header.column.getCanSort() ? 'cursor-pointer hover:text-blue-700' : ''}`}
+                                                onClick={header.column.getToggleSortingHandler()}
+                                            >
+                                                <span className="truncate">
+                                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                                </span>
+                                                {header.column.getCanSort() && (
+                                                    <div className="w-3 shrink-0 opacity-50 group-hover:opacity-100 italic font-medium text-[10px]">
+                                                        {header.column.getIsSorted() === 'asc' ? '↑' : header.column.getIsSorted() === 'desc' ? '↓' : ''}
                                                     </div>
                                                 )}
                                             </div>
-                                            {/* Resizer handle visual - optional enhancement */}
-                                            <div className="absolute left-0 top-0 bottom-0 w-[1px] bg-gray-300 cursor-col-resize opacity-0 group-hover:opacity-100" />
                                         </th>
                                     ))}
                                 </tr>
                             ))}
                         </thead>
 
-                        {/* Body - Compact, Striped, Borders */}
+                        {/* Body - Compact, Crisp Grids */}
                         <tbody>
                             {table.getRowModel().rows.length === 0 ? (
                                 <tr>
                                     <td
                                         colSpan={columns.length}
-                                        className="px-4 py-8 text-center text-gray-500 text-sm bg-gray-50"
+                                        className="px-4 py-8 text-center text-gray-500 bg-gray-50"
                                     >
                                         לא נמצאו נתונים תואמים
                                     </td>
@@ -182,15 +141,16 @@ export default function DataTable<TData>({
                                         key={row.id}
                                         onClick={() => onRowClick?.(row.original)}
                                         className={`
-                                            border-b border-gray-200 last:border-b-0 transition-colors
-                                            ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} 
+                                            border-b border-gray-300 last:border-b-0 transition-colors h-7
+                                            ${i % 2 === 0 ? 'bg-white' : 'bg-[#f8fafc]'} 
                                             ${onRowClick ? 'hover:bg-blue-50 cursor-pointer' : ''}
                                         `}
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <td
                                                 key={cell.id}
-                                                className="px-2 py-1.5 text-xs text-gray-700 border-l border-gray-200 last:border-l-0 truncate max-w-[200px]"
+                                                className="px-2 py-0 border-l border-gray-200 last:border-l-0 truncate align-middle h-7"
+                                                style={{ width: cell.column.getSize() !== 150 ? cell.column.getSize() : undefined }}
                                                 title={cell.getValue() as string}
                                             >
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}

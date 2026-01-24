@@ -11,6 +11,9 @@ export interface Organization {
     subscription_tier: string;
     is_active: boolean;
     hierarchy_levels?: string[]; // e.g. ['Wing', 'Department']
+    hierarchy_structure?: Record<string, string | null>;
+    use_job_grades: boolean;
+    use_job_titles: boolean;
     config_lock: boolean;
     created_at: string;
     updated_at: string;
@@ -38,6 +41,7 @@ export interface OrgUnit {
     id: string;
     organization_id: string;
     parent_id?: string;
+    unit_number?: string;
     name: string;
     type: string; // Wing, Department
     manager_id?: string;

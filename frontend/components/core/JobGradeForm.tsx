@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -9,21 +9,20 @@ import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import { X, Save } from 'lucide-react'
 
-const jobTitleSchema = z.object({
-    title: z.string().min(2, 'שם התפקיד חייב להכיל לפחות 2 תווים'),
-    default_grade_id: z.string().nullable().optional(),
+const jobGradeSchema = z.object({
+    name: z.string().min(2, 'שם הדירוג חייב להכיל לפחות 2 תווים'),
+    level: z.coerce.number().min(1, 'רמה חייבת להיות לפחות 1'),
     effective_date: z.string().min(1, 'חובה להזין תאריך תחולה'),
     expiry_date: z.string().nullable().optional(),
 })
 
-type JobTitleFormValues = z.infer<typeof jobTitleSchema>
+type JobGradeFormValues = z.infer<typeof jobGradeSchema>
 
-interface JobTitleFormProps {
+interface JobGradeFormProps {
     initialData?: {
         id: string
-        title: string
-        job_number?: string
-        default_grade_id: string | null
+        name: string
+        level: number
         effective_date?: string
         expiry_date?: string | null
     }
@@ -31,70 +30,62 @@ interface JobTitleFormProps {
     onCancel: () => void
 }
 
-export function JobTitleForm({ initialData, onSuccess, onCancel }: JobTitleFormProps) {
+export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormProps) {
     const { currentOrg } = useOrganization()
     const [loading, setLoading] = useState(false)
-    const [grades, setGrades] = useState<{ id: string, name: string, level: number }[]>([])
-    const [jobNumber, setJobNumber] = useState<string>(initialData?.job_number || '---')
-
-    useEffect(() => {
-        if (!currentOrg) return
-        supabase.from('job_grades').select('*').eq('organization_id', currentOrg.id).order('level')
-            .then(({ data }) => setGrades(data || []))
-    }, [currentOrg])
 
     const {
         register,
         handleSubmit,
         formState: { errors },
-    } = useForm<JobTitleFormValues>({
-        resolver: zodResolver(jobTitleSchema),
+    } = useForm<JobGradeFormValues>({
+        resolver: zodResolver(jobGradeSchema),
         defaultValues: {
-            title: initialData?.title || '',
-            default_grade_id: initialData?.default_grade_id || '',
+            name: initialData?.name || '',
+            level: initialData?.level || 1,
             effective_date: initialData?.effective_date || new Date().toISOString().split('T')[0],
             expiry_date: initialData?.expiry_date || null,
         },
     })
 
-    const onSubmit = async (data: JobTitleFormValues) => {
+    const onSubmit = async (data: JobGradeFormValues) => {
         if (!currentOrg) return
         setLoading(true)
 
         try {
             const payload = {
                 organization_id: currentOrg.id,
-                title: data.title,
-                default_grade_id: data.default_grade_id || null,
+                name: data.name,
+                level: data.level,
                 effective_date: data.effective_date,
                 expiry_date: data.expiry_date || null
             }
 
             if (initialData) {
                 const { error } = await supabase
-                    .from('job_titles')
+                    .from('job_grades')
                     .update(payload)
                     .eq('id', initialData.id)
                 if (error) throw error
             } else {
-                const { error } = await supabase.from('job_titles').insert(payload)
+                const { error } = await supabase.from('job_grades').insert(payload)
                 if (error) throw error
             }
             onSuccess()
         } catch (error) {
-            console.error('Error saving job title:', error)
-            alert('שגיאה בשמירת התפקיד')
+            console.error('Error saving job grade:', error)
+            alert('שגיאה בשמירת הדירוג')
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className="bg-[#f3f4f6] min-h-[400px] flex flex-col border border-gray-400 font-sans" dir="rtl">
+        <div className="bg-[#f3f4f6] min-h-[350px] flex flex-col border border-gray-400 font-sans" dir="rtl">
             {/* Header Bar */}
             <div className="bg-white border-b border-gray-300 p-2 flex justify-between items-center shadow-sm">
                 <div className="flex items-center gap-4">
-                    <span className="font-bold text-lg text-gray-800">{jobNumber} - {initialData?.title || 'תפקיד חדש (New Job)'}</span>
+                    <span className="font-bold text-lg text-gray-800">{initialData?.level || '---'} - {initialData?.name || 'דירוג חדש (New Grade)'}</span>
                 </div>
                 <div className="flex gap-2">
                     <button type="button" onClick={handleSubmit(onSubmit)} className="p-1 hover:bg-gray-100 rounded text-blue-600" title="שמור"><Save className="w-5 h-5" /></button>
@@ -109,43 +100,30 @@ export function JobTitleForm({ initialData, onSuccess, onCancel }: JobTitleFormP
                     {/* Right Column */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">שם התפקיד</label>
+                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">שם הדירוג</label>
                             <div className="flex-1 relative">
                                 <input
-                                    {...register('title')}
-                                    className="w-full h-8 bg-[#fffde7] border border-gray-400 px-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none shadow-sm font-medium"
-                                    placeholder="לדוגמה: מפתח פול סטאק"
+                                    {...register('name')}
+                                    className="w-full h-8 bg-[#fffde7] border border-gray-400 px-2 text-sm focus:border-blue-500 outline-none shadow-sm"
                                 />
-                                {errors.title && <p className="absolute -bottom-4 right-0 text-red-500 text-[10px]">{errors.title.message}</p>}
+                                {errors.name && <p className="absolute -bottom-4 right-0 text-red-500 text-[10px]">{errors.name.message}</p>}
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 text-gray-400">
-                            <label className="text-sm font-bold w-32 shrink-0">מספר מזהה</label>
-                            <input
-                                value={jobNumber}
-                                disabled
-                                className="flex-1 h-8 bg-gray-100 border border-gray-300 px-2 text-sm font-mono"
-                            />
+                        <div className="flex items-center gap-4">
+                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">רמת דירוג</label>
+                            <div className="flex-1 relative">
+                                <input
+                                    type="number"
+                                    {...register('level')}
+                                    className="w-full h-8 bg-white border border-gray-400 px-2 text-sm focus:border-blue-500 outline-none shadow-sm"
+                                />
+                                {errors.level && <p className="absolute -bottom-4 right-0 text-red-500 text-[10px]">{errors.level.message}</p>}
+                            </div>
                         </div>
                     </div>
-
                     {/* Left Column */}
                     <div className="space-y-4">
-                        <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">דירוג ברירת מחדל</label>
-                            <div className="flex-1">
-                                <select
-                                    {...register('default_grade_id')}
-                                    className="w-full h-8 bg-white border border-gray-400 px-2 text-sm focus:border-blue-500 outline-none"
-                                >
-                                    <option value="">בחר דירוג...</option>
-                                    {grades.map(g => (
-                                        <option key={g.id} value={g.id}>{g.name} (רמה {g.level})</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
                         <div className="flex items-center gap-4">
                             <label className="text-sm font-bold text-gray-700 w-32 shrink-0">תאריך תחולה</label>
                             <div className="flex-1">
@@ -169,7 +147,6 @@ export function JobTitleForm({ initialData, onSuccess, onCancel }: JobTitleFormP
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 {/* Status Bar */}
@@ -177,10 +154,10 @@ export function JobTitleForm({ initialData, onSuccess, onCancel }: JobTitleFormP
                     <div className="w-8 h-8 shrink-0 bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">📖</div>
                     <div className="flex-1">
                         <p className="text-[12px] leading-tight text-gray-700 font-medium">
-                            הגדרת התפקיד בקטלוג המשרות פעילה.
+                            דירוג תפקיד רשום במערכת.
                         </p>
                         <p className="text-[10px] text-gray-500 mt-1">
-                            מזהה מערכת: {initialData?.id || 'טרם נוצר'}
+                            רמה זו משמשת כברירת מחדל עבור תיוק משרות ותקנים.
                         </p>
                     </div>
                 </div>
@@ -192,7 +169,7 @@ export function JobTitleForm({ initialData, onSuccess, onCancel }: JobTitleFormP
                     type="submit"
                     disabled={loading}
                     onClick={handleSubmit(onSubmit)}
-                    className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-8 text-xs font-bold shadow-sm active:shadow-inner"
+                    className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-8 text-xs font-bold shadow-sm"
                 >
                     {loading ? 'מבצע...' : 'עדכון (Save)'}
                 </button>

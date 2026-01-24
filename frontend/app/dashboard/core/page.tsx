@@ -162,12 +162,7 @@ export default function CoreDashboard() {
                         פעולות מהירות
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Link href="/dashboard/core/structure">
-                            <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-blue-500">
-                                <h3 className="font-bold text-lg mb-2">ניהול מבנה ארגוני</h3>
-                                <p className="text-sm text-gray-500">צפייה בעץ הארגוני, הוספת יחידות ושינוי היררכיה.</p>
-                            </Card>
-                        </Link>
+
                         <Link href="/dashboard/core/settings">
                             <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-purple-500">
                                 <h3 className="font-bold text-lg mb-2">הגדרות תפקידים</h3>

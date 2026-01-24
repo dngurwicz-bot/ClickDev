@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import DataTable from '@/components/DataTable'
@@ -13,6 +14,7 @@ import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 
 interface OrgUnit {
     id: string
+    unit_number: string
     name: string
     type: string
     created_at: string
@@ -23,10 +25,10 @@ interface OrgUnit {
 }
 
 export default function WingsPage() {
+    const router = useRouter()
     const { currentOrg } = useOrganization()
     const [data, setData] = useState<OrgUnit[]>([])
     const [loading, setLoading] = useState(true)
-    const [showModal, setShowModal] = useState(false)
     const hierarchyLevels = ['Wing', 'Department', 'Team']
 
     const fetchData = async () => {
@@ -39,6 +41,8 @@ export default function WingsPage() {
                 .select('*')
                 .eq('organization_id', currentOrg.id)
                 .in('type', ['Wing', 'אגף'])
+                .in('type', ['Wing', 'אגף'])
+                .order('unit_number', { ascending: true })
                 .order('name', { ascending: true })
 
             if (error) throw error
@@ -55,6 +59,12 @@ export default function WingsPage() {
     }, [currentOrg])
 
     const columns: ColumnDef<OrgUnit>[] = [
+        {
+            accessorKey: 'unit_number',
+            header: "מס' אגף",
+            cell: ({ getValue }) => <div className="font-mono text-gray-600">{getValue() as string || '-'}</div>,
+            size: 100
+        },
         {
             accessorKey: 'name',
             header: 'שם האגף',
@@ -77,6 +87,16 @@ export default function WingsPage() {
             accessorKey: 'created_at',
             header: 'נוצר בתאריך',
             cell: ({ getValue }) => format(new Date(getValue() as string), 'dd/MM/yyyy')
+        },
+        {
+            accessorKey: 'effective_date',
+            header: 'תאריך תחולה',
+            cell: ({ getValue }) => getValue() ? format(new Date(getValue() as string), 'dd/MM/yyyy') : '-'
+        },
+        {
+            accessorKey: 'expiry_date',
+            header: 'גמר תוקף',
+            cell: ({ getValue }) => getValue() ? format(new Date(getValue() as string), 'dd/MM/yyyy') : <span className="text-gray-400">ללא</span>
         }
     ]
 
@@ -89,7 +109,7 @@ export default function WingsPage() {
                     <h1 className="text-3xl font-bold">טבלת אגפים</h1>
                     <p className="text-gray-500 mt-1">רשימת האגפים בארגון.</p>
                 </div>
-                <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
+                <Button onClick={() => router.push('/dashboard/core/wings/new')} className="flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     הוסף אגף
                 </Button>
@@ -99,19 +119,8 @@ export default function WingsPage() {
                 columns={columns}
                 data={data}
                 showSearch={true}
+                onRowClick={(row) => router.push(`/dashboard/core/wings/${row.id}`)}
             />
-
-            <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
-                <OrgUnitForm
-                    levels={hierarchyLevels}
-                    forcedType="Wing"
-                    onSuccess={() => {
-                        setShowModal(false)
-                        fetchData()
-                    }}
-                    onCancel={() => setShowModal(false)}
-                />
-            </Modal>
         </div>
     )
 }

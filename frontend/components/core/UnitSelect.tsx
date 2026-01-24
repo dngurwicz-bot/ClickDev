@@ -19,9 +19,10 @@ interface UnitSelectProps {
     type?: string // Filter by type (e.g. 'Wing' to select only wings)
     placeholder?: string
     excludeId?: string
+    className?: string
 }
 
-export function UnitSelect({ value, onChange, type, placeholder = "בחר יחידה...", excludeId }: UnitSelectProps) {
+export function UnitSelect({ value, onChange, type, placeholder = "בחר יחידה...", excludeId, className }: UnitSelectProps) {
     const { currentOrg } = useOrganization()
     const [open, setOpen] = useState(false)
     const [units, setUnits] = useState<OrgUnit[]>([])
@@ -85,7 +86,7 @@ export function UnitSelect({ value, onChange, type, placeholder = "בחר יחי
     )
 
     return (
-        <div className="relative">
+        <div className={cn("relative", className)}>
             <Button
                 variant="outline"
                 role="combobox"

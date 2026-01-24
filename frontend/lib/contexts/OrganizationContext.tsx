@@ -40,7 +40,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
                 // Fetch all organizations for super admin
                 const { data } = await supabase
                     .from('organizations')
-                    .select('id, name, active_modules')
+                    .select('*')
                     .order('name')
 
                 orgsData = data || []
@@ -48,7 +48,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
                 // Fetch user's organizations
                 const { data } = await supabase
                     .from('user_roles')
-                    .select('organization_id, organizations(id, name, active_modules)')
+                    .select('organization_id, organizations(*)')
                     .eq('user_id', user.id)
 
                 orgsData = data?.map((item: any) => item.organizations).filter(Boolean) || []

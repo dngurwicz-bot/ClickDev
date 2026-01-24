@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { Search, X, Loader2, User } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 
 interface Employee {
@@ -17,9 +18,10 @@ interface EmployeeSelectProps {
     value: string | null
     onChange: (value: string | null) => void
     placeholder?: string
+    className?: string
 }
 
-export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד..." }: EmployeeSelectProps) {
+export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד...", className }: EmployeeSelectProps) {
     const { currentOrg } = useOrganization()
     const [isOpen, setIsOpen] = useState(false)
     const [search, setSearch] = useState('')
@@ -94,7 +96,7 @@ export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד
     }
 
     return (
-        <div className="relative w-full" ref={wrapperRef}>
+        <div className={cn("relative w-full", className)} ref={wrapperRef}>
             <div
                 className="relative cursor-pointer"
                 onClick={() => setIsOpen(!isOpen)}

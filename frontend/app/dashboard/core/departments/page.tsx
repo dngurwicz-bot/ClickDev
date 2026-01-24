@@ -29,7 +29,6 @@ export default function DepartmentsPage() {
     const { currentOrg } = useOrganization()
     const [data, setData] = useState<OrgUnit[]>([])
     const [loading, setLoading] = useState(true)
-    const [showModal, setShowModal] = useState(false)
     const hierarchyLevels = ['Wing', 'Department', 'Team']
 
     const fetchData = async () => {
@@ -93,6 +92,16 @@ export default function DepartmentsPage() {
             accessorKey: 'created_at',
             header: 'נוצר בתאריך',
             cell: ({ getValue }) => format(new Date(getValue() as string), 'dd/MM/yyyy')
+        },
+        {
+            accessorKey: 'effective_date',
+            header: 'תאריך תחולה',
+            cell: ({ getValue }) => getValue() ? format(new Date(getValue() as string), 'dd/MM/yyyy') : '-'
+        },
+        {
+            accessorKey: 'expiry_date',
+            header: 'גמר תוקף',
+            cell: ({ getValue }) => getValue() ? format(new Date(getValue() as string), 'dd/MM/yyyy') : <span className="text-gray-400">ללא</span>
         }
     ]
 
@@ -105,7 +114,7 @@ export default function DepartmentsPage() {
                     <h1 className="text-3xl font-bold">טבלת מחלקות</h1>
                     <p className="text-gray-500 mt-1">רשימת המחלקות בארגון.</p>
                 </div>
-                <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
+                <Button onClick={() => router.push('/dashboard/core/departments/new')} className="flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     הוסף מחלקה
                 </Button>
@@ -115,19 +124,8 @@ export default function DepartmentsPage() {
                 columns={columns}
                 data={data}
                 showSearch={true}
+                onRowClick={(row) => router.push(`/dashboard/core/departments/${row.id}`)}
             />
-
-            <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
-                <OrgUnitForm
-                    levels={hierarchyLevels}
-                    forcedType="Department"
-                    onSuccess={() => {
-                        setShowModal(false)
-                        fetchData()
-                    }}
-                    onCancel={() => setShowModal(false)}
-                />
-            </Modal>
         </div>
     )
 }

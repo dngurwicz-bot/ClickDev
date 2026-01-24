@@ -5,49 +5,55 @@ import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import DataTable from '@/components/DataTable'
 import { ColumnDef } from '@tanstack/react-table'
-import { format } from 'date-fns'
+import { Plus, Trash2, Edit2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { JobTitleForm } from '@/components/core/JobTitleForm'
-import { Plus } from 'lucide-react'
+import toast from 'react-hot-toast'
 
-interface Role {
+interface JobTitle {
     id: string
     title: string
-    default_grade_id: string | null
+    job_number: string
+    default_grade_id: string
     created_at: string
-    grade?: {
+    job_grades: {
         name: string
         level: number
     }
 }
 
-export default function RolesPage() {
+export default function JobTitlesPage() {
     const router = useRouter()
     const { currentOrg } = useOrganization()
-    const [data, setData] = useState<Role[]>([])
+    const [data, setData] = useState<JobTitle[]>([])
     const [loading, setLoading] = useState(true)
 
     const fetchData = async () => {
         if (!currentOrg) return
         setLoading(true)
         try {
-            // Simplified query - removed grade join just in case, or keep it?
-            // User said "Role depends on Dept" but job_titles are global usually.
-            // Let's keep grade join for now, if it breaks I'll remove it.
-            // Actually, if Wings/Dept failed due to employees join, this might fail due to grade join if RLS issues.
-            // But let's try to remove it to be safe and ensure loading.
-
-            const { data: roles, error } = await supabase
+            const { data, error } = await supabase
                 .from('job_titles')
-                .select('*') // Removed join: grade:job_grades(name, level)
+                .select('*, job_grades(name, level)')
                 .eq('organization_id', currentOrg.id)
                 .order('title', { ascending: true })
 
             if (error) throw error
-            setData(roles || [])
+            setData(data || [])
+
+            // Fetch grades for dropdown
+            const { data: gradesData } = await supabase
+                .from('job_grades')
+                .select('*')
+                .eq('organization_id', currentOrg.id)
+                .order('level')
+
+            setGrades(gradesData || [])
+
         } catch (err) {
-            console.error('Error fetching roles:', err)
+            console.error('Error fetching titles:', err)
         } finally {
             setLoading(false)
         }
@@ -57,21 +63,33 @@ export default function RolesPage() {
         fetchData()
     }, [currentOrg])
 
-    const router = useRouter()
 
-    const columns: ColumnDef<Role>[] = [
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('האם אתה בטוח?')) return
+        try {
+            const { error } = await supabase.from('job_titles').delete().eq('id', id)
+            if (error) throw error
+            toast.success('נמחק בהצלחה')
+            fetchData()
+        } catch (err) {
+            console.error(err)
+            toast.error('שגיאה במחיקה')
+        }
+    }
+
+    const columns: ColumnDef<JobTitle>[] = [
+        {
+            accessorKey: 'job_number',
+            header: "מס' תפקיד",
+            size: 100,
+            cell: ({ getValue }) => <div className="font-mono text-gray-600">{getValue() as string || '-'}</div>
+        },
         {
             accessorKey: 'title',
             header: 'שם התפקיד',
+            cell: ({ getValue }) => <div className="font-medium">{getValue() as string}</div>
         },
-        // {
-        //     accessorKey: 'grade.name',
-        //     header: 'דירוג ברירת מחדל',
-        //     cell: ({ row }) => {
-        //         const grade = row.original.grade
-        //         return grade ? `${grade.name} (${grade.level})` : '-'
-        //     }
-        // },
         {
             accessorKey: 'created_at',
             header: 'נוצר בתאריך',
@@ -89,16 +107,14 @@ export default function RolesPage() {
         }
     ]
 
-    if (loading) return <div className="p-8">טוען נתונים...</div>
-
     return (
-        <div className="p-8" dir="rtl">
-            <div className="flex justify-between items-center mb-6">
+        <div className="p-8 space-y-8" dir="rtl">
+            <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold">טבלת תפקידים</h1>
-                    <p className="text-gray-500 mt-1">רשימת כל התפקידים המוגדרים בארגון.</p>
+                    <p className="text-gray-500 mt-1">קטלוג משרות בסיסי.</p>
                 </div>
-                <Button onClick={() => router.push('/dashboard/core/roles/new')} className="flex items-center gap-2">
+                <Button onClick={() => router.push('/dashboard/core/titles/new')} className="flex items-center gap-2">
                     <Plus className="w-4 h-4" />
                     הוסף תפקיד
                 </Button>
@@ -108,7 +124,7 @@ export default function RolesPage() {
                 columns={columns}
                 data={data}
                 showSearch={true}
-                onRowClick={(row) => router.push(`/dashboard/core/roles/${row.id}`)}
+                onRowClick={(row) => router.push(`/dashboard/core/titles/${row.id}`)}
             />
         </div>
     )

@@ -1,77 +1,67 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import DataTable from '@/components/DataTable'
 import { ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
+import { User, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { JobTitleForm } from '@/components/core/JobTitleForm'
-import { Plus } from 'lucide-react'
+import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 
-interface Role {
+interface OrgUnit {
     id: string
-    title: string
-    default_grade_id: string | null
+    unit_number: string
+    name: string
+    type: string
     created_at: string
-    grade?: {
-        name: string
-        level: number
-    }
 }
 
-export default function RolesPage() {
+export default function TeamsPage() {
     const router = useRouter()
     const { currentOrg } = useOrganization()
-    const [data, setData] = useState<Role[]>([])
+    const [data, setData] = useState<OrgUnit[]>([])
     const [loading, setLoading] = useState(true)
+    const hierarchyLevels = ['Team']
 
     const fetchData = async () => {
         if (!currentOrg) return
         setLoading(true)
         try {
-            // Simplified query - removed grade join just in case, or keep it?
-            // User said "Role depends on Dept" but job_titles are global usually.
-            // Let's keep grade join for now, if it breaks I'll remove it.
-            // Actually, if Wings/Dept failed due to employees join, this might fail due to grade join if RLS issues.
-            // But let's try to remove it to be safe and ensure loading.
-
-            const { data: roles, error } = await supabase
-                .from('job_titles')
-                .select('*') // Removed join: grade:job_grades(name, level)
+            const { data: units, error } = await supabase
+                .from('org_units')
+                .select('*')
                 .eq('organization_id', currentOrg.id)
-                .order('title', { ascending: true })
+                .in('type', ['Team', 'צוות'])
+                .order('unit_number', { ascending: true })
+                .order('name', { ascending: true })
 
             if (error) throw error
-            setData(roles || [])
+            setData(units || [])
         } catch (err) {
-            console.error('Error fetching roles:', err)
+            console.error('Error fetching teams:', err)
         } finally {
             setLoading(false)
         }
     }
 
-    useEffect(() => {
-        fetchData()
-    }, [currentOrg])
+    useEffect(() => { fetchData() }, [currentOrg])
 
-    const router = useRouter()
-
-    const columns: ColumnDef<Role>[] = [
+    const columns: ColumnDef<OrgUnit>[] = [
         {
-            accessorKey: 'title',
-            header: 'שם התפקיד',
+            accessorKey: 'unit_number',
+            header: "מס' צוות",
+            cell: ({ getValue }) => <div className="font-mono text-gray-600">{getValue() as string || '-'}</div>,
+            size: 100
         },
-        // {
-        //     accessorKey: 'grade.name',
-        //     header: 'דירוג ברירת מחדל',
-        //     cell: ({ row }) => {
-        //         const grade = row.original.grade
-        //         return grade ? `${grade.name} (${grade.level})` : '-'
-        //     }
-        // },
+        {
+            accessorKey: 'name',
+            header: 'שם הצוות',
+            cell: ({ row }) => <span className="font-medium">{row.original.name}</span>
+        },
         {
             accessorKey: 'created_at',
             header: 'נוצר בתאריך',
@@ -95,12 +85,12 @@ export default function RolesPage() {
         <div className="p-8" dir="rtl">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold">טבלת תפקידים</h1>
-                    <p className="text-gray-500 mt-1">רשימת כל התפקידים המוגדרים בארגון.</p>
+                    <h1 className="text-3xl font-bold">טבלת צוותים</h1>
+                    <p className="text-gray-500 mt-1">רשימת הצוותים בארגון.</p>
                 </div>
-                <Button onClick={() => router.push('/dashboard/core/roles/new')} className="flex items-center gap-2">
+                <Button onClick={() => router.push('/dashboard/core/teams/new')} className="flex items-center gap-2">
                     <Plus className="w-4 h-4" />
-                    הוסף תפקיד
+                    הוסף צוות
                 </Button>
             </div>
 
@@ -108,7 +98,7 @@ export default function RolesPage() {
                 columns={columns}
                 data={data}
                 showSearch={true}
-                onRowClick={(row) => router.push(`/dashboard/core/roles/${row.id}`)}
+                onRowClick={(row) => router.push(`/dashboard/core/teams/${row.id}`)}
             />
         </div>
     )

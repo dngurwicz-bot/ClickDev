@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     Building2,
     ArrowLeft,
@@ -12,14 +12,24 @@ import {
     Check,
     ChevronLeft,
     X,
-    Lock
+    Lock,
+    AlertTriangle,
+    Award,
+    Briefcase
 } from 'lucide-react'
-import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import toast from 'react-hot-toast'
+
+const PREDEFINED_LEVELS = [
+    { key: 'Division', label: 'חטיבה' },
+    { key: 'Wing', label: 'אגף' },
+    { key: 'Department', label: 'מחלקה' },
+    { key: 'Team', label: 'צוות' },
+    { key: 'Role', label: 'תפקיד' }
+]
 
 interface SetupWizardProps {
     isOpen: boolean
@@ -27,10 +37,12 @@ interface SetupWizardProps {
 }
 
 export default function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
-    const { currentOrg } = useOrganization()
+    const { currentOrg, refreshOrganizations } = useOrganization()
     const [step, setStep] = useState(1)
-    const [levels, setLevels] = useState<string[]>(['אגף', 'מחלקה', 'צוות'])
-    const [enableJobGrades, setEnableJobGrades] = useState(true)
+    const [levels, setLevels] = useState<string[]>([])
+    const [structure, setStructure] = useState<Record<string, string | null>>({})
+    const [useJobGrades, setUseJobGrades] = useState(false)
+    const [useJobTitles, setUseJobTitles] = useState(false)
     const [saving, setSaving] = useState(false)
     const [isLocked, setIsLocked] = useState(false)
 
@@ -63,35 +75,33 @@ export default function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
         )
     }
 
-    const handleAddLevel = () => {
-        setLevels([...levels, ''])
-    }
+    const handleLevelToggle = (levelKey: string) => {
+        let newLevels = [...levels]
+        let newStructure = { ...structure }
 
-    const handleRemoveLevel = (index: number) => {
-        const newLevels = levels.filter((_, i) => i !== index)
+        if (newLevels.includes(levelKey)) {
+            newLevels = newLevels.filter(l => l !== levelKey)
+            delete newStructure[levelKey]
+            Object.keys(newStructure).forEach(child => {
+                if (newStructure[child] === levelKey) {
+                    newStructure[child] = null
+                }
+            })
+        } else {
+            newLevels.push(levelKey)
+            const myIndex = PREDEFINED_LEVELS.findIndex(l => l.key === levelKey)
+            const potentialParents = PREDEFINED_LEVELS.slice(0, myIndex).reverse()
+            const parent = potentialParents.find(p => newLevels.includes(p.key))
+            newStructure[levelKey] = parent ? parent.key : null
+        }
+
         setLevels(newLevels)
-    }
-
-    const handleLevelChange = (index: number, value: string) => {
-        const newLevels = [...levels]
-        newLevels[index] = value
-        setLevels(newLevels)
-    }
-
-    const handleMoveLevel = (index: number, direction: 'up' | 'down') => {
-        if ((direction === 'up' && index === 0) || (direction === 'down' && index === levels.length - 1)) return
-
-        const newLevels = [...levels]
-        const swapIndex = direction === 'up' ? index - 1 : index + 1
-        const temp = newLevels[index]
-        newLevels[index] = newLevels[swapIndex]
-        newLevels[swapIndex] = temp
-        setLevels(newLevels)
+        setStructure(newStructure)
     }
 
     const handleSave = async () => {
-        if (levels.some(l => !l.trim())) {
-            toast.error('נא למלא את שמות כל הרמות')
+        if (levels.length === 0) {
+            toast.error('יש לבחור לפחות רמה אחת')
             return
         }
 
@@ -101,7 +111,9 @@ export default function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
                 .from('organizations')
                 .update({
                     hierarchy_levels: levels,
-                    enable_job_grades: enableJobGrades,
+                    hierarchy_structure: structure,
+                    use_job_grades: useJobGrades,
+                    use_job_titles: useJobTitles,
                     config_lock: true
                 })
                 .eq('id', currentOrg.id)
@@ -109,6 +121,7 @@ export default function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
             if (error) throw error
 
             toast.success('המבנה הארגוני הוגדר בהצלחה')
+            await refreshOrganizations()
             onClose()
         } catch (err) {
             console.error('Error saving structure:', err)
@@ -118,10 +131,32 @@ export default function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
         }
     }
 
+    // Helper for visualization
+    const rootLevels = levels.filter(l => !structure[l])
+    const getChildren = (parentKey: string) => levels.filter(l => structure[l] === parentKey)
+
+    const renderVisNode = (levelKey: string, depth = 0) => {
+        const item = PREDEFINED_LEVELS.find(l => l.key === levelKey)
+        const children = getChildren(levelKey)
+
+        return (
+            <div key={levelKey} className="flex flex-col items-center">
+                <div className="bg-white border border-blue-200 px-4 py-2 rounded-lg text-blue-900 font-bold shadow-sm mb-4">
+                    {item?.label}
+                </div>
+                {children.length > 0 && (
+                    <div className="flex gap-4 border-t border-dashed border-gray-300 pt-4">
+                        {children.map(child => renderVisNode(child, depth + 1))}
+                    </div>
+                )}
+            </div>
+        )
+    }
+
     return (
         <div className="fixed inset-0 bg-gray-50 z-[100] flex flex-col md:flex-row h-screen w-screen overflow-hidden" dir="rtl">
 
-            {/* Sidebar / Progress Section */}
+            {/* Sidebar */}
             <div className="w-full md:w-1/3 lg:w-1/4 bg-white border-l border-gray-200 p-8 flex flex-col justify-between">
                 <div>
                     <div className="flex justify-between items-start mb-6">
@@ -139,75 +174,39 @@ export default function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
                     </div>
 
                     <div className="space-y-1">
-                        <StepIndicator
-                            currentStep={step}
-                            stepNumber={1}
-                            title="ברוכים הבאים"
-                            description="סקירה כללית"
-                        />
-                        <StepIndicator
-                            currentStep={step}
-                            stepNumber={2}
-                            title="היררכיה"
-                            description="הגדרת רמות הארגון"
-                        />
-                        <StepIndicator
-                            currentStep={step}
-                            stepNumber={3}
-                            title="דירוגי תפקיד"
-                            description="ניהול דרגות ושכר"
-                        />
-                        <StepIndicator
-                            currentStep={step}
-                            stepNumber={4}
-                            title="סיכום"
-                            description="אישור וסיום"
-                        />
+                        <StepIndicator currentStep={step} stepNumber={1} title="ברוכים הבאים" description="סקירה כללית" />
+                        <StepIndicator currentStep={step} stepNumber={2} title="מבנה היררכי" description="הגדרת רמות וכפיפות" />
+                        <StepIndicator currentStep={step} stepNumber={3} title="תכונות נוספות" description="דירוגים וקטלוג" />
+                        <StepIndicator currentStep={step} stepNumber={4} title="סיכום" description="אישור וסיום" />
                     </div>
                 </div>
 
                 <div className="text-xs text-gray-400 mt-6 md:mt-0">
-                    &copy; 2026 CLICK Systems. כל הזכויות שמורות.
+                    &copy; 2026 CLICK Systems.
                 </div>
             </div>
 
-            {/* Main Content Area */}
+            {/* Content */}
             <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50 relative">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onClose}
-                    className="absolute top-6 left-6 hidden md:flex hover:bg-gray-200 z-10"
-                >
+                <Button variant="ghost" size="icon" onClick={onClose} className="absolute top-6 left-6 hidden md:flex hover:bg-gray-200 z-10">
                     <X className="w-6 h-6 text-gray-500" />
                 </Button>
 
                 <div className="flex-1 overflow-y-auto p-8 md:p-12 lg:p-16 flex items-center justify-center">
-                    <div className="max-w-2xl w-full">
+                    <div className="max-w-3xl w-full">
+
                         {step === 1 && (
-                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 fade-in">
-                                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
+                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 fade-in text-center md:text-right">
+                                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 mx-auto md:mx-0">
                                     <Network className="w-8 h-8" />
                                 </div>
-                                <h2 className="text-3xl font-bold text-gray-900">בואו נגדיר את המבנה הארגוני</h2>
+                                <h2 className="text-3xl font-bold text-gray-900">בואו נבנה את הארגון שלך</h2>
                                 <p className="text-lg text-gray-600 leading-relaxed">
-                                    כדי להתאים את המערכת בדיוק לצרכים שלכם, עלינו להבין כיצד הארגון בנוי.
+                                    כדי להתאים את CLICK לארגון שלך, עלינו להגדיר את המבנה ההיררכי.
                                     <br />
-                                    המערכת מאפשרת גמישות מלאה בהגדרת ההיררכיה (לדוגמה: חטיבה, אגף, מחלקה).
+                                    תוכל לבחור אילו רמות קיימות אצלך (חטיבה, אגף, מחלקה וכו') ולקבוע מי כפוף למי.
                                 </p>
-
-                                <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm mt-8">
-                                    <h3 className="font-semibold text-gray-900 mb-2">דוגמה נפוצה:</h3>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <span className="bg-gray-100 px-3 py-1 rounded-md">חטיבה</span>
-                                        <ChevronLeft className="w-4 h-4 text-gray-400" />
-                                        <span className="bg-gray-100 px-3 py-1 rounded-md">אגף</span>
-                                        <ChevronLeft className="w-4 h-4 text-gray-400" />
-                                        <span className="bg-gray-100 px-3 py-1 rounded-md">מחלקה</span>
-                                    </div>
-                                </div>
-
-                                <div className="pt-8">
+                                <div className="pt-8 flex justify-center md:justify-start">
                                     <Button size="lg" onClick={() => setStep(2)} className="px-8 text-lg h-12">
                                         התחל בהגדרה
                                         <ArrowLeft className="mr-2 w-5 h-5" />
@@ -219,158 +218,125 @@ export default function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
                         {step === 2 && (
                             <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 fade-in">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">הגדרת רמות ההיררכיה</h2>
-                                    <p className="text-gray-600">
-                                        הוסף, הסר או שנה את סדר הרמות מהגבוהה (1) לנמוכה ביותר.
-                                    </p>
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">מבנה היררכי וכפיפות</h2>
+                                    <p className="text-gray-600">בחר את הרמות הרלוונטיות לארגון שלך וקבע את הכפיפות ביניהן.</p>
                                 </div>
 
-                                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                    <div className="p-1 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 px-6 py-2 flex justify-between">
-                                        <span>רמה</span>
-                                        <span>שם הרמה</span>
-                                        <span>פעולות</span>
-                                    </div>
-                                    <div className="divide-y divide-gray-100">
-                                        {levels.map((level, index) => (
-                                            <div key={index} className="p-4 flex items-center gap-4 group hover:bg-gray-50 transition-colors">
-                                                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-sm">
-                                                    {index + 1}
+                                <div className="grid grid-cols-1 gap-4">
+                                    {PREDEFINED_LEVELS.map((level) => {
+                                        const isSelected = levels.includes(level.key)
+                                        return (
+                                            <div key={level.key} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isSelected ? 'border-blue-300 bg-blue-50/50 shadow-sm' : 'border-gray-200 bg-white'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => handleLevelToggle(level.key)}
+                                                        className="w-5 h-5 rounded border-gray-300 text-blue-600"
+                                                    />
+                                                    <span className={`font-bold ${isSelected ? 'text-blue-900' : 'text-gray-400'}`}>{level.label}</span>
                                                 </div>
-                                                <Input
-                                                    value={level}
-                                                    onChange={(e) => handleLevelChange(index, e.target.value)}
-                                                    placeholder={`שם הרמה ה-${index + 1}`}
-                                                    className="border-gray-200 focus:ring-blue-500"
-                                                    autoFocus={index === levels.length - 1}
-                                                />
-                                                <div className="flex items-center gap-1">
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <button
-                                                            onClick={() => handleMoveLevel(index, 'up')}
-                                                            disabled={index === 0}
-                                                            className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-20"
+                                                {isSelected && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm text-gray-500 font-medium">כפוף ל:</span>
+                                                        <select
+                                                            value={structure[level.key] || ''}
+                                                            onChange={(e) => setStructure({ ...structure, [level.key]: e.target.value || null })}
+                                                            className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                                         >
-                                                            <ArrowUp className="w-3 h-3" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleMoveLevel(index, 'down')}
-                                                            disabled={index === levels.length - 1}
-                                                            className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-20"
-                                                        >
-                                                            <ArrowDown className="w-3 h-3" />
-                                                        </button>
+                                                            <option value="">(ללא - רמה ראשית)</option>
+                                                            {levels.filter(l => l !== level.key).map(l => (
+                                                                <option key={l} value={l}>{PREDEFINED_LEVELS.find(pl => pl.key === l)?.label}</option>
+                                                            ))}
+                                                        </select>
                                                     </div>
-                                                    <div className="w-px h-8 bg-gray-200 mx-2"></div>
-                                                    <button
-                                                        onClick={() => handleRemoveLevel(index)}
-                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
+                                                )}
                                             </div>
-                                        ))}
-                                    </div>
-                                    <div className="p-4 bg-gray-50 border-t border-gray-200">
-                                        <Button
-                                            variant="outline"
-                                            onClick={handleAddLevel}
-                                            className="w-full border-dashed border-gray-300 text-gray-600 hover:text-blue-600 hover:border-blue-300"
-                                        >
-                                            <Plus className="w-4 h-4 ml-2" />
-                                            הוסף רמה נוספת
-                                        </Button>
-                                    </div>
+                                        )
+                                    })}
                                 </div>
 
                                 <div className="flex justify-between pt-4">
-                                    <Button variant="ghost" onClick={() => setStep(1)} className="text-gray-500">
-                                        חזור
-                                    </Button>
-                                    <Button onClick={() => setStep(3)} disabled={levels.some(l => !l.trim())}>
-                                        הבא: סיכום
+                                    <Button variant="ghost" onClick={() => setStep(1)}>חזור</Button>
+                                    <Button onClick={() => setStep(3)} disabled={levels.length === 0}>
+                                        המשך לתכונות
                                         <ArrowLeft className="mr-2 w-4 h-4" />
                                     </Button>
                                 </div>
                             </div>
-
                         )}
+
                         {step === 3 && (
                             <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 fade-in">
-                                <div className="text-center mb-8">
-                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">ניהול דירוגי תפקיד</h2>
-                                    <p className="text-gray-600">
-                                        האם תרצה לנהל במערכת דירוגי תפקיד ודרגות שכר?
-                                    </p>
+                                <div className="text-center">
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">תכונות נוספות</h2>
+                                    <p className="text-gray-600">האם תרצה לנהל במערכת דירוגי תפקיד וקטלוג משרות?</p>
                                 </div>
 
-                                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:border-blue-300 transition-colors cursor-pointer" onClick={() => setEnableJobGrades(!enableJobGrades)}>
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${enableJobGrades ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}>
-                                            {enableJobGrades && <Check className="w-4 h-4 text-white" />}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div
+                                        onClick={() => setUseJobGrades(!useJobGrades)}
+                                        className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${useJobGrades ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                    >
+                                        <div className="flex flex-col gap-4">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${useJobGrades ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                <Award className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">דירוגי תפקיד</h3>
+                                                <p className="text-sm text-gray-500 mt-1">ניהול רמות שכר, דרגות וקידום מקצועי.</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-semibold text-gray-900">כן, הפעל דירוגי תפקיד</h3>
-                                            <p className="text-sm text-gray-500">מאפשר להגדיר דרגות (כמו ג'וניור, בכיר, מנהל) ולשייך אותן לתפקידים ולעובדים.</p>
+                                    </div>
+
+                                    <div
+                                        onClick={() => setUseJobTitles(!useJobTitles)}
+                                        className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${useJobTitles ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                    >
+                                        <div className="flex flex-col gap-4">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${useJobTitles ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                <Briefcase className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">טבלת תפקידים</h3>
+                                                <p className="text-sm text-gray-500 mt-1">ניהול קטלוג משרות מרכזי לארגון.</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {!enableJobGrades && (
-                                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-600">
-                                        בבחירה זו, המערכת תעבוד בצורה שטוחה ללא ניהול דרגות רוחבי. כל תפקיד יעמוד בפני עצמו.
-                                    </div>
-                                )}
-
-                                <div className="flex justify-between pt-4">
-                                    <Button variant="ghost" onClick={() => setStep(2)} className="text-gray-500">
-                                        חזור
-                                    </Button>
+                                <div className="flex justify-between pt-8">
+                                    <Button variant="ghost" onClick={() => setStep(2)}>חזור</Button>
                                     <Button onClick={() => setStep(4)}>
-                                        הבא: סיכום
+                                        לסיכום ואישור
                                         <ArrowLeft className="mr-2 w-4 h-4" />
                                     </Button>
                                 </div>
                             </div>
-
                         )}
 
                         {step === 4 && (
-                            <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 fade-in text-center">
-                                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <Check className="w-10 h-10" />
-                                </div>
-
-                                <div>
-                                    <h2 className="text-3xl font-bold text-gray-900 mb-4">המבנה מוכן</h2>
-                                    <p className="text-gray-600 max-w-lg mx-auto">
-                                        שים לב: הגדרת המבנה הארגוני היא חד-פעמית. <br />
-                                        <span className="font-semibold text-red-600">לא ניתן</span> לשנות את היררכיית הרמות לאחר הסיום.
-                                    </p>
-                                </div>
-
-                                <div className="bg-white border border-gray-200 rounded-xl p-8 max-w-xl mx-auto shadow-sm">
-                                    <div className="flex flex-col items-center gap-4">
-                                        {levels.map((level, i) => (
-                                            <div key={i} className="flex flex-col items-center w-full animate-in fade-in slide-in-from-top-2" style={{ animationDelay: `${i * 100}ms` }}>
-                                                <div className="w-full bg-blue-50 border border-blue-100 text-blue-800 font-semibold py-3 px-6 rounded-lg shadow-sm">
-                                                    {level}
-                                                </div>
-                                                {i < levels.length - 1 && (
-                                                    <div className="h-6 w-px bg-gray-300 my-1"></div>
-                                                )}
-                                            </div>
-                                        ))}
+                            <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 fade-in">
+                                <div className="bg-red-50 border border-red-200 p-6 rounded-2xl flex items-start gap-4 shadow-sm text-right">
+                                    <AlertTriangle className="w-8 h-8 text-red-600 shrink-0" />
+                                    <div>
+                                        <h3 className="text-red-900 font-bold text-lg underline">שים לב - פעולה בלתי הפיכה!</h3>
+                                        <p className="text-red-800 mt-1 leading-relaxed">
+                                            הגדרת המבנה הארגוני היא יסודית לכל נתוני המערכת. <span className="font-extrabold text-red-700">לא ניתן יהיה לשנות או להוסיף רמות היררכיה</span> לאחר סיום שלב זה. בדוק היטב את התרשים למטה לפני האישור.
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="flex justify-center gap-4 pt-8">
-                                    <Button variant="outline" onClick={() => setStep(3)}>
-                                        חזור לעריכה
-                                    </Button>
-                                    <Button size="lg" onClick={handleSave} disabled={saving} className="px-8 min-w-[200px]">
-                                        {saving ? 'שומר הגדרות...' : 'סיים והתחל לעבוד'}
+                                <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm overflow-x-auto min-h-[300px] flex items-center justify-center">
+                                    <div className="flex justify-center min-w-max">
+                                        {rootLevels.map(node => renderVisNode(node))}
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-center gap-4 pt-4">
+                                    <Button variant="outline" size="lg" onClick={() => setStep(3)}>ערוך שוב</Button>
+                                    <Button size="lg" onClick={handleSave} disabled={saving} className="px-12 bg-blue-600 hover:bg-blue-700 h-12 text-lg">
+                                        {saving ? 'מגדיר ארגון...' : 'אישור וסיום הקמה'}
                                     </Button>
                                 </div>
                             </div>
@@ -385,19 +351,13 @@ export default function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
 function StepIndicator({ currentStep, stepNumber, title, description }: { currentStep: number, stepNumber: number, title: string, description: string }) {
     const isActive = currentStep === stepNumber
     const isCompleted = currentStep > stepNumber
-
     return (
-        <div className={`p-4 rounded-lg flex items-center gap-4 transition-colors ${isActive ? 'bg-blue-50' : 'bg-transparent'}`}>
-            <div className={`
-                w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all
-                ${isActive ? 'border-blue-600 text-blue-600 bg-white' : ''}
-                ${isCompleted ? 'bg-blue-600 border-blue-600 text-white' : ''}
-                ${!isActive && !isCompleted ? 'border-gray-200 text-gray-400' : ''}
-            `}>
+        <div className={`p-4 rounded-xl flex items-center gap-4 transition-all ${isActive ? 'bg-blue-50' : 'bg-transparent'}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 ${isActive ? 'border-blue-600 text-blue-600' : isCompleted ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 text-gray-400'}`}>
                 {isCompleted ? <Check className="w-4 h-4" /> : stepNumber}
             </div>
-            <div>
-                <p className={`font-semibold text-sm ${isActive || isCompleted ? 'text-gray-900' : 'text-gray-500'}`}>{title}</p>
+            <div className="text-right">
+                <p className={`font-bold text-sm ${isActive || isCompleted ? 'text-gray-900' : 'text-gray-400'}`}>{title}</p>
                 <p className="text-xs text-gray-500">{description}</p>
             </div>
         </div>

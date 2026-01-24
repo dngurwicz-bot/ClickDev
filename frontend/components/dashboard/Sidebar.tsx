@@ -43,10 +43,14 @@ const coreMenuItems: MenuItem[] = [
         icon: Network,
         children: [
             { href: '/dashboard/core/wizard', label: 'אשף הקמה מבנה ארגוני' },
-            { href: '/dashboard/core/settings', label: 'הגדרת מבנה ארגוני' },
+            { href: '/dashboard/core/structure-def', label: 'הגדרת מבנה ארגוני' },
+            { href: '/dashboard/core/divisions', label: 'טבלת חטיבות' },
             { href: '/dashboard/core/wings', label: 'טבלת אגפים' },
             { href: '/dashboard/core/departments', label: 'טבלת מחלקות' },
-            { href: '/dashboard/core/roles', label: 'טבלת תפקידים' },
+            { href: '/dashboard/core/teams', label: 'טבלת צוותים' },
+            { href: '/dashboard/core/positions', label: 'תקנים בארגון' },
+            { href: '/dashboard/core/titles', label: 'טבלת תפקידים' },
+            { href: '/dashboard/core/grades', label: 'דירוגי תפקיד' },
         ]
     },
     { href: '/dashboard/core/catalog', label: 'קטלוג משרות', icon: GraduationCap },
@@ -130,8 +134,44 @@ export default function Sidebar() {
         router.push('/login')
     }
 
-    const isCoreModule = pathname?.startsWith('/dashboard/core')
-    const menuItems = isCoreModule ? coreMenuItems : defaultMenuItems
+    const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+
+    useEffect(() => {
+        const isCore = pathname?.startsWith('/dashboard/core')
+        const items = isCore ? coreMenuItems : defaultMenuItems
+
+        if (isCore && currentOrg) {
+            // Filter core items based on hierarchy
+            const levels = currentOrg.hierarchy_levels || []
+
+            const filteredItems = items.map(item => {
+                if (item.label === 'מבנה ארגוני') {
+                    const children = item.children?.filter(child => {
+                        // Always show setup pages
+                        if (['אשף הקמה מבנה ארגוני', 'הגדרת מבנה ארגוני'].includes(child.label)) return true
+
+                        // Feature flags
+                        if (child.label === 'דירוגי תפקיד' && currentOrg.use_job_grades) return true
+                        if (child.label === 'טבלת תפקידים' && currentOrg.use_job_titles) return true
+
+                        // Show tables based on selected levels
+                        if (child.label === 'טבלת חטיבות' && levels.includes('Division')) return true
+                        if (child.label === 'טבלת אגפים' && levels.includes('Wing')) return true
+                        if (child.label === 'טבלת מחלקות' && levels.includes('Department')) return true
+                        if (child.label === 'טבלת צוותים' && levels.includes('Team')) return true
+                        if (child.label === 'תקנים בארגון' && levels.includes('Role')) return true
+
+                        return false
+                    })
+                    return { ...item, children }
+                }
+                return item
+            })
+            setMenuItems(filteredItems)
+        } else {
+            setMenuItems(items)
+        }
+    }, [pathname, currentOrg])
 
     return (
         <div className="w-64 bg-white border-l h-screen fixed right-0 top-0 flex flex-col shadow-sm">
