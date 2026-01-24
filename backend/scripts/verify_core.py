@@ -1,9 +1,9 @@
-import requests
+import httpx as requests
 import os
 from dotenv import load_dotenv
 import time
 
-load_dotenv(r"c:\Click\ClickDev\backend\.env")
+load_dotenv(r"c:\Click\backend\.env")
 
 API_URL = "http://127.0.0.1:8000"
 

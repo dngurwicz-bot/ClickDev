@@ -5,8 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowRight, Building2, Mail, Phone, MapPin, Send, CheckCircle2, XCircle,
   Users, Settings, Package, Edit, Trash2, Plus, Save, X, Globe, FileText,
-  AlertTriangle, Loader2, Upload, Search
+  AlertTriangle, Loader2, Upload, Search, Network
 } from 'lucide-react'
+import OrganizationStructureSetup from '@/components/admin/OrganizationStructureSetup'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import GlobalLoader from '@/components/ui/GlobalLoader'
@@ -32,6 +33,8 @@ interface Organization {
   is_active: boolean
   created_at: string
   notes?: string
+  hierarchy_levels?: string[]
+  config_lock?: boolean
 }
 
 interface AdminUser {
@@ -51,7 +54,7 @@ interface OrganizationUser {
   created_at: string
 }
 
-type TabType = 'details' | 'users' | 'modules' | 'settings'
+type TabType = 'details' | 'users' | 'modules' | 'settings' | 'structure'
 
 const AVAILABLE_MODULES = [
   { id: 'core', name: 'ליבה', nameEn: 'Core' },
@@ -501,6 +504,7 @@ export default function OrganizationDetailPage() {
 
   const tabs = [
     { id: 'details' as TabType, label: 'פרטים', icon: Building2 },
+    { id: 'structure' as TabType, label: 'מבנה ארגוני', icon: Network },
     { id: 'users' as TabType, label: 'משתמשים', icon: Users },
     { id: 'modules' as TabType, label: 'מודולים', icon: Package },
     { id: 'settings' as TabType, label: 'הגדרות', icon: Settings },
@@ -1284,6 +1288,16 @@ export default function OrganizationDetailPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Structure Tab */}
+          {activeTab === 'structure' && (
+            <OrganizationStructureSetup
+              orgId={orgId}
+              initialLevels={organization.hierarchy_levels}
+              initialLock={organization.config_lock}
+              onUpdate={fetchOrganization}
+            />
           )}
 
           {/* Settings Tab */}

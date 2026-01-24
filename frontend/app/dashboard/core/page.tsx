@@ -1,80 +1,237 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
-import {
-    GitGraph,
-    Network,
-    Briefcase,
-    GraduationCap,
-    ChevronRight,
-    Users
-} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Building2, Users, Settings, Briefcase, Activity, Clock, Wand2 } from 'lucide-react'
+import SetupWizard from '@/components/core/SetupWizard'
+import Link from 'next/link'
+import { useOrganization } from '@/lib/contexts/OrganizationContext'
+import { supabase } from '@/lib/supabase'
+import { format } from 'date-fns'
+import { he } from 'date-fns/locale'
+
+interface DashboardStats {
+    unitsCount: number
+    employeesCount: number
+    titlesCount: number
+    gradesCount: number
+}
+
+interface RecentActivity {
+    id: string
+    field_name: string
+    new_value: string | null
+    old_value: string | null
+    created_at: string
+    changer: {
+        email: string
+    } | null
+    unit?: {
+        name: string
+    }
+}
 
 export default function CoreDashboard() {
+    const { currentOrg } = useOrganization()
+    const [stats, setStats] = useState<DashboardStats>({ unitsCount: 0, employeesCount: 0, titlesCount: 0, gradesCount: 0 })
+    const [activities, setActivities] = useState<RecentActivity[]>([])
+    const [loading, setLoading] = useState(true)
+    const [showWizard, setShowWizard] = useState(false)
+
+    useEffect(() => {
+        if (!currentOrg) return
+
+        const fetchDashboardData = async () => {
+            setLoading(true)
+            try {
+                const { count: unitsCount } = await supabase.from('org_units').select('*', { count: 'exact', head: true }).eq('organization_id', currentOrg.id)
+                const { count: employeesCount } = await supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', currentOrg.id)
+
+                // Job titles and grades might not have RLS setup for viewer correctly or table might be empty
+                // Let's wrap them in try catch to avoid breaking the dashboard
+                let titlesCount = 0
+                let gradesCount = 0
+
+                try {
+                    const { count } = await supabase.from('job_titles').select('*', { count: 'exact', head: true }).eq('organization_id', currentOrg.id)
+                    titlesCount = count || 0
+                } catch (e) { console.error('Titles count error', e) }
+
+                try {
+                    const { count } = await supabase.from('job_grades').select('*', { count: 'exact', head: true }).eq('organization_id', currentOrg.id)
+                    gradesCount = count || 0
+                } catch (e) { console.error('Grades count error', e) }
+
+                setStats({
+                    unitsCount: unitsCount || 0,
+                    employeesCount: employeesCount || 0,
+                    titlesCount,
+                    gradesCount,
+                })
+
+                // Fetch Recent Activity (Org Unit History)
+                // Note: Join is tricky with history tables if not setup correctly. simpler query first.
+                // We need to fetch history and manually link or use a view. 
+                // Let's try simple fetch first.
+                const { data: historyData, error } = await supabase
+                    .from('org_unit_history')
+                    .select(`
+                        id, 
+                        field_name, 
+                        new_value, 
+                        old_value, 
+                        created_at,
+                        unit:org_units(name)
+                    `)
+                    .eq('organization_id', currentOrg.id)
+                    .order('created_at', { ascending: false })
+                    .limit(5)
+
+                if (historyData) {
+                    setActivities(historyData as any)
+                }
+
+            } catch (err) {
+                console.error('Error loading dashboard:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchDashboardData()
+    }, [currentOrg])
+
+    if (loading) return <div className="p-8">טוען נתונים...</div>
+
     return (
-        <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
-            {/* Header */}
+        <div className="p-8 max-w-6xl mx-auto space-y-8" dir="rtl">
             <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Click Core</h1>
-                <p className="text-gray-500">ניהול המבנה הארגוני, תפקידים והיסטוריה ארגונית</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">סקירה כללית</h1>
+                <p className="text-gray-500">ניהול הליבה הארגונית: מבנה, תפקידים ועובדים.</p>
             </div>
 
-            {/* Quick Actions / Modules */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer group border-t-4 border-t-blue-500">
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                            <Network className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="p-6 flex items-center justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">יחידות ארגוניות</p>
+                        <h3 className="text-2xl font-bold mt-1 text-gray-900">{stats.unitsCount}</h3>
                     </div>
-                    <h3 className="font-bold text-lg mb-1">מבנה ארגוני</h3>
-                    <p className="text-sm text-gray-500">ניהול היררכיה, אגפים ומחלקות</p>
+                    <div className="bg-blue-100 p-3 rounded-full text-blue-600">
+                        <Building2 className="w-6 h-6" />
+                    </div>
                 </Card>
 
-                <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer group border-t-4 border-t-indigo-500">
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-indigo-50 rounded-lg group-hover:bg-indigo-100 transition-colors">
-                            <Briefcase className="w-6 h-6 text-indigo-600" />
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                <Card className="p-6 flex items-center justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">עובדים פעילים</p>
+                        <h3 className="text-2xl font-bold mt-1 text-gray-900">{stats.employeesCount}</h3>
                     </div>
-                    <h3 className="font-bold text-lg mb-1">תפקידים</h3>
-                    <p className="text-sm text-gray-500">ניהול תקנים, איוש ומשרות</p>
+                    <div className="bg-green-100 p-3 rounded-full text-green-600">
+                        <Users className="w-6 h-6" />
+                    </div>
                 </Card>
 
-                <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer group border-t-4 border-t-purple-500">
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-purple-50 rounded-lg group-hover:bg-purple-100 transition-colors">
-                            <GraduationCap className="w-6 h-6 text-purple-600" />
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-500 transition-colors" />
+                <Card className="p-6 flex items-center justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">תפקידים מוגדרים</p>
+                        <h3 className="text-2xl font-bold mt-1 text-gray-900">{stats.titlesCount}</h3>
                     </div>
-                    <h3 className="font-bold text-lg mb-1">קטלוג משרות</h3>
-                    <p className="text-sm text-gray-500">דרגות, תיאורי תפקיד ודרישות</p>
+                    <div className="bg-purple-100 p-3 rounded-full text-purple-600">
+                        <Briefcase className="w-6 h-6" />
+                    </div>
                 </Card>
 
-                <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer group border-t-4 border-t-amber-500">
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-amber-50 rounded-lg group-hover:bg-amber-100 transition-colors">
-                            <GitGraph className="w-6 h-6 text-amber-600" />
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-amber-500 transition-colors" />
+                <Card className="p-6 flex items-center justify-between hover:shadow-md transition-shadow">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">דרגות שכר</p>
+                        <h3 className="text-2xl font-bold mt-1 text-gray-900">{stats.gradesCount}</h3>
                     </div>
-                    <h3 className="font-bold text-lg mb-1">היסטוריה (Time Machine)</h3>
-                    <p className="text-sm text-gray-500">צפייה בשינויים ארגוניים לאורך זמן</p>
+                    <div className="bg-amber-100 p-3 rounded-full text-amber-600">
+                        <Activity className="w-6 h-6" />
+                    </div>
                 </Card>
             </div>
 
-            {/* Recent Activity Placeholder */}
-            <Card className="p-6">
-                <h3 className="font-bold text-lg mb-4">פעילות אחרונה בליבה</h3>
-                <div className="text-center py-12 text-gray-500">
-                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>אין פעילות אחרונה להצגה</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Quick Actions */}
+                <div className="md:col-span-2 space-y-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Settings className="w-5 h-5" />
+                        פעולות מהירות
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Link href="/dashboard/core/structure">
+                            <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-blue-500">
+                                <h3 className="font-bold text-lg mb-2">ניהול מבנה ארגוני</h3>
+                                <p className="text-sm text-gray-500">צפייה בעץ הארגוני, הוספת יחידות ושינוי היררכיה.</p>
+                            </Card>
+                        </Link>
+                        <Link href="/dashboard/core/settings">
+                            <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-purple-500">
+                                <h3 className="font-bold text-lg mb-2">הגדרות תפקידים</h3>
+                                <p className="text-sm text-gray-500">ניהול קטלוג תפקידים, דרגות ורמות היררכיה.</p>
+                            </Card>
+                        </Link>
+                        <Link href="/dashboard/employees">
+                            <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-green-500">
+                                <h3 className="font-bold text-lg mb-2">ספר עובדים</h3>
+                                <p className="text-sm text-gray-500">חיפוש עובדים, עדכון פרטים וניהול תיקים.</p>
+                            </Card>
+                        </Link>
+
+                    </div>
                 </div>
-            </Card>
+
+                {/* Recent Activity Feed */}
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <Clock className="w-5 h-5" />
+                        פעילות אחרונה
+                    </h2>
+                    <Card className="p-0 overflow-hidden">
+                        {activities.length > 0 ? (
+                            <div className="divide-y divide-gray-100">
+                                {activities.map(activity => (
+                                    <div key={activity.id} className="p-4 hover:bg-gray-50 transition-colors">
+                                        <div className="text-sm font-medium text-gray-900">
+                                            שינוי ב-{activity.unit?.name || 'יחידה לא ידועה'}
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            עודכן שדה <span className="font-semibold">{translateField(activity.field_name)}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-400 mt-2 flex justify-between">
+                                            <span>{format(new Date(activity.created_at), 'dd/MM/yyyy HH:mm')}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-8 text-center text-gray-500 text-sm">
+                                אין פעילות אחרונה להצגה
+                            </div>
+                        )}
+                        <div className="p-3 bg-gray-50 text-center border-t text-xs text-blue-600 hover:underline cursor-pointer">
+                            צפה בכל ההיסטוריה
+                        </div>
+                    </Card>
+                </div>
+            </div>
+            <SetupWizard
+                isOpen={showWizard}
+                onClose={() => setShowWizard(false)}
+            />
         </div>
     )
+}
+
+function translateField(field: string) {
+    const map: Record<string, string> = {
+        name: 'שם יחידה',
+        manager_id: 'מנהל יחידה',
+        parent_id: 'יחידת אם',
+        type: 'סוג יחידה'
+    }
+    return map[field] || field
 }

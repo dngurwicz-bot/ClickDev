@@ -10,7 +10,11 @@ import {
     LogOut,
     Building2,
     FileText,
-    ChevronDown
+    ChevronDown,
+    Network,
+    Briefcase,
+    GraduationCap,
+    GitGraph
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -18,12 +22,82 @@ import { useState, useEffect } from 'react'
 import Logo from '@/components/Logo'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 
-const menuItems = [
+type MenuItem = {
+    label: string
+    icon: any
+    href?: string
+    children?: { href: string; label: string }[]
+}
+
+const defaultMenuItems: MenuItem[] = [
     { href: '/dashboard', label: 'דשבורד', icon: LayoutDashboard },
     { href: '/dashboard/employees', label: 'עובדים', icon: Users },
     { href: '/dashboard/documents', label: 'מסמכים', icon: FileText },
     { href: '/dashboard/settings', label: 'הגדרות', icon: Settings },
 ]
+
+const coreMenuItems: MenuItem[] = [
+    { href: '/dashboard/core', label: 'ראשי', icon: LayoutDashboard },
+    {
+        label: 'מבנה ארגוני',
+        icon: Network,
+        children: [
+            { href: '/dashboard/core/wizard', label: 'אשף הקמה מבנה ארגוני' },
+            { href: '/dashboard/core/settings', label: 'הגדרת מבנה ארגוני' },
+            { href: '/dashboard/core/wings', label: 'טבלת אגפים' },
+            { href: '/dashboard/core/departments', label: 'טבלת מחלקות' },
+            { href: '/dashboard/core/roles', label: 'טבלת תפקידים' },
+        ]
+    },
+    { href: '/dashboard/core/catalog', label: 'קטלוג משרות', icon: GraduationCap },
+    { href: '/dashboard/core/history', label: 'היסטוריה', icon: GitGraph },
+]
+
+function CollapsibleMenuItem({ item, pathname }: { item: MenuItem, pathname: string | null }) {
+    const isChildActive = item.children?.some(child => pathname === child.href)
+    const [isOpen, setIsOpen] = useState(isChildActive)
+
+    useEffect(() => {
+        if (isChildActive) setIsOpen(true)
+    }, [isChildActive])
+
+    return (
+        <div className="space-y-1">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${isChildActive
+                    ? 'text-primary font-medium'
+                    : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+                    }`}
+            >
+                <div className="flex items-center gap-3">
+                    <item.icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="mr-8 space-y-1 border-r border-gray-100 pr-2">
+                    {item.children?.map(child => {
+                        const isActive = pathname === child.href
+                        return (
+                            <Link
+                                key={child.href}
+                                href={child.href}
+                                className={`block px-3 py-2 text-sm rounded-lg transition-colors ${isActive
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+                                    }`}
+                            >
+                                {child.label}
+                            </Link>
+                        )
+                    })}
+                </div>
+            )}
+        </div>
+    )
+}
 
 export default function Sidebar() {
     const pathname = usePathname()
@@ -55,6 +129,9 @@ export default function Sidebar() {
         await supabase.auth.signOut()
         router.push('/login')
     }
+
+    const isCoreModule = pathname?.startsWith('/dashboard/core')
+    const menuItems = isCoreModule ? coreMenuItems : defaultMenuItems
 
     return (
         <div className="w-64 bg-white border-l h-screen fixed right-0 top-0 flex flex-col shadow-sm">
@@ -95,15 +172,35 @@ export default function Sidebar() {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 p-4 space-y-2">
-                {menuItems.map((item) => {
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                {menuItems.map((item, index) => {
                     const Icon = item.icon
-                    const isActive = pathname === item.href
+                    const hasChildren = 'children' in item && item.children && item.children.length > 0
+                    // Check if any child is active to expand by default or highlight parent
+                    const isChildActive = hasChildren && item.children?.some(child => pathname === child.href)
+                    const isActive = pathname === item.href || isChildActive
+
+                    // Simple state for expansion could be local, but for now let's just use a simple approach:
+                    // If we want it collapsible we need state. Let's create a sub-component or inline logic.
+                    // For simplicity, let's keep it expanded if active or just render flat list if we can't do complex state easily here without refactoring entire component.
+                    // Actually, let's use a details/summary or a state map if we want toggle.
+                    // Given the constraint of 'replace_file_content' on a large block, let's try to be smart.
+
+                    // Let's assume we want them always visible for now if it's the Core module to save clicks? 
+                    // No, user asked "When I click ... it opens".
+
+                    // We need a SidebarItem component ideally, but let's inline for now.
+
+                    if (hasChildren) {
+                        return (
+                            <CollapsibleMenuItem key={index} item={item} pathname={pathname} />
+                        )
+                    }
 
                     return (
                         <Link
                             key={item.href}
-                            href={item.href}
+                            href={item.href!}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
                                 ? 'bg-primary/10 text-primary font-medium'
                                 : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 
 # Load env variables
-load_dotenv()
+load_dotenv(r"c:\Click\backend\.env")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")

@@ -25,6 +25,7 @@ import {
     Search
 } from 'lucide-react'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
+import SetupWizard from '@/components/core/SetupWizard'
 
 interface ModuleTile {
     id: string
@@ -130,15 +131,36 @@ export default function DashboardPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const { currentOrg, isLoading: orgLoading } = useOrganization()
     const router = useRouter()
+    const [showSetupWizard, setShowSetupWizard] = useState(false)
 
     useEffect(() => {
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             setUser(user)
             setLoading(false)
+
+            // Initiate wizard check if org is loaded (might need separate effect if org loads later)
         }
         getUser()
     }, [router])
+
+    useEffect(() => {
+        if (!currentOrg) return;
+
+        const checkSetup = async () => {
+            // Simply check if we have any units. If 0, show wizard.
+            const { count } = await supabase
+                .from('org_units')
+                .select('*', { count: 'exact', head: true })
+                .eq('organization_id', currentOrg.id)
+
+            if (count === 0) {
+                setShowSetupWizard(true)
+            }
+        }
+
+        checkSetup()
+    }, [currentOrg])
 
     useEffect(() => {
         const fetchAnnouncements = async () => {
@@ -511,6 +533,12 @@ export default function DashboardPage() {
                     onDismiss={() => setCriticalAnnouncement(null)}
                 />
             )}
+
+
+            <SetupWizard
+                isOpen={showSetupWizard}
+                onClose={() => setShowSetupWizard(false)}
+            />
         </div>
     )
 }
