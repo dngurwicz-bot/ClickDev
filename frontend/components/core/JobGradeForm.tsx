@@ -90,7 +90,13 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
                     .eq('id', initialData.id)
                 if (error) {
                     if (error.code === '23505') {
-                        toast.error('רמת דירוג זו כבר קיימת במערכת במחלקת הליבה')
+                        if (error.message?.includes('level')) {
+                            toast.error('רמת דירוג זו כבר קיימת במערכת')
+                        } else if (error.message?.includes('name')) {
+                            toast.error('שם דירוג זה כבר קיים במערכת')
+                        } else {
+                            toast.error('דירוג זה כבר קיים במערכת (שם או רמה כפולים)')
+                        }
                     } else {
                         throw error
                     }
@@ -99,7 +105,13 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
                 const { error } = await supabase.from('job_grades').insert(payload)
                 if (error) {
                     if (error.code === '23505') {
-                        toast.error('רמת דירוג זו כבר קיימת במערכת במחלקת הליבה')
+                        if (error.message?.includes('level')) {
+                            toast.error('רמת דירוג זו כבר קיימת במערכת')
+                        } else if (error.message?.includes('name')) {
+                            toast.error('שם דירוג זה כבר קיים במערכת')
+                        } else {
+                            toast.error('דירוג זה כבר קיים במערכת (שם או רמה כפולים)')
+                        }
                     } else {
                         throw error
                     }

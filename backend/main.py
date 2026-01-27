@@ -537,6 +537,84 @@ async def get_employee_history(employee_id: str, user = Depends(require_super_ad
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/employees")
+async def create_employee(emp: EmployeeCreate, user = Depends(require_super_admin)):
+    try:
+        data = emp.dict(exclude_unset=True)
+        # Ensure organization_id is set (it's required in model but good to double check or handle logic if needed)
+        
+        response = supabase_admin.table("employees").insert(data).execute()
+        if not response.data:
+            raise HTTPException(status_code=400, detail="Failed to create employee")
+            
+        new_emp = response.data[0]
+
+        await log_activity(
+            user_id=user.id,
+            action_type="CREATE_EMPLOYEE",
+            entity_type="EMPLOYEE",
+            entity_id=new_emp["id"],
+            organization_id=emp.organization_id,
+            details={"name": f"{emp.first_name} {emp.last_name}", "job_title": emp.job_title}
+        )
+
+        return new_emp
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/employees/{employee_id}")
+async def update_employee(employee_id: str, updates: dict, user = Depends(require_super_admin)):
+    try:
+        # Standardize updates
+        updates["updated_at"] = datetime.utcnow().isoformat()
+        
+        response = supabase_admin.table("employees").update(updates).eq("id", employee_id).execute()
+        
+        if not response.data:
+             raise HTTPException(status_code=404, detail="Employee not found")
+        
+        updated_emp = response.data[0]
+
+        await log_activity(
+            user_id=user.id,
+            action_type="UPDATE_EMPLOYEE",
+            entity_type="EMPLOYEE",
+            entity_id=employee_id,
+            organization_id=updated_emp.get("organization_id"),
+            details=updates
+        )
+
+        return updated_emp
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/employees/{employee_id}")
+async def delete_employee(employee_id: str, user = Depends(require_super_admin)):
+    try:
+        # Check if employee has history or user mapping? 
+        # For now, we'll allow hard delete or maybe we should soft delete.
+        # Let's assume hard delete for now as per other endpoints, or change to is_active=False if preferred.
+        # User requested "Build what is needed", usually hard delete is risky. 
+        # But for consistency with existing delete endpoints, I'll implement delete.
+        
+        # Get org_id for logging before delete
+        emp = supabase_admin.table("employees").select("organization_id").eq("id", employee_id).single().execute()
+        org_id = emp.data.get("organization_id") if emp.data else None
+
+        response = supabase_admin.table("employees").delete().eq("id", employee_id).execute()
+        
+        await log_activity(
+            user_id=user.id,
+            action_type="DELETE_EMPLOYEE",
+            entity_type="EMPLOYEE",
+            entity_id=employee_id,
+            organization_id=org_id
+        )
+
+        return {"message": "Employee deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Statistics endpoints
 @app.get("/api/stats/dashboard")
 async def get_dashboard_stats(user = Depends(require_super_admin)):
