@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 import { OrganizationProvider } from '@/lib/contexts/OrganizationContext'
+import { SidebarProvider } from '@/lib/contexts/SidebarContext'
 
 export const metadata: Metadata = {
   title: 'Click',
@@ -20,7 +21,9 @@ export default function RootLayout({
       </head>
       <body>
         <OrganizationProvider>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
           <Toaster
             position="top-center"
             toastOptions={{

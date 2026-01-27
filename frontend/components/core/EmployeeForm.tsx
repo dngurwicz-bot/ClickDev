@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'react-hot-toast'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
-import { supabase } from '@/lib/supabase'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Save, X } from 'lucide-react'
+import { authFetch } from '@/lib/api'
 
 const employeeSchema = z.object({
     id_number: z.string().min(1, 'תעודת זהות היא שדה חובה'),
@@ -27,6 +27,22 @@ const employeeSchema = z.object({
     hire_date: z.string().min(1, 'תאריך תחילת עבודה הוא שדה חובה'),
     employee_number: z.string().optional(),
     gender: z.string().optional(),
+    passport_number: z.string().optional(),
+    prev_last_name: z.string().optional(),
+    prev_first_name: z.string().optional(),
+    additional_name: z.string().optional(),
+    army_status: z.string().optional(),
+    army_release_date: z.string().optional(),
+    marital_status: z.string().optional(),
+    nationality: z.string().optional(),
+    birth_date: z.string().optional(),
+    birth_country: z.string().optional(),
+    address_city: z.string().optional(),
+    address_street: z.string().optional(),
+    address_zip: z.string().optional(),
+    rank_id: z.string().optional(),
+    grade_id: z.string().optional(),
+    department: z.string().optional(),
 })
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>
@@ -34,10 +50,11 @@ type EmployeeFormValues = z.infer<typeof employeeSchema>
 interface EmployeeFormProps {
     initialData?: any
     onSuccess: () => void
-    onCancel: () => void
+    onCancel?: () => void
+    onlySections?: string[]
 }
 
-export function EmployeeForm({ initialData, onSuccess, onCancel }: EmployeeFormProps) {
+export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }: EmployeeFormProps) {
     const { currentOrg } = useOrganization()
     const [loading, setLoading] = useState(false)
 
@@ -57,6 +74,22 @@ export function EmployeeForm({ initialData, onSuccess, onCancel }: EmployeeFormP
             hire_date: initialData?.hire_date ? initialData.hire_date.split('T')[0] : new Date().toISOString().split('T')[0],
             employee_number: initialData?.employee_number || '',
             gender: initialData?.gender || 'unknown',
+            passport_number: initialData?.passport_number || '',
+            prev_last_name: initialData?.prev_last_name || '',
+            prev_first_name: initialData?.prev_first_name || '',
+            additional_name: initialData?.additional_name || '',
+            army_status: initialData?.army_status || '',
+            army_release_date: initialData?.army_release_date || '',
+            marital_status: initialData?.marital_status || 'single',
+            nationality: initialData?.nationality || 'IL',
+            birth_date: initialData?.birth_date || '',
+            birth_country: initialData?.birth_country || 'Israel',
+            address_city: initialData?.address_city || '',
+            address_street: initialData?.address_street || '',
+            address_zip: initialData?.address_zip || '',
+            rank_id: initialData?.rank_id || '',
+            grade_id: initialData?.grade_id || '',
+            department: initialData?.department || '',
         }
     })
 
@@ -68,23 +101,36 @@ export function EmployeeForm({ initialData, onSuccess, onCancel }: EmployeeFormP
             const employeeData = {
                 ...data,
                 organization_id: currentOrg.id,
-                email: data.email || null, // Handle empty string as null
+                email: data.email || null,
                 phone: data.phone || null,
                 mobile: data.mobile || null,
                 first_name_en: data.first_name_en || null,
                 last_name_en: data.last_name_en || null,
                 employee_number: data.employee_number || null,
+                birth_date: data.birth_date || null,
+                army_release_date: data.army_release_date || null,
+                passport_number: data.passport_number || null,
+                prev_last_name: data.prev_last_name || null,
+                prev_first_name: data.prev_first_name || null,
+                additional_name: data.additional_name || null,
+                address_city: data.address_city || null,
+                address_street: data.address_street || null,
+                address_zip: data.address_zip || null,
+                hire_date: data.hire_date || null,
+                rank_id: data.rank_id || null,
+                grade_id: data.grade_id || null,
+                department: data.department || null,
             }
 
             let response
             if (initialData) {
-                response = await fetch(`/api/employees/${initialData.id}`, {
+                response = await authFetch(`/api/employees/${initialData.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(employeeData)
                 })
             } else {
-                response = await fetch('/api/employees', {
+                response = await authFetch('/api/employees', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(employeeData)
@@ -107,121 +153,268 @@ export function EmployeeForm({ initialData, onSuccess, onCancel }: EmployeeFormP
     }
 
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="id_number">תעודת זהות *</Label>
-                    <Input id="id_number" {...form.register('id_number')} />
-                    {form.formState.errors.id_number && (
-                        <p className="text-sm text-red-500">{form.formState.errors.id_number.message}</p>
-                    )}
+        <div className="flex flex-col h-full bg-[#f3f4f6] overflow-hidden font-sans border border-gray-400" dir="rtl">
+            {/* Header Bar - New Legacy Style */}
+            <div className="bg-white border-b border-gray-300 p-2 flex justify-between items-center shadow-sm shrink-0">
+                <div className="flex items-center gap-4">
+                    <span className="font-bold text-lg text-gray-800">
+                        {initialData ? `${initialData.first_name || ''} ${initialData.last_name || ''}` : 'עובד חדש'}
+                    </span>
                 </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="employee_number">מספר עובד</Label>
-                    <Input id="employee_number" {...form.register('employee_number')} />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="first_name">שם פרטי *</Label>
-                    <Input id="first_name" {...form.register('first_name')} />
-                    {form.formState.errors.first_name && (
-                        <p className="text-sm text-red-500">{form.formState.errors.first_name.message}</p>
-                    )}
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="last_name">שם משפחה *</Label>
-                    <Input id="last_name" {...form.register('last_name')} />
-                    {form.formState.errors.last_name && (
-                        <p className="text-sm text-red-500">{form.formState.errors.last_name.message}</p>
-                    )}
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="first_name_en">שם פרטי (אנגלית)</Label>
-                    <Input id="first_name_en" dir="ltr" {...form.register('first_name_en')} />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="last_name_en">שם משפחה (אנגלית)</Label>
-                    <Input id="last_name_en" dir="ltr" {...form.register('last_name_en')} />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="gender">מגדר</Label>
-                    <Select onValueChange={(val) => form.setValue('gender', val)} defaultValue={form.getValues('gender')}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="בחר מגדר" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="male">זכר</SelectItem>
-                            <SelectItem value="female">נקבה</SelectItem>
-                            <SelectItem value="other">אחר</SelectItem>
-                            <SelectItem value="unknown">לא ידוע</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="email">אימייל</Label>
-                    <Input id="email" type="email" dir="ltr" {...form.register('email')} />
-                    {form.formState.errors.email && (
-                        <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
-                    )}
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="mobile">נייד</Label>
-                    <Input id="mobile" dir="ltr" {...form.register('mobile')} />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="phone">טלפון</Label>
-                    <Input id="phone" dir="ltr" {...form.register('phone')} />
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="job_title">תפקיד *</Label>
-                    <Input id="job_title" {...form.register('job_title')} />
-                    {form.formState.errors.job_title && (
-                        <p className="text-sm text-red-500">{form.formState.errors.job_title.message}</p>
-                    )}
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="employment_type">סוג העסקה</Label>
-                    <Select onValueChange={(val) => form.setValue('employment_type', val)} defaultValue={form.getValues('employment_type')}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="בחר סוג העסקה" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="full_time">משרה מלאה</SelectItem>
-                            <SelectItem value="part_time">משרה חלקית</SelectItem>
-                            <SelectItem value="hourly">שעתי</SelectItem>
-                            <SelectItem value="contractor">קבלן</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="hire_date">תאריך תחילת עבודה *</Label>
-                    <Input id="hire_date" type="date" {...form.register('hire_date')} />
-                    {form.formState.errors.hire_date && (
-                        <p className="text-sm text-red-500">{form.formState.errors.hire_date.message}</p>
+                <div className="flex gap-2">
+                    <button type="button" onClick={form.handleSubmit(onSubmit)} className="p-1 hover:bg-gray-100 rounded text-[#00A896]" title="שמור"><Save className="w-5 h-5" /></button>
+                    {onCancel && (
+                        <button type="button" onClick={onCancel} className="p-1 hover:bg-gray-100 rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
                     )}
                 </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={onCancel}>
-                    ביטול
-                </Button>
-                <Button type="submit" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {initialData ? 'עדכן עובד' : 'צור עובד'}
-                </Button>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-auto p-8 pt-6 content-start">
+                <div className="space-y-8 w-full max-w-5xl mx-auto">
+                    {/* Identification Section (Event 101/200) */}
+                    {(!onlySections || onlySections.includes('identification')) && (
+                        <div id="identification" className="space-y-3">
+                            <div className="border-b border-blue-200 pb-1 mb-4 flex items-center gap-2">
+                                <span className="h-4 w-1 bg-blue-600 rounded-full"></span>
+                                <h3 className="text-base font-bold text-blue-900 leading-none">נתוני זיהוי</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="מספר עובד">
+                                    <Input {...form.register('employee_number')} className="h-7 text-sm bg-[#fdfdfd] border-slate-300 focus:border-blue-500 rounded-sm font-bold text-blue-800" />
+                                </FormRow>
+                                <FormRow label="תעודת זהות" required error={form.formState.errors.id_number?.message}>
+                                    <Input {...form.register('id_number')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="תאריך לידה">
+                                    <Input type="date" {...form.register('birth_date')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Personal Status Section (Event 104) */}
+                    {(!onlySections || onlySections.includes('status')) && (
+                        <div id="status" className="space-y-3">
+                            <div className="border-b border-blue-200 pb-1 mb-4 flex items-center gap-2">
+                                <span className="h-4 w-1 bg-blue-600 rounded-full"></span>
+                                <h3 className="text-base font-bold text-blue-900 leading-none">מצב אישי (אירוע 104)</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+
+                                <FormRow label="דרכון">
+                                    <Input {...form.register('passport_number')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="ארץ לידה">
+                                    <Input {...form.register('birth_country')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="לאום">
+                                    <Input {...form.register('nationality')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="מגדר">
+                                    <Select onValueChange={(val) => form.setValue('gender', val)} defaultValue={form.getValues('gender')}>
+                                        <SelectTrigger className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm">
+                                            <SelectValue placeholder="בחר" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="male">זכר</SelectItem>
+                                            <SelectItem value="female">נקבה</SelectItem>
+                                            <SelectItem value="unknown">לא ידוע</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormRow>
+                                <FormRow label="מצב משפחתי">
+                                    <Select onValueChange={(val) => form.setValue('marital_status', val)} defaultValue={form.getValues('marital_status')}>
+                                        <SelectTrigger className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm">
+                                            <SelectValue placeholder="בחר" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="single">רווק/ה</SelectItem>
+                                            <SelectItem value="married">נשוי/ה</SelectItem>
+                                            <SelectItem value="divorced">גרוש/ה</SelectItem>
+                                            <SelectItem value="widowed">אלמן/ה</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormRow>
+                            </div>
+                        </div>
+                    )}
+                    {(!onlySections || onlySections.includes('names')) && (
+                        <div id="names" className="space-y-3">
+                            <div className="border-b border-blue-200 pb-1 mb-4 flex items-center gap-2">
+                                <span className="h-4 w-1 bg-blue-600 rounded-full"></span>
+                                <h3 className="text-base font-bold text-blue-900 leading-none">שמות</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="שם פרטי" required error={form.formState.errors.first_name?.message}>
+                                    <Input {...form.register('first_name')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="שם משפחה" required error={form.formState.errors.last_name?.message}>
+                                    <Input {...form.register('last_name')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="שם משפחה קודם">
+                                    <Input {...form.register('prev_last_name')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="שם פרטי קודם">
+                                    <Input {...form.register('prev_first_name')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="שם פרטי (En)">
+                                    <Input {...form.register('first_name_en')} dir="ltr" className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="שם משפחה (En)">
+                                    <Input {...form.register('last_name_en')} dir="ltr" className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="שם נוסף">
+                                    <Input {...form.register('additional_name')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Contact Section */}
+                    {(!onlySections || onlySections.includes('contact')) && (
+                        <div id="contact" className="space-y-3">
+                            <div className="border-b border-blue-200 pb-1 mb-4 flex items-center gap-2">
+                                <span className="h-4 w-1 bg-blue-600 rounded-full"></span>
+                                <h3 className="text-base font-bold text-blue-900 leading-none">פרטי התקשרות ומגורים</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="טלפון נייד">
+                                    <Input {...form.register('mobile')} dir="ltr" className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="טלפון בבית">
+                                    <Input {...form.register('phone')} dir="ltr" className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="דואר אלקטרוני">
+                                    <Input type="email" {...form.register('email')} dir="ltr" className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="עיר / יישוב">
+                                    <Input {...form.register('address_city')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="רחוב ומספר">
+                                    <Input {...form.register('address_street')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="מיקוד">
+                                    <Input {...form.register('address_zip')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Army Service Section */}
+                    {(!onlySections || onlySections.includes('army')) && (
+                        <div id="army" className="space-y-3">
+                            <div className="border-b border-blue-200 pb-1 mb-4 flex items-center gap-2">
+                                <span className="h-4 w-1 bg-blue-600 rounded-full"></span>
+                                <h3 className="text-base font-bold text-blue-900 leading-none">שירות צבאי</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="מעמד צבאי">
+                                    <Select onValueChange={(val) => form.setValue('army_status', val)} defaultValue={form.getValues('army_status')}>
+                                        <SelectTrigger className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm">
+                                            <SelectValue placeholder="בחר" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="completed">שירות מלא</SelectItem>
+                                            <SelectItem value="exempt">פטור</SelectItem>
+                                            <SelectItem value="reserve">מילואים</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormRow>
+                                <FormRow label="תאריך שחרור">
+                                    <Input type="date" {...form.register('army_release_date')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Job Info Section */}
+                    {((!initialData) || (onlySections && onlySections.includes('job'))) && (
+                        <div id="job" className="space-y-3">
+                            <div className="border-b border-blue-200 pb-1 mb-4 flex items-center gap-2">
+                                <span className="h-4 w-1 bg-blue-600 rounded-full"></span>
+                                <h3 className="text-base font-bold text-blue-900 leading-none">פרטי העסקה (אירוע 203)</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="תפקיד" required error={form.formState.errors.job_title?.message}>
+                                    <Input {...form.register('job_title')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="מחלקה">
+                                    <Input {...form.register('department')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="דירוג">
+                                    <Input {...form.register('rank_id')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="דרגה">
+                                    <Input {...form.register('grade_id')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
+                                </FormRow>
+                                <FormRow label="סוג העסקה">
+                                    <Select onValueChange={(val) => form.setValue('employment_type', val)} defaultValue={form.getValues('employment_type')}>
+                                        <SelectTrigger className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm">
+                                            <SelectValue placeholder="בחר" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="full_time">משרה מלאה</SelectItem>
+                                            <SelectItem value="part_time">משרה חלקית</SelectItem>
+                                            <SelectItem value="hourly">שעתי</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormRow>
+                                <FormRow label="תאריך תחילת עבודה" required error={form.formState.errors.hire_date?.message}>
+                                    <Input type="date" {...form.register('hire_date')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm font-bold" />
+                                </FormRow>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </form>
+
+            {/* Hilan Action Bar (Bottom Bar) */}
+            <div className="h-12 bg-[#d1d5db] border-t border-gray-400 flex items-center px-4 justify-between shrink-0 shadow-inner z-20">
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-6 text-xs font-bold shadow-sm"
+                >
+                    יציאה (Exit)
+                </button>
+
+                <div className="flex gap-3">
+                    <button
+                        type="button"
+                        onClick={() => form.reset()}
+                        className="h-8 bg-white border border-red-400 text-red-600 hover:bg-red-50 px-6 text-xs font-bold shadow-sm"
+                    >
+                        ביטול שינויים
+                    </button>
+                    <button
+                        onClick={form.handleSubmit(onSubmit)}
+                        disabled={loading}
+                        className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-6 text-xs font-bold shadow-sm flex items-center gap-2"
+                    >
+                        {loading && <Loader2 className="h-3 w-3 animate-spin" />}
+                        עדכון (Save)
+                    </button>
+                </div>
             </div>
-        </form>
+        </div>
+    )
+}
+
+/**
+ * Dense Form Row with right-aligned label (Matching Hilan Label Style)
+ */
+function FormRow({ label, children, required, error }: { label: string; children: React.ReactNode; required?: boolean; error?: string }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+                <Label className="w-32 text-right text-sm font-semibold text-slate-700 shrink-0 leading-tight">
+                    {label}{required && <span className="text-red-500 mr-1">*</span>}
+                </Label>
+                <div className="flex-1 min-w-0">
+                    {children}
+                </div>
+            </div>
+            {error && <p className="text-xs text-red-600 text-right pr-2 font-medium">{error}</p>}
+        </div>
     )
 }

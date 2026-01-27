@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import Logo from '@/components/Logo'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
+import { useSidebar, useSidebarActions } from '@/lib/contexts/SidebarContext'
 
 type MenuItem = {
     label: string
@@ -38,6 +39,7 @@ const defaultMenuItems: MenuItem[] = [
 
 const coreMenuItems: MenuItem[] = [
     { href: '/dashboard/core', label: 'ראשי', icon: LayoutDashboard },
+    { href: '/dashboard/core/employees', label: 'תיק עובד', icon: Users },
     {
         label: 'מבנה ארגוני',
         icon: Network,
@@ -109,6 +111,8 @@ export default function Sidebar() {
     const [userName, setUserName] = useState<string>('')
     const [userAvatar, setUserAvatar] = useState<string | null>(null)
     const { currentOrg, organizations, setCurrentOrg, isLoading } = useOrganization()
+    const { customItems } = useSidebar()
+    const { setCustomItems } = useSidebarActions()
 
     useEffect(() => {
         const getUser = async () => {
@@ -213,44 +217,52 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                {menuItems.map((item, index) => {
-                    const Icon = item.icon
-                    const hasChildren = 'children' in item && item.children && item.children.length > 0
-                    // Check if any child is active to expand by default or highlight parent
-                    const isChildActive = hasChildren && item.children?.some(child => pathname === child.href)
-                    const isActive = pathname === item.href || isChildActive
+                {customItems && customItems.length > 0 ? (
+                    <div className="space-y-4">
+                        <div className="px-4 py-2 bg-slate-100 rounded-lg">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">ניווט מהיר</h3>
+                        </div>
+                        <div className="space-y-1">
+                            {customItems.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={item.onClick}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-text-secondary hover:bg-gray-50 hover:text-text-primary transition-colors text-right"
+                                >
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-primary shrink-0" />
+                                    <span className="text-sm font-medium">{item.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    menuItems.map((item, index) => {
+                        const Icon = item.icon
+                        const hasChildren = 'children' in item && item.children && item.children.length > 0
+                        const isChildActive = hasChildren && item.children?.some(child => pathname === child.href)
+                        const isActive = pathname === item.href || isChildActive
 
-                    // Simple state for expansion could be local, but for now let's just use a simple approach:
-                    // If we want it collapsible we need state. Let's create a sub-component or inline logic.
-                    // For simplicity, let's keep it expanded if active or just render flat list if we can't do complex state easily here without refactoring entire component.
-                    // Actually, let's use a details/summary or a state map if we want toggle.
-                    // Given the constraint of 'replace_file_content' on a large block, let's try to be smart.
+                        if (hasChildren) {
+                            return (
+                                <CollapsibleMenuItem key={index} item={item} pathname={pathname} />
+                            )
+                        }
 
-                    // Let's assume we want them always visible for now if it's the Core module to save clicks? 
-                    // No, user asked "When I click ... it opens".
-
-                    // We need a SidebarItem component ideally, but let's inline for now.
-
-                    if (hasChildren) {
                         return (
-                            <CollapsibleMenuItem key={index} item={item} pathname={pathname} />
+                            <Link
+                                key={item.href}
+                                href={item.href!}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                                    ? 'bg-primary/10 text-primary font-medium'
+                                    : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+                                    }`}
+                            >
+                                <Icon className="w-5 h-5" />
+                                <span>{item.label}</span>
+                            </Link>
                         )
-                    }
-
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href!}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
-                                }`}
-                        >
-                            <Icon className="w-5 h-5" />
-                            <span>{item.label}</span>
-                        </Link>
-                    )
-                })}
+                    })
+                )}
             </nav>
 
             {/* User info and logout */}

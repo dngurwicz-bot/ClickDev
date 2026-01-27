@@ -25,8 +25,9 @@ export default function DataTable<TData>({
     columns,
     data,
     onRowClick,
-    showSearch = true
-}: DataTableProps<TData>) {
+    showSearch = true,
+    enableDateFilter = false // Default to false to prevent crashing on lists without dates
+}: DataTableProps<TData> & { enableDateFilter?: boolean }) {
     const [globalFilter, setGlobalFilter] = useState('')
     const [columnFilters, setColumnFilters] = useState<any[]>([])
 
@@ -49,31 +50,25 @@ export default function DataTable<TData>({
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         filterFns: {
+            // Only used if enabled
             dateRange: (row, columnId, filterValue) => {
+                if (!enableDateFilter) return true
                 const { from, to } = filterValue
-                const rowEffective = row.getValue('effective_date') as string
-                const rowExpiry = row.getValue('expiry_date') as string | null
+                try {
+                    const rowEffective = row.getValue('effective_date') as string
+                    const rowExpiry = row.getValue('expiry_date') as string | null
+                    if (!rowEffective) return true
 
-                if (!rowEffective) return true // If no logic, don't filter out
+                    const rowStart = rowEffective
+                    const rowEnd = rowExpiry || '9999-12-31'
+                    const filterStart = from || '0001-01-01'
+                    const filterEnd = to || '9999-12-31'
 
-                const rowStart = rowEffective
-                const rowEnd = rowExpiry || '9999-12-31'
-
-                const filterStart = from || '0001-01-01'
-                const filterEnd = to || '9999-12-31'
-
-                return rowStart <= filterEnd && rowEnd >= filterStart
-            }
-        },
-        getFacetedUniqueValues: (table, columnId) => () => {
-            const map = new Map()
-            table.getPreFilteredRowModel().flatRows.forEach(row => {
-                const value = row.getValue(columnId)
-                if (value !== undefined && value !== null) {
-                    map.set(value, (map.get(value) || 0) + 1)
+                    return rowStart <= filterEnd && rowEnd >= filterStart
+                } catch (e) {
+                    return true
                 }
-            })
-            return map
+            }
         },
         state: {
             globalFilter,
@@ -82,28 +77,35 @@ export default function DataTable<TData>({
         onGlobalFilterChange: setGlobalFilter,
         onColumnFiltersChange: setColumnFilters,
         initialState: {
-            pagination: {
-                pageSize: 50, // More rows per page for ERP feel
-            },
+            pagination: { pageSize: 50 },
         },
     })
 
-    // Apply date range filter manually since it's a cross-column global concept for this specific ERP use case
+    // Apply date range filter manually only if enabled
     const filteredData = table.getRowModel().rows.filter(row => {
+        if (!enableDateFilter) return true
         if (!fromDate && !toDate) return true
 
-        const rowEffective = row.getValue('effective_date') as string
-        const rowExpiry = row.getValue('expiry_date') as string | null
+        try {
+            // Check if column exists before access to avoid crashing
+            const effectiveCol = row.getAllCells().find(c => c.column.id === 'effective_date')
+            if (!effectiveCol) return true
 
-        if (!rowEffective) return true
+            const rowEffective = effectiveCol.getValue() as string
+            const rowExpiry = row.getValue('expiry_date') as string | null
 
-        const rowStart = rowEffective
-        const rowEnd = rowExpiry || '9999-12-31'
+            if (!rowEffective) return true
 
-        const filterStart = fromDate || '0001-01-01'
-        const filterEnd = toDate || '9999-12-31'
+            const rowStart = rowEffective
+            const rowEnd = rowExpiry || '9999-12-31'
 
-        return rowStart <= filterEnd && rowEnd >= filterStart
+            const filterStart = fromDate || '0001-01-01'
+            const filterEnd = toDate || '9999-12-31'
+
+            return rowStart <= filterEnd && rowEnd >= filterStart
+        } catch (e) {
+            return true
+        }
     })
 
     return (

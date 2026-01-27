@@ -189,7 +189,7 @@ export default function OrganizationsPage() {
           }}
           className="text-[#00A896] hover:text-[#008f80] font-bold text-xs underline"
         >
-          פרטים >>
+          {'פרטים >>'}
         </button>
       ),
       enableSorting: false,

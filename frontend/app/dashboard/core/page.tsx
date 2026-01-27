@@ -171,7 +171,7 @@ export default function CoreDashboard() {
                         </Link>
                         <Link href="/dashboard/core/employees">
                             <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-green-500">
-                                <h3 className="font-bold text-lg mb-2">ספר עובדים</h3>
+                                <h3 className="font-bold text-lg mb-2">תיק עובד</h3>
                                 <p className="text-sm text-gray-500">חיפוש עובדים, עדכון פרטים וניהול תיקים.</p>
                             </Card>
                         </Link>

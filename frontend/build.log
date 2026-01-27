@@ -1,0 +1,46 @@
+
+> click-frontend@1.0.0 build
+> next build
+
+ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Click\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Click\frontend\package-lock.json
+
+Γû▓ Next.js 16.1.2 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 2 errors:
+./frontend/app/admin/organizations/page.tsx:192:22
+Parsing ecmascript source code failed
+  190 |           className="text-[#00A896] hover:text-[#008f80] font-bold text-xs underline"
+  191 |         >
+> 192 |           ╫ñ╫¿╫ÿ╫Ö╫¥ >>
+      |                      ^
+  193 |         </button>
+  194 |       ),
+  195 |       enableSorting: false,
+
+Unexpected token. Did you mean `{'>'}` or `&gt;`?
+
+
+./frontend/app/admin/organizations/page.tsx:192:23
+Parsing ecmascript source code failed
+  190 |           className="text-[#00A896] hover:text-[#008f80] font-bold text-xs underline"
+  191 |         >
+> 192 |           ╫ñ╫¿╫ÿ╫Ö╫¥ >>
+      |                       ^
+  193 |         </button>
+  194 |       ),
+  195 |       enableSorting: false,
+
+Unexpected token. Did you mean `{'>'}` or `&gt;`?
+
+
+    at <unknown> (./frontend/app/admin/organizations/page.tsx:192:22)
+    at <unknown> (./frontend/app/admin/organizations/page.tsx:192:23)
