@@ -46,7 +46,8 @@ class TemporalEngine:
             201: "employee_status",    # Status Changes
             203: "employee_ranks",     # Rank/Role Changes
             204: "employee_splits",    # Cost Center Splits
-            205: "employee_tax"       # Tax Parameters
+            205: "employee_tax",       # Tax Parameters
+            104: "employee_personal_status"  # Personal Status (Mutable)
         }
         return mapping.get(event_code, "generic_events")
 

@@ -68,6 +68,8 @@ async def create_employee(emp: EmployeeCreate,
             "department": new_emp.get("department"),
             "manager_id": new_emp.get("manager_id"),
             "employment_type": new_emp.get("employment_type"),
+            "employee_number": new_emp.get("employee_number"),
+            "birth_date": new_emp.get("birth_date"),
             "valid_from": effective_date,
             "valid_to": None,
             "changed_by": user.id,
@@ -124,7 +126,7 @@ async def update_employee(employee_id: str, updates: dict,
         for key, value in updates.items():
             if key in ignore_fields:
                 continue
-            
+
             # Basic equality check.
             if current_emp.get(key) != value:
                 has_changes = True
@@ -144,7 +146,10 @@ async def update_employee(employee_id: str, updates: dict,
             .execute()
 
         if not response.data:
-            raise HTTPException(status_code=404, detail="Employee not found after update")
+            raise HTTPException(
+                status_code=404,
+                detail="Employee not found after update"
+            )
 
         updated_emp = response.data[0]
 
@@ -172,6 +177,8 @@ async def update_employee(employee_id: str, updates: dict,
             "first_name_en": updated_emp.get("first_name_en"),
             "last_name_en": updated_emp.get("last_name_en"),
             "id_number": updated_emp.get("id_number"),
+            "employee_number": updated_emp.get("employee_number"),
+            "birth_date": updated_emp.get("birth_date"),
             "mobile": updated_emp.get("mobile"),
             "city": updated_emp.get("city"),
             "job_title": updated_emp.get("job_title"),
@@ -231,4 +238,22 @@ async def delete_employee(employee_id: str, user=Depends(require_super_admin)):
 
         return {"message": "Employee deleted successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        # Check for constraint violation details in the exception
+        error_msg = str(e)
+        if "foreign key constraint" in error_msg.lower():
+            # Try to extract table name if possible
+            # or just return the DB error
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Cannot delete employee: Data integrity error. "
+                    f"{error_msg}"
+                )
+            ) from e
+
+        # Log the full error for debugging
+        print(f"Delete Error: {error_msg}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Server error: {error_msg}"
+        ) from e

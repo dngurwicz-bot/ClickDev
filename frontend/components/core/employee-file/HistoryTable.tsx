@@ -23,9 +23,10 @@ interface HistoryTableProps {
     onAddClick?: () => void
     isEditing?: boolean
     onRowClick?: (record: any) => void
+    showValidity?: boolean
 }
 
-export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick, isEditing, onRowClick }: HistoryTableProps) {
+export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick, isEditing, onRowClick, showValidity = true }: HistoryTableProps) {
     const [history, setHistory] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -105,8 +106,12 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
                 <table className="w-full border-collapse table-fixed">
                     <thead className="sticky top-0 z-10">
                         <tr className="bg-[#c6d7e7] border-b border-gray-400">
-                            <th className="border-l border-gray-400 p-0.5 text-sm font-bold text-center w-24 text-gray-800">תאריך תוקף</th>
-                            <th className="border-l border-gray-400 p-0.5 text-sm font-bold text-center w-24 text-gray-800">גמר תוקף</th>
+                            {showValidity && (
+                                <>
+                                    <th className="border-l border-gray-400 p-0.5 text-sm font-bold text-center w-24 text-gray-800">תאריך תוקף</th>
+                                    <th className="border-l border-gray-400 p-0.5 text-sm font-bold text-center w-24 text-gray-800">גמר תוקף</th>
+                                </>
+                            )}
                             {columns.map((col) => (
                                 <th key={col.key} className="border-l border-gray-400 p-0.5 text-sm font-bold text-center text-gray-800">
                                     {col.label}
@@ -124,12 +129,16 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
                                         "hover:bg-[#ebf4ff] border-b border-gray-200 transition-colors cursor-pointer",
                                         idx % 2 === 0 ? "bg-white" : "bg-slate-50/20"
                                     )}>
-                                    <td className="border-l border-gray-200 p-0.5 text-sm text-center font-bold text-blue-800 tabular-nums">
-                                        {record.valid_from ? format(new Date(record.valid_from), 'dd/MM/yyyy') : '-'}
-                                    </td>
-                                    <td className="border-l border-gray-200 p-0.5 text-sm text-center text-gray-600 tabular-nums">
-                                        {record.valid_to ? format(new Date(record.valid_to), 'dd/MM/yyyy') : '-'}
-                                    </td>
+                                    {showValidity && (
+                                        <>
+                                            <td className="border-l border-gray-200 p-0.5 text-sm text-center font-bold text-blue-800 tabular-nums">
+                                                {record.valid_from ? format(new Date(record.valid_from), 'dd/MM/yyyy') : '-'}
+                                            </td>
+                                            <td className="border-l border-gray-200 p-0.5 text-sm text-center text-gray-600 tabular-nums">
+                                                {record.valid_to ? format(new Date(record.valid_to), 'dd/MM/yyyy') : '-'}
+                                            </td>
+                                        </>
+                                    )}
                                     {columns.map((col) => (
                                         <td key={col.key} className="border-l border-gray-200 p-0.5 text-sm px-2 truncate text-gray-700">
                                             {col.format ? col.format(record[col.key]) : (record[col.key] ?? '')}

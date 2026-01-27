@@ -1,8 +1,11 @@
+"""Module containing Pydantic schemas for the application."""
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from pydantic import BaseModel
 
 # Pydantic models
+
+
 class OrganizationCreate(BaseModel):
     """Model for creating an organization."""
     name: str
@@ -16,6 +19,7 @@ class OrganizationCreate(BaseModel):
     subscription_tier_id: Optional[str] = None
     logo_url: Optional[str] = None
     org_number: Optional[str] = None
+
 
 class OrganizationResponse(BaseModel):
     """Model for organization response data."""
@@ -34,21 +38,26 @@ class OrganizationResponse(BaseModel):
     config_lock: bool
     created_at: datetime
 
+
 class OrganizationSetup(BaseModel):
     """Model for configuring organization settings."""
     hierarchy_levels: List[str]
     lock_configuration: bool
 
 # Core Models
+
+
 class JobGradeCreate(BaseModel):
     """Model for creating a job grade."""
     name: str
     level: int
 
+
 class JobTitleCreate(BaseModel):
     """Model for creating a job title."""
     title: str
     default_grade_id: Optional[str] = None
+
 
 class OrgUnitCreate(BaseModel):
     """Model for creating an organizational unit."""
@@ -57,12 +66,14 @@ class OrgUnitCreate(BaseModel):
     parent_id: Optional[str] = None
     manager_id: Optional[str] = None
 
+
 class PositionCreate(BaseModel):
     """Model for creating a position."""
     org_unit_id: Optional[str] = None
     job_title_id: str
     is_manager_position: bool = False
     occupant_id: Optional[str] = None
+
 
 class AnnouncementCreate(BaseModel):
     """Model for creating an announcement."""
@@ -73,6 +84,7 @@ class AnnouncementCreate(BaseModel):
     target_organizations: Optional[List[str]] = None
     is_active: Optional[bool] = True
 
+
 class AnnouncementUpdate(BaseModel):
     """Model for updating an announcement."""
     title: Optional[str] = None
@@ -81,6 +93,7 @@ class AnnouncementUpdate(BaseModel):
     target_type: Optional[str] = None
     target_organizations: Optional[List[str]] = None
     is_active: Optional[bool] = None
+
 
 class AnnouncementResponse(BaseModel):
     """Model for announcement response data."""
@@ -92,6 +105,7 @@ class AnnouncementResponse(BaseModel):
     target_organizations: Optional[List[str]]
     is_active: bool
     created_at: datetime
+
 
 class EmployeeCreate(BaseModel):
     """Model for creating an employee."""
@@ -111,12 +125,13 @@ class EmployeeCreate(BaseModel):
     employee_number: Optional[str] = None
     hire_date: str
     employment_type: Optional[str] = None
-    job_title: str
+    job_title: Optional[str] = None
     department: Optional[str] = None
     manager_id: Optional[str] = None
     bank_name: Optional[str] = None
     bank_branch: Optional[str] = None
     bank_account: Optional[str] = None
+
 
 class UserInvite(BaseModel):
     """Model for inviting a user."""
@@ -126,12 +141,14 @@ class UserInvite(BaseModel):
     role: str  # 'super_admin', 'org_admin', 'user'
     organization_id: Optional[str] = None
 
+
 class UserUpdate(BaseModel):
     """Model for updating a user."""
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     role: Optional[str] = None
     organization_id: Optional[str] = None
+
 
 class TaskCreate(BaseModel):
     """Model for creating an admin task."""
@@ -141,6 +158,7 @@ class TaskCreate(BaseModel):
     assigned_to: Optional[str] = None
     due_date: Optional[datetime] = None
 
+
 class TaskUpdate(BaseModel):
     """Model for updating an admin task."""
     title: Optional[str] = None
@@ -149,6 +167,7 @@ class TaskUpdate(BaseModel):
     assigned_to: Optional[str] = None
     due_date: Optional[datetime] = None
     priority: Optional[str] = None
+
 
 class ReportRequest(BaseModel):
     """Model for requesting a generated report."""

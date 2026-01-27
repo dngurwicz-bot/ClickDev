@@ -43,6 +43,7 @@ const employeeSchema = z.object({
     rank_id: z.string().optional(),
     grade_id: z.string().optional(),
     department: z.string().optional(),
+    valid_from: z.string().optional(), // For temporal events
 })
 
 type EmployeeFormValues = z.infer<typeof employeeSchema>
@@ -90,6 +91,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
             rank_id: initialData?.rank_id || '',
             grade_id: initialData?.grade_id || '',
             department: initialData?.department || '',
+            valid_from: initialData?.valid_from || new Date().toISOString().split('T')[0],
         }
     })
 
@@ -123,7 +125,32 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
             }
 
             let response
-            if (initialData) {
+
+            // Special handling for Event 104 (Personal Status) - Temporal Event
+            if (onlySections && onlySections.includes('status')) {
+                const eventPayload = {
+                    employee_id: initialData?.employee_id || initialData?.id || (currentOrg ? null : null), // Need employee ID
+                    valid_from: data.valid_from,
+                    marital_status: data.marital_status,
+                    gender: data.gender,
+                    nationality: data.nationality,
+                    birth_country: data.birth_country,
+                    passport_number: data.passport_number,
+                    action_code: 'A' // Default to Update/Insert
+                }
+
+                // If we have an existing ID for the employee (from initialData or context), use it.
+                // Note: initialData might be the History record, so it might not have employee_id directly if not joined.
+                // WE NEED TO ENSURE WE HAVE EMPLOYEE ID. 
+                // Suggestion: pass employeeId as prop to EmployeeForm
+
+                response = await authFetch('/api/events/104', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(eventPayload)
+                })
+
+            } else if (initialData && initialData.id) {
                 response = await authFetch(`/api/employees/${initialData.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -200,6 +227,9 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
                                 <h3 className="text-base font-bold text-blue-900 leading-none">מצב אישי (אירוע 104)</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="תאריך תוקף השינוי" required>
+                                    <Input type="date" {...form.register('valid_from')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm font-bold" />
+                                </FormRow>
 
                                 <FormRow label="דרכון">
                                     <Input {...form.register('passport_number')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />

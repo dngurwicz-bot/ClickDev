@@ -17,6 +17,7 @@ interface HilanModuleLayoutProps {
     onItemSelect: (id: string) => void
     title?: string // Title of the current view (e.g. "Event 527 - Personal Components")
     onOverviewClick?: () => void
+    onDelete?: () => void
 }
 
 export function HilanModuleLayout({
@@ -25,7 +26,8 @@ export function HilanModuleLayout({
     activeItemId,
     onItemSelect,
     title,
-    onOverviewClick
+    onOverviewClick,
+    onDelete
 }: HilanModuleLayoutProps) {
     const { setCustomItems } = useSidebarActions()
 
@@ -56,6 +58,20 @@ export function HilanModuleLayout({
                         {title}
                     </h2>
                     <div className="flex gap-2">
+                        {onDelete && (
+                            <button
+                                onClick={onDelete}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                                title="מחק עובד"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                </svg>
+                                <span>מחיקת עובד</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 

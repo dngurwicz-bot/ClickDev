@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,21 +17,42 @@ export function Event200Form() {
     const { currentOrg } = useOrganization()
     const [loading, setLoading] = useState(false)
 
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F3') {
+                e.preventDefault()
+                router.back()
+            }
+            if (e.key === 'F10') {
+                e.preventDefault()
+                // Trigger form submission programmatically
+                const form = document.getElementById('event-200-form') as HTMLFormElement
+                if (form) form.requestSubmit()
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [router])
+
     // Using a flat state object to mimic the "Row/Record" nature of legacy systems
     const [formData, setFormData] = useState({
         id_number: '', // ZEUT
+        employee_number: '', // MISPAR OVED
         first_name: '', // SHEM
         last_name: '', // MISPAHA
-        first_name_en: '', // SHEMMALE
-        last_name_en: '', // MISPAHAM
         birth_date: '', // LEIDA
+        // Hidden / Defaulted Fields
+        first_name_en: '',
+        last_name_en: '',
         gender: '',
         address: '',
         city: '',
         phone: '',
         job_title: '',
-        start_date: new Date().toISOString().split('T')[0], // TAARICH_TCHULA
-        action_code: 'A' // 'A' = Insert, '3' = Cancel
+        start_date: new Date().toISOString().split('T')[0],
+        action_code: 'A'
     })
 
     const handleChange = (field: string, value: string) => {
@@ -48,6 +69,7 @@ export function Event200Form() {
             const payload = {
                 organization_id: currentOrg.id,
                 id_number: formData.id_number,
+                employee_number: formData.employee_number,
                 first_name: formData.first_name,
                 last_name: formData.last_name,
                 first_name_en: formData.first_name_en,
@@ -82,8 +104,9 @@ export function Event200Form() {
                 throw new Error(error.detail || 'Failed to create employee')
             }
 
+            const newEmployee = await res.json()
             toast.success('עובד נוצר בהצלחה (אירוע 200)')
-            router.push('/dashboard/core/employees')
+            router.push(`/dashboard/core/employees/${newEmployee.id}`)
         } catch (error: any) {
             console.error(error)
             toast.error(error.message)
@@ -93,13 +116,10 @@ export function Event200Form() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm pb-10">
+        <form id="event-200-form" onSubmit={handleSubmit} className="space-y-4 font-sans text-sm pb-10">
             {/* Header / Toolbar */}
             <div className="bg-gray-100 p-2 border-b flex justify-between items-center sticky top-0 z-10">
                 <div className="flex items-center gap-4">
-                    <div className="bg-blue-600 text-white px-2 py-1 text-xs font-mono font-bold rounded">
-                        EVENT 200
-                    </div>
                     <span className="font-bold text-gray-700">פתיחת עובד חדש / עדכון פרטים</span>
                 </div>
                 <div className="flex gap-2">
@@ -117,12 +137,12 @@ export function Event200Form() {
 
                 {/* Section: Identifiers */}
                 <div className="col-span-12 border-b pb-1 mb-2 text-gray-500 font-bold text-xs">
-                    זיהוי (Identification)
+                    זיהוי בסיסי (Basic Identification)
                 </div>
 
-                <div className="col-span-3">
+                <div className="col-span-4">
                     <div className="flex justify-between mb-1">
-                        <Label className="text-xs font-bold text-gray-700">מספר זהות</Label>
+                        <Label className="text-xs font-bold text-gray-700">תעודת זהות</Label>
                         <span className="text-[10px] font-mono text-blue-600">ZEUT</span>
                     </div>
                     <Input
@@ -135,26 +155,20 @@ export function Event200Form() {
                     />
                 </div>
 
-                <div className="col-span-2">
+                <div className="col-span-4">
                     <div className="flex justify-between mb-1">
-                        <Label className="text-xs text-gray-600">קוד פעולה</Label>
-                        <span className="text-[10px] font-mono text-gray-400">OP</span>
+                        <Label className="text-xs font-bold text-gray-700">מספר עובד</Label>
+                        <span className="text-[10px] font-mono text-blue-600">OV</span>
                     </div>
-                    <Select
-                        value={formData.action_code}
-                        onValueChange={(val) => handleChange('action_code', val)}
-                    >
-                        <SelectTrigger className="h-8">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                            <SelectItem value="A">הוספה (Insert)</SelectItem>
-                            <SelectItem value="3">ביטול (Cancel)</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <Input
+                        className="h-8 border-gray-300"
+                        placeholder="אופציונלי"
+                        value={formData.employee_number}
+                        onChange={e => handleChange('employee_number', e.target.value)}
+                    />
                 </div>
 
-                <div className="col-span-7"></div> {/* Spacer */}
+                <div className="col-span-4"></div> {/* Spacer */}
 
                 {/* Section: Personal Details */}
                 <div className="col-span-12 border-b pb-1 mb-2 mt-2 text-gray-500 font-bold text-xs">
@@ -163,20 +177,7 @@ export function Event200Form() {
 
                 <div className="col-span-4">
                     <div className="flex justify-between mb-1">
-                        <Label className="text-xs font-bold text-gray-700">שם משפחה (עברית)</Label>
-                        <span className="text-[10px] font-mono text-blue-600">MISPAHA</span>
-                    </div>
-                    <Input
-                        required
-                        className="h-8 border-gray-300"
-                        value={formData.last_name}
-                        onChange={e => handleChange('last_name', e.target.value)}
-                    />
-                </div>
-
-                <div className="col-span-4">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs font-bold text-gray-700">שם פרטי (עברית)</Label>
+                        <Label className="text-xs font-bold text-gray-700">שם פרטי</Label>
                         <span className="text-[10px] font-mono text-blue-600">SHEM</span>
                     </div>
                     <Input
@@ -189,7 +190,20 @@ export function Event200Form() {
 
                 <div className="col-span-4">
                     <div className="flex justify-between mb-1">
-                        <Label className="text-xs text-gray-600">תאריך לידה</Label>
+                        <Label className="text-xs font-bold text-gray-700">שם משפחה</Label>
+                        <span className="text-[10px] font-mono text-blue-600">MISPAHA</span>
+                    </div>
+                    <Input
+                        required
+                        className="h-8 border-gray-300"
+                        value={formData.last_name}
+                        onChange={e => handleChange('last_name', e.target.value)}
+                    />
+                </div>
+
+                <div className="col-span-4">
+                    <div className="flex justify-between mb-1">
+                        <Label className="text-xs font-bold text-gray-700">תאריך לידה</Label>
                         <span className="text-[10px] font-mono text-blue-600">LEIDA</span>
                     </div>
                     <Input
@@ -198,119 +212,6 @@ export function Event200Form() {
                         className="h-8 border-gray-300"
                         value={formData.birth_date}
                         onChange={e => handleChange('birth_date', e.target.value)}
-                    />
-                </div>
-
-                {/* English Names */}
-                <div className="col-span-4">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs text-gray-600">שם משפחה (לועזי)</Label>
-                        <span className="text-[10px] font-mono text-gray-400">MISPAHAM</span>
-                    </div>
-                    <Input
-                        className="h-8 border-gray-300 font-sans"
-                        dir="ltr"
-                        value={formData.last_name_en}
-                        onChange={e => handleChange('last_name_en', e.target.value)}
-                    />
-                </div>
-
-                <div className="col-span-4">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs text-gray-600">שם פרטי (לועזי)</Label>
-                        <span className="text-[10px] font-mono text-gray-400">SHEMMALE</span>
-                    </div>
-                    <Input
-                        className="h-8 border-gray-300 font-sans"
-                        dir="ltr"
-                        value={formData.first_name_en}
-                        onChange={e => handleChange('first_name_en', e.target.value)}
-                    />
-                </div>
-
-                <div className="col-span-4">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs text-gray-600">מין</Label>
-                        <span className="text-[10px] font-mono text-gray-400">MIN</span>
-                    </div>
-                    <Select
-                        value={formData.gender}
-                        onValueChange={(val) => handleChange('gender', val)}
-                    >
-                        <SelectTrigger className="h-8 border-gray-300">
-                            <SelectValue placeholder="בחר..." />
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                            <SelectItem value="male">זכר</SelectItem>
-                            <SelectItem value="female">נקבה</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-
-                {/* Section: Contact & Job */}
-                <div className="col-span-12 border-b pb-1 mb-2 mt-2 text-gray-500 font-bold text-xs">
-                    כתובת והעסקה (Job & Address)
-                </div>
-
-                <div className="col-span-5">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs text-gray-600">כתובת</Label>
-                        <span className="text-[10px] font-mono text-gray-400">KTOVET</span>
-                    </div>
-                    <Input
-                        className="h-8 border-gray-300"
-                        value={formData.address}
-                        onChange={e => handleChange('address', e.target.value)}
-                    />
-                </div>
-                <div className="col-span-3">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs text-gray-600">עיר</Label>
-                        <span className="text-[10px] font-mono text-gray-400">IR</span>
-                    </div>
-                    <Input
-                        className="h-8 border-gray-300"
-                        value={formData.city}
-                        onChange={e => handleChange('city', e.target.value)}
-                    />
-                </div>
-                <div className="col-span-4">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs text-gray-600">טלפון</Label>
-                        <span className="text-[10px] font-mono text-gray-400">TELEPHON</span>
-                    </div>
-                    <Input
-                        className="h-8 border-gray-300"
-                        value={formData.phone}
-                        onChange={e => handleChange('phone', e.target.value)}
-                    />
-                </div>
-
-                <div className="col-span-4">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs font-bold text-gray-700">תפקיד התחלתי</Label>
-                        <span className="text-[10px] font-mono text-blue-600">TAFKID</span>
-                    </div>
-                    <Input
-                        required
-                        className="h-8 border-gray-300"
-                        value={formData.job_title}
-                        onChange={e => handleChange('job_title', e.target.value)}
-                    />
-                </div>
-
-                <div className="col-span-4">
-                    <div className="flex justify-between mb-1">
-                        <Label className="text-xs font-bold text-gray-700">תאריך קליטה</Label>
-                        <span className="text-[10px] font-mono text-blue-600">KLITA</span>
-                    </div>
-                    <Input
-                        type="date"
-                        required
-                        className="h-8 border-gray-300"
-                        value={formData.start_date}
-                        onChange={e => handleChange('start_date', e.target.value)}
                     />
                 </div>
 
