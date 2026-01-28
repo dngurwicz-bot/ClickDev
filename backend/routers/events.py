@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Body
 from database import supabase_admin
-from dependencies import require_super_admin, log_activity
+from dependencies import require_admin, log_activity
 from logic.temporal_engine import TemporalEngine
 
 router = APIRouter(tags=["Hilan Events"])
@@ -10,11 +10,12 @@ temporal_engine = TemporalEngine(supabase_admin)
 async def handle_event(
     event_code: int,
     payload: dict = Body(...),
-    user=Depends(require_super_admin)
+    user=Depends(require_admin)
 ):
     """
     Generic endpoint for handling Hilan Events (200-series).
     Payload must include 'employee_id' and event-specific fields.
+    Requires admin or super_admin role.
     """
     try:
         employee_id = payload.get("employee_id")

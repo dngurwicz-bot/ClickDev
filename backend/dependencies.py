@@ -45,6 +45,22 @@ async def require_super_admin(user=Depends(get_current_user)):
         )
     return user
 
+# Helper function to check admin (super_admin or organization_admin)
+async def require_admin(user=Depends(get_current_user)):
+    """
+    Dependency to ensure the current user has 'super_admin' or 'organization_admin' role.
+    """
+    response = supabase_admin.table("user_roles").select("*")\
+        .eq("user_id", user.id)\
+        .in_("role", ["super_admin", "organization_admin"])\
+        .execute()
+    if not response.data:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+    return user
+
 # Activity Logging Helper
 async def log_activity(
     user_id: str,
