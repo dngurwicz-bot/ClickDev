@@ -52,6 +52,7 @@ export function JobDetailsTab({ employee, onSuccess, onOverviewClick }: JobDetai
                                     onSuccess={handleSuccess}
                                     onCancel={() => setEditingEvent(null)}
                                     onlySections={['job']}
+                                    eventCode="203"
                                 />
                             </div>
                         )}

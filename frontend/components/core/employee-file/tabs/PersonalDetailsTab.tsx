@@ -37,9 +37,9 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
     const menuItems = useMemo(() => [
         { id: '101_identity', label: 'פרטי זיהוי', code: '101' },
         { id: '104_status', label: 'מצב אישי', code: '104' },
-        { id: '101_names', label: 'שמות', code: '101' },
-        { id: '102', label: 'התקשרות וכתובת', code: '102' },
-        { id: '103', label: 'שירות צבאי', code: '103' },
+        { id: '101_names', label: 'שמות', code: '105' },
+        { id: '102_contact', label: 'התקשרות וכתובת', code: '102' },
+        { id: '103_army', label: 'פרטי צבא', code: '103' },
     ], [])
 
     const handleSuccess = () => {
@@ -51,27 +51,31 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
         switch (activeEvent) {
             case '101_identity':
                 return (
-                    <div className="space-y-4">
+                    <div className="h-full">
                         {!selectedRecord ? (
-                            <HistoryTable
-                                employeeId={employee.id}
-                                title="פרטי זיהוי"
-                                eventCode="101"
-                                onAddClick={() => setSelectedRecord({})} // Pass empty object for new record
-                                onRowClick={setSelectedRecord}
-                                columns={[
-                                    { key: 'id_number', label: 'ת.זהות' },
-                                    { key: 'employee_number', label: 'מס\' עובד' },
-                                    { key: 'birth_date', label: 'תאריך לידה', format: (val) => val ? new Date(val).toLocaleDateString('he-IL') : '-' },
-                                ]}
-                            />
+                            <div className="p-4 space-y-4">
+                                <HistoryTable
+                                    employeeId={employee.id}
+                                    title="פרטי זיהוי"
+                                    eventCode="101"
+                                    showValidity={false}
+                                    onAddClick={() => setSelectedRecord({})} // Pass empty object for new record
+                                    onRowClick={setSelectedRecord}
+                                    columns={[
+                                        { key: 'id_number', label: 'ת.זהות' },
+                                        { key: 'employee_number', label: 'מס\' עובד' },
+                                        { key: 'birth_date', label: 'תאריך לידה', format: (val) => val ? new Date(val).toLocaleDateString('he-IL') : '-' },
+                                    ]}
+                                />
+                            </div>
                         ) : (
-                            <div className="animate-in slide-in-from-right duration-300">
+                            <div className="animate-in slide-in-from-right duration-300 h-full">
                                 <EmployeeForm
-                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord } : employee}
+                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord, id: employee.id } : employee}
                                     onSuccess={handleSuccess}
                                     onCancel={() => setSelectedRecord(null)}
                                     onlySections={['identification']}
+                                    eventCode="101"
                                 />
                             </div>
                         )}
@@ -79,29 +83,32 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
                 )
             case '104_status':
                 return (
-                    <div className="space-y-4">
+                    <div className="h-full">
                         {!selectedRecord ? (
-                            <HistoryTable
-                                employeeId={employee.id}
-                                title="מצב אישי"
-                                eventCode="104"
-                                onAddClick={() => setSelectedRecord({})}
-                                onRowClick={setSelectedRecord}
-                                columns={[
-                                    { key: 'marital_status', label: 'מצב משפחתי', format: (val) => val === 'married' ? 'נשוי/ה' : val === 'divorced' ? 'גרוש/ה' : val === 'widowed' ? 'אלמן/ה' : 'רווק/ה' },
-                                    { key: 'gender', label: 'מגדר', format: (val) => val === 'male' ? 'זכר' : val === 'female' ? 'נקבה' : 'לא ידוע' },
-                                    { key: 'nationality', label: 'לאום', format: (val) => val === 'IL' ? 'ישראלי' : 'אחר' },
-                                    { key: 'birth_country', label: 'ארץ לידה' },
-                                    { key: 'passport_number', label: 'דרכון' },
-                                ]}
-                            />
+                            <div className="p-4 space-y-4">
+                                <HistoryTable
+                                    employeeId={employee.id}
+                                    title="מצב אישי"
+                                    eventCode="104"
+                                    onAddClick={() => setSelectedRecord({})}
+                                    onRowClick={setSelectedRecord}
+                                    columns={[
+                                        { key: 'marital_status', label: 'מצב משפחתי', format: (val) => val === 'married' ? 'נשוי/ה' : val === 'divorced' ? 'גרוש/ה' : val === 'widowed' ? 'אלמן/ה' : 'רווק/ה' },
+                                        { key: 'gender', label: 'מגדר', format: (val) => val === 'male' ? 'זכר' : val === 'female' ? 'נקבה' : 'לא ידוע' },
+                                        { key: 'nationality', label: 'לאום', format: (val) => val === 'IL' ? 'ישראלי' : 'אחר' },
+                                        { key: 'birth_country', label: 'ארץ לידה' },
+                                        { key: 'passport_number', label: 'דרכון' },
+                                    ]}
+                                />
+                            </div>
                         ) : (
-                            <div className="animate-in slide-in-from-right duration-300">
+                            <div className="animate-in slide-in-from-right duration-300 h-full">
                                 <EmployeeForm
-                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord } : employee}
+                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord, id: employee.id } : employee}
                                     onSuccess={handleSuccess}
                                     onCancel={() => setSelectedRecord(null)}
                                     onlySections={['status']}
+                                    eventCode="104"
                                 />
                             </div>
                         )}
@@ -109,29 +116,32 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
                 )
             case '101_names':
                 return (
-                    <div className="space-y-4">
+                    <div className="h-full">
                         {!selectedRecord ? (
-                            <HistoryTable
-                                employeeId={employee.id}
-                                title="שמות"
-                                eventCode="101"
-                                onAddClick={() => setSelectedRecord({})}
-                                onRowClick={setSelectedRecord}
-                                columns={[
-                                    { key: 'first_name', label: 'שם פרטי' },
-                                    { key: 'last_name', label: 'שם משפחה' },
-                                    { key: 'first_name_en', label: 'שם (En)' },
-                                    { key: 'last_name_en', label: 'משפחה (En)' },
-                                    { key: 'prev_last_name', label: 'משפחה קודם' },
-                                ]}
-                            />
+                            <div className="p-4 space-y-4">
+                                <HistoryTable
+                                    employeeId={employee.id}
+                                    title="שמות"
+                                    eventCode="105"
+                                    onAddClick={() => setSelectedRecord({})}
+                                    onRowClick={setSelectedRecord}
+                                    columns={[
+                                        { key: 'first_name', label: 'שם פרטי' },
+                                        { key: 'last_name', label: 'שם משפחה' },
+                                        { key: 'first_name_en', label: 'שם (En)' },
+                                        { key: 'last_name_en', label: 'משפחה (En)' },
+                                        { key: 'prev_last_name', label: 'משפחה קודם' },
+                                    ]}
+                                />
+                            </div>
                         ) : (
-                            <div className="animate-in slide-in-from-right duration-300">
+                            <div className="animate-in slide-in-from-right duration-300 h-full">
                                 <EmployeeForm
-                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord } : employee}
+                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord, id: employee.id } : employee}
                                     onSuccess={handleSuccess}
                                     onCancel={() => setSelectedRecord(null)}
                                     onlySections={['names']}
+                                    eventCode="105"
                                 />
                             </div>
                         )}
@@ -139,29 +149,32 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
                 )
             case '102':
                 return (
-                    <div className="space-y-4">
+                    <div className="h-full">
                         {!selectedRecord ? (
-                            <HistoryTable
-                                employeeId={employee.id}
-                                title="התקשרות וכתובת"
-                                eventCode="102"
-                                onAddClick={() => setSelectedRecord({})}
-                                onRowClick={setSelectedRecord}
-                                columns={[
-                                    { key: 'address_city', label: 'יישוב' },
-                                    { key: 'address_street', label: 'רחוב' },
-                                    { key: 'phone', label: 'טלפון' },
-                                    { key: 'email', label: 'אימייל' },
-                                    { key: 'mobile', label: 'נייד' },
-                                ]}
-                            />
+                            <div className="p-4 space-y-4">
+                                <HistoryTable
+                                    employeeId={employee.id}
+                                    title="התקשרות וכתובת"
+                                    eventCode="102"
+                                    onAddClick={() => setSelectedRecord({})}
+                                    onRowClick={setSelectedRecord}
+                                    columns={[
+                                        { key: 'address_city', label: 'יישוב' },
+                                        { key: 'address_street', label: 'רחוב' },
+                                        { key: 'phone', label: 'טלפון' },
+                                        { key: 'email', label: 'אימייל' },
+                                        { key: 'mobile', label: 'נייד' },
+                                    ]}
+                                />
+                            </div>
                         ) : (
-                            <div className="animate-in slide-in-from-right duration-300">
+                            <div className="animate-in slide-in-from-right duration-300 h-full">
                                 <EmployeeForm
-                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord } : employee}
+                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord, id: employee.id } : employee}
                                     onSuccess={handleSuccess}
                                     onCancel={() => setSelectedRecord(null)}
                                     onlySections={['contact']}
+                                    eventCode="102"
                                 />
                             </div>
                         )}
@@ -169,26 +182,29 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
                 )
             case '103':
                 return (
-                    <div className="space-y-4">
+                    <div className="h-full">
                         {!selectedRecord ? (
-                            <HistoryTable
-                                employeeId={employee.id}
-                                title="שירות צבאי"
-                                eventCode="103"
-                                onAddClick={() => setSelectedRecord({})}
-                                onRowClick={setSelectedRecord}
-                                columns={[
-                                    { key: 'army_status', label: 'סטטוס צבאי' },
-                                    { key: 'army_release_date', label: 'תאריך שחרור' },
-                                ]}
-                            />
+                            <div className="p-4 space-y-4">
+                                <HistoryTable
+                                    employeeId={employee.id}
+                                    title="שירות צבאי"
+                                    eventCode="103"
+                                    onAddClick={() => setSelectedRecord({})}
+                                    onRowClick={setSelectedRecord}
+                                    columns={[
+                                        { key: 'army_status', label: 'סטטוס צבאי' },
+                                        { key: 'army_release_date', label: 'תאריך שחרור' },
+                                    ]}
+                                />
+                            </div>
                         ) : (
-                            <div className="animate-in slide-in-from-right duration-300">
+                            <div className="animate-in slide-in-from-right duration-300 h-full">
                                 <EmployeeForm
-                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord } : employee}
+                                    initialData={Object.keys(selectedRecord).length > 0 ? { ...employee, ...selectedRecord, id: employee.id } : employee}
                                     onSuccess={handleSuccess}
                                     onCancel={() => setSelectedRecord(null)}
                                     onlySections={['army']}
+                                    eventCode="103"
                                 />
                             </div>
                         )}

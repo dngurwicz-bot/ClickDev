@@ -117,6 +117,12 @@ async def update_employee(employee_id: str, updates: dict,
             "effective_date",
             datetime.now().date().isoformat()
         )
+        # Remove valid_from if present, as it is not a column
+        # in employees table
+        updates.pop("valid_from", None)
+        
+        # Extract event_code for history tracking
+        event_code = updates.pop("event_code", None)
 
         # Check for actual changes
         has_changes = False
@@ -171,6 +177,7 @@ async def update_employee(employee_id: str, updates: dict,
         new_history_data = {
             "employee_id": employee_id,
             "organization_id": updated_emp.get("organization_id"),
+            "event_code": event_code, # Add event code to history
             # Copy all relevant fields from the UPDATED employee record
             "first_name": updated_emp.get("first_name"),
             "last_name": updated_emp.get("last_name"),

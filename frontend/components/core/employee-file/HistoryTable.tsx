@@ -121,34 +121,46 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
                         </tr>
                     </thead>
                     <tbody className="bg-white">
-                        {history.length > 0 ? (
-                            history.map((record, idx) => (
-                                <tr key={record.id || idx}
-                                    onClick={() => onRowClick && onRowClick(record)}
-                                    className={cn(
-                                        "hover:bg-[#ebf4ff] border-b border-gray-200 transition-colors cursor-pointer",
-                                        idx % 2 === 0 ? "bg-white" : "bg-slate-50/20"
-                                    )}>
-                                    {showValidity && (
-                                        <>
-                                            <td className="border-l border-gray-200 p-0.5 text-sm text-center font-bold text-blue-800 tabular-nums">
-                                                {record.valid_from ? format(new Date(record.valid_from), 'dd/MM/yyyy') : '-'}
+                        {history.filter(record =>
+                            !eventCode ||
+                            record.event_code === eventCode ||
+                            (record.event_code === null && (eventCode === '101' || eventCode === '105' || eventCode === '102' || eventCode === '103')) ||
+                            (record.event_code === '101' && eventCode === '105') // Legacy '101' should show in Names (105)
+                        ).length > 0 ? (
+                            history
+                                .filter(record =>
+                                    !eventCode ||
+                                    record.event_code === eventCode ||
+                                    (record.event_code === null && (eventCode === '101' || eventCode === '105' || eventCode === '102' || eventCode === '103')) ||
+                                    (record.event_code === '101' && eventCode === '105')
+                                )
+                                .map((record, idx) => (
+                                    <tr key={record.id || idx}
+                                        onClick={() => onRowClick && onRowClick(record)}
+                                        className={cn(
+                                            "hover:bg-[#ebf4ff] border-b border-gray-200 transition-colors cursor-pointer",
+                                            idx % 2 === 0 ? "bg-white" : "bg-slate-50/20"
+                                        )}>
+                                        {showValidity && (
+                                            <>
+                                                <td className="border-l border-gray-200 p-0.5 text-sm text-center font-bold text-blue-800 tabular-nums">
+                                                    {record.valid_from ? format(new Date(record.valid_from), 'dd/MM/yyyy') : '-'}
+                                                </td>
+                                                <td className="border-l border-gray-200 p-0.5 text-sm text-center text-gray-600 tabular-nums">
+                                                    {record.valid_to ? format(new Date(record.valid_to), 'dd/MM/yyyy') : '-'}
+                                                </td>
+                                            </>
+                                        )}
+                                        {columns.map((col) => (
+                                            <td key={col.key} className="border-l border-gray-200 p-0.5 text-sm px-2 truncate text-gray-700">
+                                                {col.format ? col.format(record[col.key]) : (record[col.key] ?? '')}
                                             </td>
-                                            <td className="border-l border-gray-200 p-0.5 text-sm text-center text-gray-600 tabular-nums">
-                                                {record.valid_to ? format(new Date(record.valid_to), 'dd/MM/yyyy') : '-'}
-                                            </td>
-                                        </>
-                                    )}
-                                    {columns.map((col) => (
-                                        <td key={col.key} className="border-l border-gray-200 p-0.5 text-sm px-2 truncate text-gray-700">
-                                            {col.format ? col.format(record[col.key]) : (record[col.key] ?? '')}
+                                        ))}
+                                        <td className="p-0.5 text-center">
+                                            <MoreHorizontal className="w-3 h-3 text-gray-400 mx-auto cursor-pointer hover:text-blue-600" />
                                         </td>
-                                    ))}
-                                    <td className="p-0.5 text-center">
-                                        <MoreHorizontal className="w-3 h-3 text-gray-400 mx-auto cursor-pointer hover:text-blue-600" />
-                                    </td>
-                                </tr>
-                            ))
+                                    </tr>
+                                ))
                         ) : (
                             <tr>
                                 <td colSpan={columns.length + 3} className="p-4 text-center text-xs text-gray-400 italic">

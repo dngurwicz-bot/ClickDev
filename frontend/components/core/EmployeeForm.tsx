@@ -13,54 +13,89 @@ import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import { Loader2, Save, X } from 'lucide-react'
 import { authFetch } from '@/lib/api'
 
-const employeeSchema = z.object({
-    id_number: z.string().min(1, 'תעודת זהות היא שדה חובה'),
-    first_name: z.string().min(2, 'שם פרטי חייב להכיל לפחות 2 תווים'),
-    last_name: z.string().min(2, 'שם משפחה חייב להכיל לפחות 2 תווים'),
-    first_name_en: z.string().optional(),
-    last_name_en: z.string().optional(),
-    email: z.string().email('כתובת אימייל לא תקינה').optional().or(z.literal('')),
-    phone: z.string().optional(),
-    mobile: z.string().optional(),
-    job_title: z.string().min(2, 'תפקיד הוא שדה חובה'),
-    employment_type: z.string().optional(),
-    hire_date: z.string().min(1, 'תאריך תחילת עבודה הוא שדה חובה'),
-    employee_number: z.string().optional(),
-    gender: z.string().optional(),
-    passport_number: z.string().optional(),
-    prev_last_name: z.string().optional(),
-    prev_first_name: z.string().optional(),
-    additional_name: z.string().optional(),
-    army_status: z.string().optional(),
-    army_release_date: z.string().optional(),
-    marital_status: z.string().optional(),
-    nationality: z.string().optional(),
-    birth_date: z.string().optional(),
-    birth_country: z.string().optional(),
-    address_city: z.string().optional(),
-    address_street: z.string().optional(),
-    address_zip: z.string().optional(),
-    rank_id: z.string().optional(),
-    grade_id: z.string().optional(),
-    department: z.string().optional(),
-    valid_from: z.string().optional(), // For temporal events
-})
-
-type EmployeeFormValues = z.infer<typeof employeeSchema>
+// Schema logic moved inside component for dynamic validation
+type EmployeeFormValues = {
+    id_number: string
+    first_name: string
+    last_name: string
+    [key: string]: any
+}
 
 interface EmployeeFormProps {
     initialData?: any
     onSuccess: () => void
     onCancel?: () => void
     onlySections?: string[]
+    eventCode?: string
 }
 
-export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }: EmployeeFormProps) {
+export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections, eventCode }: EmployeeFormProps) {
     const { currentOrg } = useOrganization()
     const [loading, setLoading] = useState(false)
 
+    const schema = React.useMemo(() => {
+        const isSectionVisible = (section: string) => !onlySections || onlySections.includes(section)
+
+        return z.object({
+            // Identification Section
+            id_number: isSectionVisible('identification')
+                ? z.string().min(1, 'תעודת זהות היא שדה חובה')
+                : z.string().optional(),
+            employee_number: z.string().optional(),
+            birth_date: z.string().optional(),
+
+            // Names Section
+            first_name: isSectionVisible('names')
+                ? z.string().min(2, 'שם פרטי חייב להכיל לפחות 2 תווים')
+                : z.string().optional(),
+            last_name: isSectionVisible('names')
+                ? z.string().min(2, 'שם משפחה חייב להכיל לפחות 2 תווים')
+                : z.string().optional(),
+            first_name_en: z.string().optional(),
+            last_name_en: z.string().optional(),
+            prev_last_name: z.string().optional(),
+            prev_first_name: z.string().optional(),
+            additional_name: z.string().optional(),
+
+            // Contact Section
+            email: z.string().email('כתובת אימייל לא תקינה').optional().or(z.literal('')),
+            phone: z.string().optional(),
+            mobile: z.string().optional(),
+            address_city: z.string().optional(),
+            address_street: z.string().optional(),
+            address_zip: z.string().optional(),
+
+            // Job Section
+            job_title: isSectionVisible('job')
+                ? z.string().min(2, 'תפקיד הוא שדה חובה')
+                : z.string().optional(),
+            hire_date: isSectionVisible('job')
+                ? z.string().min(1, 'תאריך תחילת עבודה הוא שדה חובה')
+                : z.string().optional(),
+            department: z.string().optional(),
+            rank_id: z.string().optional(),
+            grade_id: z.string().optional(),
+            employment_type: z.string().optional(),
+
+            // Status Section
+            gender: z.string().optional(),
+            marital_status: z.string().optional(),
+            nationality: z.string().optional(),
+            birth_country: z.string().optional(),
+            passport_number: z.string().optional(),
+
+            // Army Section
+            army_status: z.string().optional(),
+            army_release_date: z.string().optional(),
+
+            // Common
+            valid_from: z.string().optional(),
+        })
+    }, [onlySections])
+
     const form = useForm<EmployeeFormValues>({
-        resolver: zodResolver(employeeSchema),
+        resolver: zodResolver(schema),
+        shouldUnregister: false, // Keep hidden field values
         defaultValues: {
             id_number: initialData?.id_number || '',
             first_name: initialData?.first_name || '',
@@ -102,6 +137,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
         try {
             const employeeData = {
                 ...data,
+                effective_date: data.valid_from,
                 organization_id: currentOrg.id,
                 email: data.email || null,
                 phone: data.phone || null,
@@ -122,6 +158,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
                 rank_id: data.rank_id || null,
                 grade_id: data.grade_id || null,
                 department: data.department || null,
+                event_code: eventCode || (initialData?.id ? undefined : '200'), // Use '200' for creation only if no specific eventCode
             }
 
             let response
@@ -179,8 +216,18 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
         }
     }
 
+    const onError = (errors: any) => {
+        console.error('Validation errors:', errors)
+        const firstError = Object.values(errors)[0] as any
+        if (firstError) {
+            toast.error(`שגיאה בטופס: ${firstError.message}`)
+        } else {
+            toast.error('יש לתקן את השגיאות בטופס')
+        }
+    }
+
     return (
-        <div className="flex flex-col h-full bg-[#f3f4f6] overflow-hidden font-sans border border-gray-400" dir="rtl">
+        <div className="flex flex-col h-full bg-[#f3f4f6] overflow-hidden font-sans border border-gray-400 relative z-30" dir="rtl">
             {/* Header Bar - New Legacy Style */}
             <div className="bg-white border-b border-gray-300 p-2 flex justify-between items-center shadow-sm shrink-0">
                 <div className="flex items-center gap-4">
@@ -189,14 +236,14 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
                     </span>
                 </div>
                 <div className="flex gap-2">
-                    <button type="button" onClick={form.handleSubmit(onSubmit)} className="p-1 hover:bg-gray-100 rounded text-[#00A896]" title="שמור"><Save className="w-5 h-5" /></button>
+                    <button type="button" onClick={form.handleSubmit(onSubmit, onError)} className="p-1 hover:bg-gray-100 rounded text-[#00A896]" title="שמור"><Save className="w-5 h-5" /></button>
                     {onCancel && (
                         <button type="button" onClick={onCancel} className="p-1 hover:bg-gray-100 rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
                     )}
                 </div>
             </div>
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-auto p-8 pt-6 content-start">
+            <form onSubmit={form.handleSubmit(onSubmit, onError)} className="flex-1 overflow-auto p-8 pt-6 content-start">
                 <div className="space-y-8 w-full max-w-5xl mx-auto">
                     {/* Identification Section (Event 101/200) */}
                     {(!onlySections || onlySections.includes('identification')) && (
@@ -275,6 +322,9 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
                                 <h3 className="text-base font-bold text-blue-900 leading-none">שמות</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="תאריך תוקף השינוי" required>
+                                    <Input type="date" {...form.register('valid_from')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm font-bold" />
+                                </FormRow>
                                 <FormRow label="שם פרטי" required error={form.formState.errors.first_name?.message}>
                                     <Input {...form.register('first_name')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
                                 </FormRow>
@@ -308,6 +358,9 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
                                 <h3 className="text-base font-bold text-blue-900 leading-none">פרטי התקשרות ומגורים</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="תאריך תוקף השינוי" required>
+                                    <Input type="date" {...form.register('valid_from')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm font-bold" />
+                                </FormRow>
                                 <FormRow label="טלפון נייד">
                                     <Input {...form.register('mobile')} dir="ltr" className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
                                 </FormRow>
@@ -338,6 +391,9 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
                                 <h3 className="text-base font-bold text-blue-900 leading-none">שירות צבאי</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
+                                <FormRow label="תאריך תוקף השינוי" required>
+                                    <Input type="date" {...form.register('valid_from')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm font-bold" />
+                                </FormRow>
                                 <FormRow label="מעמד צבאי">
                                     <Select onValueChange={(val) => form.setValue('army_status', val)} defaultValue={form.getValues('army_status')}>
                                         <SelectTrigger className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm">
@@ -417,7 +473,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections }:
                         ביטול שינויים
                     </button>
                     <button
-                        onClick={form.handleSubmit(onSubmit)}
+                        onClick={form.handleSubmit(onSubmit, onError)}
                         disabled={loading}
                         className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-6 text-xs font-bold shadow-sm flex items-center gap-2"
                     >
