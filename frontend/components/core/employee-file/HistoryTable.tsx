@@ -24,16 +24,19 @@ interface HistoryTableProps {
     isEditing?: boolean
     onRowClick?: (record: any) => void
     showValidity?: boolean
+    dataSource?: string // Custom endpoint path, e.g. `/api/employees/${id}/address`
 }
 
-export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick, isEditing, onRowClick, showValidity = true }: HistoryTableProps) {
+export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick, isEditing, onRowClick, showValidity = true, dataSource }: HistoryTableProps) {
     const [history, setHistory] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const response = await authFetch(`/api/employees/${employeeId}/history`)
+                // Use custom dataSource if provided, otherwise use default history endpoint
+                const endpoint = dataSource || `/api/employees/${employeeId}/history`
+                const response = await authFetch(endpoint)
                 if (response.ok) {
                     const data = await response.json()
                     setHistory(data)
@@ -45,7 +48,7 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
             }
         }
         fetchHistory()
-    }, [employeeId])
+    }, [employeeId, dataSource])
 
     if (loading) return <div className="p-4 text-xs text-gray-500 italic">טוען נתונים...</div>
 
@@ -121,20 +124,16 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
                         </tr>
                     </thead>
                     <tbody className="bg-white">
-                        {history.filter(record =>
-                            !eventCode ||
-                            record.event_code === eventCode ||
-                            (record.event_code === null && (eventCode === '101' || eventCode === '105' || eventCode === '102' || eventCode === '103')) ||
-                            (record.event_code === '101' && eventCode === '105') // Legacy '101' should show in Names (105)
-                        ).length > 0 ? (
-                            history
-                                .filter(record =>
-                                    !eventCode ||
-                                    record.event_code === eventCode ||
-                                    (record.event_code === null && (eventCode === '101' || eventCode === '105' || eventCode === '102' || eventCode === '103')) ||
-                                    (record.event_code === '101' && eventCode === '105')
-                                )
-                                .map((record, idx) => (
+                        {(() => {
+                            // When dataSource is provided, skip client-side filtering (data is already filtered by backend)
+                            const filteredHistory = dataSource ? history : history.filter(record =>
+                                !eventCode ||
+                                record.event_code === eventCode ||
+                                (record.event_code === null && (eventCode === '101' || eventCode === '105' || eventCode === '102' || eventCode === '103')) ||
+                                (record.event_code === '101' && eventCode === '105') // Legacy '101' should show in Names (105)
+                            )
+                            return filteredHistory.length > 0 ? (
+                                filteredHistory.map((record, idx) => (
                                     <tr key={record.id || idx}
                                         onClick={() => onRowClick && onRowClick(record)}
                                         className={cn(
@@ -161,13 +160,14 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
                                         </td>
                                     </tr>
                                 ))
-                        ) : (
-                            <tr>
-                                <td colSpan={columns.length + 3} className="p-4 text-center text-xs text-gray-400 italic">
-                                    אין נתונים היסטוריים להצגה
-                                </td>
-                            </tr>
-                        )}
+                            ) : (
+                                <tr>
+                                    <td colSpan={columns.length + 3} className="p-4 text-center text-xs text-gray-400 italic">
+                                        אין נתונים היסטוריים להצגה
+                                    </td>
+                                </tr>
+                            )
+                        })()}
                     </tbody>
                 </table>
             </div>

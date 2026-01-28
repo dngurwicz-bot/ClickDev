@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { HilanModuleLayout } from '../HilanModuleLayout'
 import { HistoryTable } from '../HistoryTable'
 import { EmployeeForm } from '@/components/core/EmployeeForm'
+import { AddressForm } from '../forms/AddressForm'
 import { authFetch } from '@/lib/api'
 
 interface PersonalDetailsTabProps {
@@ -38,7 +39,8 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
         { id: '101_identity', label: 'פרטי זיהוי', code: '101' },
         { id: '104_status', label: 'מצב אישי', code: '104' },
         { id: '101_names', label: 'שמות', code: '105' },
-        { id: '102_contact', label: 'התקשרות וכתובת', code: '102' },
+        { id: '218_address', label: 'כתובת', code: '218' },
+        { id: '102_contact', label: 'התקשרות', code: '102' },
         { id: '103_army', label: 'פרטי צבא', code: '103' },
     ], [])
 
@@ -147,14 +149,49 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
                         )}
                     </div>
                 )
-            case '102':
+            case '218_address':
                 return (
                     <div className="h-full">
                         {!selectedRecord ? (
                             <div className="p-4 space-y-4">
                                 <HistoryTable
                                     employeeId={employee.id}
-                                    title="התקשרות וכתובת"
+                                    title="כתובת"
+                                    eventCode="218"
+                                    dataSource={`/api/employees/${employee.id}/address`}
+                                    onAddClick={() => setSelectedRecord({})}
+                                    onRowClick={setSelectedRecord}
+                                    columns={[
+                                        { key: 'city_name', label: 'יישוב' },
+                                        { key: 'street', label: 'רחוב' },
+                                        { key: 'house_number', label: 'בית' },
+                                        { key: 'apartment', label: 'דירה' },
+                                        { key: 'postal_code', label: 'מיקוד' },
+                                        { key: 'phone', label: 'טלפון' },
+                                    ]}
+                                />
+                            </div>
+                        ) : (
+                            <div className="animate-in slide-in-from-right duration-300 h-full">
+                                <AddressForm
+                                    employeeId={employee.id}
+                                    organizationId={employee.organization_id}
+                                    initialData={Object.keys(selectedRecord).length > 0 ? selectedRecord : undefined}
+                                    onSuccess={handleSuccess}
+                                    onCancel={() => setSelectedRecord(null)}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )
+            case '102_contact':
+                return (
+                    <div className="h-full">
+                        {!selectedRecord ? (
+                            <div className="p-4 space-y-4">
+                                <HistoryTable
+                                    employeeId={employee.id}
+                                    title="התקשרות"
                                     eventCode="102"
                                     onAddClick={() => setSelectedRecord({})}
                                     onRowClick={setSelectedRecord}
@@ -180,7 +217,7 @@ export function PersonalDetailsTab({ employee, onSuccess, onOverviewClick }: Per
                         )}
                     </div>
                 )
-            case '103':
+            case '103_army':
                 return (
                     <div className="h-full">
                         {!selectedRecord ? (

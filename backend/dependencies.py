@@ -16,11 +16,14 @@ async def get_current_user(
     """
     try:
         token = credentials.credentials
+        print(f"[AUTH] Token received (first 20 chars): {token[:20]}...")
         response = supabase.auth.get_user(token)
         if not response.user:
             raise HTTPException(status_code=401, detail="Invalid token")
+        print(f"[AUTH] User authenticated: {response.user.email}")
         return response.user
     except Exception as e:  # pylint: disable=broad-except
+        print(f"[AUTH ERROR] {str(e)}")
         raise HTTPException(
             status_code=401,
             detail=f"Authentication failed: {str(e)}"

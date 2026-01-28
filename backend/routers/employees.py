@@ -34,6 +34,19 @@ async def get_employee_history(employee_id: str,
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+@router.get("/api/employees/{employee_id}/address")
+async def get_employee_address_history(employee_id: str,
+                                       _user=Depends(require_super_admin)):
+    """Get address history for an employee (Event 218)."""
+    try:
+        response = supabase_admin.table("employee_address").select("*")\
+            .eq("employee_id", employee_id)\
+            .order("valid_from", desc=True).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @router.post("/api/employees")
 async def create_employee(emp: EmployeeCreate,
                           user=Depends(require_super_admin)):

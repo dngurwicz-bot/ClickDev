@@ -47,7 +47,8 @@ class TemporalEngine:
             203: "employee_ranks",     # Rank/Role Changes
             204: "employee_splits",    # Cost Center Splits
             205: "employee_tax",       # Tax Parameters
-            104: "employee_personal_status"  # Personal Status (Mutable)
+            104: "employee_personal_status",  # Personal Status (Mutable)
+            218: "employee_address"    # Address (Hilan Event 218)
         }
         return mapping.get(event_code, "generic_events")
 
