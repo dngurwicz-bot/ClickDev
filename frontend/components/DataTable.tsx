@@ -110,93 +110,90 @@ export default function DataTable<TData>({
 
     return (
         <div className="space-y-3 font-sans" dir="rtl">
-            {/* Toolbar - Compact & Professional */}
-            <div className="flex items-center justify-between gap-4 bg-white p-2 border border-gray-300 shadow-sm rounded-sm">
-                {/* Global Search - Compact */}
-                <div className="flex items-center gap-6 flex-1">
+            {/* Hilan-Style Toolbar - Ultra-Dense */}
+            <div className="h-8 bg-[#f0f0f0] border border-gray-400 flex items-center px-1 justify-between select-none shadow-sm">
+                <div className="flex items-center gap-0.5">
                     {showSearch && (
-                        <div className="relative max-w-sm w-full">
+                        <div className="relative h-6">
                             <input
                                 value={globalFilter ?? ''}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
-                                placeholder="חיפוש מהיר..."
-                                className="w-full h-8 pl-8 pr-2 text-sm border border-gray-300 focus:border-[#00A896] focus:ring-1 focus:ring-[#00A896] rounded-sm outline-none transition-all placeholder:text-gray-400"
+                                placeholder="חיפוש..."
+                                className="h-6 pl-6 pr-2 text-[11px] border border-gray-400 outline-none focus:border-blue-500 bg-white"
+                                style={{ width: '150px' }}
                             />
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
                             {globalFilter && (
                                 <button
                                     onClick={() => setGlobalFilter('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0"
                                 >
-                                    <X className="w-3 h-3" />
+                                    <X className="w-2.5 h-2.5" />
                                 </button>
                             )}
                         </div>
                     )}
 
-                    {/* ERP Date Range Filter */}
-                    <div className="flex items-center gap-2 border-r border-gray-300 pr-4 mr-2">
-                        <Filter className="w-3.5 h-3.5 text-[#00A896]" />
-                        <span className="text-xs font-bold text-gray-600">סינון תאריכים:</span>
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-gray-500">מ-</span>
-                            <input
-                                type="date"
-                                value={fromDate}
-                                onChange={(e) => setFromDate(e.target.value)}
-                                className="h-7 text-[11px] border border-gray-300 rounded-sm px-1 outline-none focus:border-[#00A896]"
-                            />
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-gray-500">עד-</span>
-                            <input
-                                type="date"
-                                value={toDate}
-                                onChange={(e) => setToDate(e.target.value)}
-                                className="h-7 text-[11px] border border-gray-300 rounded-sm px-1 outline-none focus:border-[#00A896]"
-                            />
-                        </div>
-                        {(fromDate || toDate) && (
-                            <button
-                                onClick={() => { setFromDate(''); setToDate(''); }}
-                                className="text-[10px] text-red-500 hover:underline font-bold"
-                            >
-                                ביטול
-                            </button>
-                        )}
-                    </div>
+                    <div className="w-px h-5 bg-gray-400 mx-0.5" />
+
+                    {/* Hilan Date Range Filter */}
+                    {enableDateFilter && (
+                        <>
+                            <span className="text-[10px] text-gray-700 font-bold px-1">תאריכים:</span>
+                            <div className="flex items-center gap-0.5 bg-white border border-gray-400 px-1 h-6 shadow-inner">
+                                <span className="text-blue-700 font-bold text-[9px]">מ-</span>
+                                <input
+                                    type="date"
+                                    value={fromDate}
+                                    onChange={(e) => setFromDate(e.target.value)}
+                                    className="border-none outline-none p-0 text-[10px] bg-transparent w-24"
+                                />
+                            </div>
+                            <div className="flex items-center gap-0.5 bg-white border border-gray-400 px-1 h-6 shadow-inner">
+                                <span className="text-blue-700 font-bold text-[9px]">עד</span>
+                                <input
+                                    type="date"
+                                    value={toDate}
+                                    onChange={(e) => setToDate(e.target.value)}
+                                    className="border-none outline-none p-0 text-[10px] bg-transparent w-24"
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    <div className="w-px h-5 bg-gray-400 mx-0.5" />
                 </div>
 
-                {/* Pagination Stats - Compact */}
-                <div className="text-xs text-gray-600 font-medium">
-                    סה"כ: <span className="font-bold text-gray-900">{filteredData.length}</span> רשומות
+                {/* Right side stats */}
+                <div className="text-[10px] text-gray-700 font-bold px-1">
+                    סה"כ: {filteredData.length}
                 </div>
             </div>
 
-            {/* Table Container - ERP Style */}
-            <div className="border-[1.5px] border-gray-400 overflow-hidden bg-white shadow-sm">
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-[13px]">
-                        {/* Header - ERP Style: Light blue-gray, Bold, Crisp Borders */}
-                        <thead>
+            {/* Table Container - Hilan/ERP Style */}
+            <div className="border-[1px] border-gray-400 overflow-hidden bg-white shadow-sm">
+                <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]">
+                    <table className="w-full border-collapse text-[12px]">
+                        {/* Header - Hilan Style */}
+                        <thead className="sticky top-0">
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <tr key={headerGroup.id} className="bg-[#E0F5F3] border-b-[1.5px] border-gray-400">
+                                <tr key={headerGroup.id} className="bg-[#c0c0c0] border-b border-gray-400">
                                     {headerGroup.headers.map((header) => (
                                         <th
                                             key={header.id}
-                                            className="px-2 py-1 text-right text-[12px] font-bold text-gray-800 border-l border-gray-300 last:border-l-0 select-none relative group h-8"
+                                            className="px-1 py-1 text-right text-[11px] font-bold text-black border-l border-gray-400 last:border-l-0 select-none relative group bg-[#c0c0c0] h-6"
                                             style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                                         >
                                             <div
-                                                className={`flex items-center justify-between gap-1 ${header.column.getCanSort() ? 'cursor-pointer hover:text-[#00A896]' : ''}`}
+                                                className={`flex items-center justify-between gap-1 h-full ${header.column.getCanSort() ? 'cursor-pointer hover:bg-[#a0a0a0]' : ''}`}
                                                 onClick={header.column.getToggleSortingHandler()}
                                             >
-                                                <span className="truncate">
+                                                <span className="truncate font-sans">
                                                     {flexRender(header.column.columnDef.header, header.getContext())}
                                                 </span>
                                                 {header.column.getCanSort() && (
-                                                    <div className="w-3 shrink-0 opacity-50 group-hover:opacity-100 italic font-medium text-[10px]">
-                                                        {header.column.getIsSorted() === 'asc' ? '↑' : header.column.getIsSorted() === 'desc' ? '↓' : ''}
+                                                    <div className="text-[9px] shrink-0 opacity-60 group-hover:opacity-100 font-bold">
+                                                        {header.column.getIsSorted() === 'asc' ? '↑' : header.column.getIsSorted() === 'desc' ? '↓' : '↕'}
                                                     </div>
                                                 )}
                                             </div>
@@ -206,13 +203,13 @@ export default function DataTable<TData>({
                             ))}
                         </thead>
 
-                        {/* Body - Compact, Crisp Grids */}
+                        {/* Body - Hilan Dense Grid */}
                         <tbody>
                             {filteredData.length === 0 ? (
                                 <tr>
                                     <td
                                         colSpan={columns.length}
-                                        className="px-4 py-8 text-center text-gray-500 bg-gray-50"
+                                        className="px-2 py-4 text-center text-gray-500 bg-white text-[11px]"
                                     >
                                         לא נמצאו נתונים תואמים
                                     </td>
@@ -223,15 +220,15 @@ export default function DataTable<TData>({
                                         key={row.id}
                                         onClick={() => onRowClick?.(row.original)}
                                         className={`
-                                            border-b border-gray-300 last:border-b-0 transition-colors h-7
-                                            ${i % 2 === 0 ? 'bg-white' : 'bg-[#f8fafc]'} 
-                                            ${onRowClick ? 'hover:bg-[#E0F5F3] cursor-pointer' : ''}
+                                            border-b border-gray-300 last:border-b-0 transition-colors h-6
+                                            ${i % 2 === 0 ? 'bg-white' : 'bg-[#f5f5f5]'} 
+                                            ${onRowClick ? 'hover:bg-[#e0f0f0] cursor-pointer' : ''}
                                         `}
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <td
                                                 key={cell.id}
-                                                className="px-2 py-0 border-l border-gray-200 last:border-l-0 truncate align-middle h-7"
+                                                className="px-1 py-0 border-l border-gray-300 last:border-l-0 truncate align-middle text-[11px] h-6"
                                                 style={{ width: cell.column.getSize() !== 150 ? cell.column.getSize() : undefined }}
                                                 title={cell.getValue() as string}
                                             >
@@ -245,27 +242,32 @@ export default function DataTable<TData>({
                     </table>
                 </div>
 
-                {/* Pagination Footer - ERP Style */}
-                <div className="bg-gray-100 border-t border-gray-300 px-2 py-1.5 flex items-center justify-between select-none">
-                    <div className="flex gap-1">
+                {/* Hilan-Style Pagination Footer */}
+                <div className="bg-[#f0f0f0] border-t border-gray-400 px-1 py-1 flex items-center justify-between select-none h-7">
+                    <div className="flex gap-0.5 items-center">
                         <button
                             onClick={() => table.previousPage()}
                             disabled={!table.getCanPreviousPage()}
-                            className="px-2 py-0.5 border border-gray-300 bg-white rounded-sm text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                            className="px-2 py-0.5 border border-gray-400 bg-[#e0e0e0] text-[10px] font-bold text-black hover:bg-[#d0d0d0] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                         >
-                            הקודם
+                            &lt;&lt; הקודם
                         </button>
-                        <div className="flex items-center gap-1 px-2 text-xs text-gray-600 bg-white border border-gray-300 rounded-sm shadow-sm">
-                            עמוד <span className="font-bold text-gray-900">{table.getState().pagination.pageIndex + 1}</span> מתוך <span className="font-bold text-gray-900">{table.getPageCount()}</span>
+                        <div className="flex items-center gap-1 px-1 text-[10px] text-black bg-white border border-gray-400 shadow-sm">
+                            <span className="font-bold">{table.getState().pagination.pageIndex + 1}</span>
+                            <span>/</span>
+                            <span className="font-bold">{table.getPageCount()}</span>
                         </div>
                         <button
                             onClick={() => table.nextPage()}
                             disabled={!table.getCanNextPage()}
-                            className="px-2 py-0.5 border border-gray-300 bg-white rounded-sm text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                            className="px-2 py-0.5 border border-gray-400 bg-[#e0e0e0] text-[10px] font-bold text-black hover:bg-[#d0d0d0] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                         >
-                            הבא
+                            הבא &gt;&gt;
                         </button>
                     </div>
+                    <span className="text-[10px] text-gray-700 font-bold">
+                        סה"כ: <span className="font-bold">{filteredData.length}</span>
+                    </span>
                 </div>
             </div>
         </div>

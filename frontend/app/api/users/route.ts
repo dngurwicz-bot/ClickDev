@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
         // Combine data
         const usersWithRoles = users.map(user => {
-            const roleData = userRoles?.find(r => r.user_id === user.id)
+            const roleData = userRoles?.find((r: any) => r.user_id === user.id)
             return {
                 id: user.id,
                 email: user.email,
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
                 user_metadata: user.user_metadata,
                 role: roleData?.role || 'user',
                 organization_id: roleData?.organization_id || null,
-                organization_name: roleData?.organizations?.name || null,
+                organization_name: (roleData?.organizations as any)?.name || null,
             }
         })
 

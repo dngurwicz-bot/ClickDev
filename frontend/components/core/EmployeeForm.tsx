@@ -256,7 +256,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections, e
                                 <FormRow label="מספר עובד">
                                     <Input {...form.register('employee_number')} className="h-7 text-sm bg-[#fdfdfd] border-slate-300 focus:border-blue-500 rounded-sm font-bold text-blue-800" />
                                 </FormRow>
-                                <FormRow label="תעודת זהות" required error={form.formState.errors.id_number?.message}>
+                                <FormRow label="תעודת זהות" required error={typeof form.formState.errors.id_number?.message === 'string' ? form.formState.errors.id_number.message : undefined}>
                                     <Input {...form.register('id_number')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
                                 </FormRow>
                                 <FormRow label="תאריך לידה">
@@ -325,10 +325,10 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections, e
                                 <FormRow label="תאריך תוקף השינוי" required>
                                     <Input type="date" {...form.register('valid_from')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm font-bold" />
                                 </FormRow>
-                                <FormRow label="שם פרטי" required error={form.formState.errors.first_name?.message}>
+                                <FormRow label="שם פרטי" required error={typeof form.formState.errors.first_name?.message === 'string' ? form.formState.errors.first_name.message : undefined}>
                                     <Input {...form.register('first_name')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
                                 </FormRow>
-                                <FormRow label="שם משפחה" required error={form.formState.errors.last_name?.message}>
+                                <FormRow label="שם משפחה" required error={typeof form.formState.errors.last_name?.message === 'string' ? form.formState.errors.last_name.message : undefined}>
                                     <Input {...form.register('last_name')} className="h-7 text-sm bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
                                 </FormRow>
                                 <FormRow label="שם משפחה קודם">
@@ -421,7 +421,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections, e
                                 <h3 className="text-base font-bold text-blue-900 leading-none">פרטי העסקה (אירוע 203)</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-3">
-                                <FormRow label="תפקיד" required error={form.formState.errors.job_title?.message}>
+                                <FormRow label="תפקיד" required error={typeof form.formState.errors.job_title?.message === 'string' ? form.formState.errors.job_title.message : undefined}>
                                     <Input {...form.register('job_title')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm" />
                                 </FormRow>
                                 <FormRow label="מחלקה">
@@ -445,7 +445,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel, onlySections, e
                                         </SelectContent>
                                     </Select>
                                 </FormRow>
-                                <FormRow label="תאריך תחילת עבודה" required error={form.formState.errors.hire_date?.message}>
+                                <FormRow label="תאריך תחילת עבודה" required error={typeof form.formState.errors.hire_date?.message === 'string' ? form.formState.errors.hire_date.message : undefined}>
                                     <Input type="date" {...form.register('hire_date')} className="h-7 text-xs bg-white border-slate-300 focus:border-blue-500 rounded-sm font-bold" />
                                 </FormRow>
                             </div>

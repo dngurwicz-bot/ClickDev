@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Supabase admin client
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false

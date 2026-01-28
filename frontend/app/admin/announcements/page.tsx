@@ -549,7 +549,7 @@ export default function AnnouncementsPage() {
                                 תוכן <span className="text-red-500">*</span>
                             </label>
                             <RichTextEditor
-                                value={formData.content}
+                                content={formData.content}
                                 onChange={(value) => setFormData({ ...formData, content: value })}
                                 placeholder="הכנס את תוכן ההודעה..."
                             />

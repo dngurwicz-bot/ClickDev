@@ -33,7 +33,7 @@ export async function GET(
             )
         }
 
-        const userOrgs = data.map(row => ({
+        const userOrgs = data.map((row: any) => ({
             organization_id: row.organization_id,
             organization_name: row.organizations?.name || 'Unknown',
             role: row.role,
