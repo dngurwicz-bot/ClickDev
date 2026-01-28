@@ -87,8 +87,12 @@ class TemporalEngine:
                 }).eq("id", record['id']).execute()
 
         # 2. Insert New Record
-        new_record['employee_id'] = employee_id
-        new_record['valid_to'] = None  # Active until further notice
+        # Filter out control fields that shouldn't be in the database
+        clean_record = {k: v for k, v in new_record.items() 
+                       if k not in ['action_code']}
+        
+        clean_record['employee_id'] = employee_id
+        clean_record['valid_to'] = None  # Active until further notice
 
-        res = self.supabase.table(table).insert(new_record).execute()
+        res = self.supabase.table(table).insert(clean_record).execute()
         return res.data[0] if res.data else {}

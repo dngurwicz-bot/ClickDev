@@ -66,21 +66,29 @@ export function AddressForm({ employeeId, organizationId, initialData, onSuccess
                 action_code: 'A'
             }
 
+            console.log('[AddressForm] Submitting address form with payload:', payload)
+
             const response = await authFetch('/api/events/218', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
 
+            console.log('[AddressForm] Response status:', response.status)
+
             if (!response.ok) {
                 const error = await response.json()
+                console.error('[AddressForm] Backend error:', error)
                 throw new Error(error.detail || 'שגיאה בשמירת הכתובת')
             }
 
+            const responseData = await response.json()
+            console.log('[AddressForm] Success response:', responseData)
+            
             toast.success('הכתובת נשמרה בהצלחה')
             onSuccess()
         } catch (error: any) {
-            console.error('Error saving address:', error)
+            console.error('[AddressForm] Error saving address:', error)
             toast.error(error.message)
         } finally {
             setLoading(false)
