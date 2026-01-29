@@ -5,7 +5,6 @@ This module provides the FastAPI backend for the Multi-Tenant HR
 Management System.
 It acts as the entry point and aggregates the following modules:
 - Organizations
-- Employees
 - Users
 - Core (Job Grades, Titles, Units, Positions)
 - Analytics
@@ -13,19 +12,22 @@ It acts as the entry point and aggregates the following modules:
 """
 
 import os
+import sys
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+# Add backend directory to Python path to allow imports
+sys.path.insert(0, str(Path(__file__).parent))
+
 # Import Routers
 from routers import (
     organizations,
-    employees,
     users,
     core,
     analytics,
-    admin,
-    events
+    admin
 )
 
 load_dotenv()
@@ -47,12 +49,10 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(organizations.router)
-app.include_router(employees.router)
 app.include_router(users.router)
 app.include_router(core.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
-app.include_router(events.router)
 
 
 # Health check

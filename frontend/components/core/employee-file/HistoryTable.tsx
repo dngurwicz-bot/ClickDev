@@ -5,7 +5,7 @@ import { authFetch } from '@/lib/api'
 import { format } from 'date-fns'
 import {
     Printer, FileSpreadsheet, Filter, RefreshCw,
-    FileText, MoreHorizontal
+    FileText, MoreHorizontal, History
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,16 +30,37 @@ interface HistoryTableProps {
 export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick, isEditing, onRowClick, showValidity = true, dataSource }: HistoryTableProps) {
     const [history, setHistory] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [showExpired, setShowExpired] = useState(false)
 
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                // Use custom dataSource if provided, otherwise use default history endpoint
-                const endpoint = dataSource || `/api/employees/${employeeId}/history`
+                let endpoint: string
+                
+                // Use custom dataSource if provided
+                if (dataSource) {
+                    endpoint = dataSource
+                } else if (eventCode) {
+                    // Use new event-specific API if event code is provided
+                    // GET /api/employees/{id}/events?event_code=101&include_history=false
+                    endpoint = `/api/employees/${employeeId}/events?event_code=${eventCode}&include_history=false`
+                } else {
+                    // Fallback to old history endpoint for compatibility
+                    endpoint = `/api/employees/${employeeId}/history`
+                }
+                
                 const response = await authFetch(endpoint)
                 if (response.ok) {
                     const data = await response.json()
-                    setHistory(data)
+                    
+                    // Handle both old format (array) and new format (object with event codes as keys)
+                    if (Array.isArray(data)) {
+                        setHistory(data)
+                    } else if (eventCode && data[eventCode]) {
+                        setHistory(data[eventCode])
+                    } else {
+                        setHistory(Array.isArray(data) ? data : [])
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching history:', error)
@@ -48,7 +69,7 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
             }
         }
         fetchHistory()
-    }, [employeeId, dataSource])
+    }, [employeeId, dataSource, eventCode])
 
     if (loading) return <div className="p-4 text-xs text-gray-500 italic">טוען נתונים...</div>
 
@@ -81,6 +102,21 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
                             </button>
                         </>
                     )}
+
+                    {/* View History Toggle Button */}
+                    <div className="w-px h-5 bg-gray-400 mx-1" />
+                    <button
+                        onClick={() => setShowExpired(!showExpired)}
+                        title={showExpired ? "הסתר רשומות שפקעו" : "הצג היסטוריה"}
+                        className={cn(
+                            "flex items-center gap-1 px-2 h-6 text-xs font-bold rounded shadow-sm transition-all",
+                            showExpired
+                                ? "bg-blue-600 text-white hover:bg-blue-700"
+                                : "bg-gray-500 text-white hover:bg-gray-600"
+                        )}
+                    >
+                        <History className="w-3 h-3" />
+                    </button>
 
                     <div className="w-px h-5 bg-gray-400 mx-1" />
 
@@ -125,13 +161,11 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
                     </thead>
                     <tbody className="bg-white">
                         {(() => {
-                            // When dataSource is provided, skip client-side filtering (data is already filtered by backend)
-                            const filteredHistory = dataSource ? history : history.filter(record =>
-                                !eventCode ||
-                                record.event_code === eventCode ||
-                                (record.event_code === null && (eventCode === '101' || eventCode === '105' || eventCode === '102' || eventCode === '103')) ||
-                                (record.event_code === '101' && eventCode === '105') // Legacy '101' should show in Names (105)
-                            )
+                            // Filter by validity status
+                            const filteredHistory = showExpired 
+                                ? history 
+                                : history.filter(record => !record.valid_to)
+                            
                             return filteredHistory.length > 0 ? (
                                 filteredHistory.map((record, idx) => (
                                     <tr key={record.id || idx}
@@ -163,7 +197,7 @@ export function HistoryTable({ employeeId, columns, title, eventCode, onAddClick
                             ) : (
                                 <tr>
                                     <td colSpan={columns.length + 3} className="p-4 text-center text-xs text-gray-400 italic">
-                                        אין נתונים היסטוריים להצגה
+                                        {showExpired ? 'אין נתונים היסטוריים להצגה' : 'אין רשומות פעילות'}
                                     </td>
                                 </tr>
                             )
