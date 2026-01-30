@@ -1,8 +1,12 @@
 .env
 backend/.env
 *.env
+.venv/
 venv/
+venv_311/
+env/
 __pycache__/
 node_modules/
 .next/
-nul
+.claude/
+.env*

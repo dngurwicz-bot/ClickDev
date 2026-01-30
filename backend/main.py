@@ -27,8 +27,7 @@ from routers import (
     users,
     core,
     analytics,
-    admin,
-    basic_info
+    admin
 )
 
 load_dotenv()
@@ -54,7 +53,6 @@ app.include_router(users.router)
 app.include_router(core.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
-app.include_router(basic_info.router)
 
 
 # Health check

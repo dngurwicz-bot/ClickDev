@@ -151,12 +151,6 @@ export default function CoreDashboard() {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                        <Link href="/dashboard/core/employees/new">
-                            <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-green-500">
-                                <h3 className="font-bold text-lg mb-2">הקמת עובד חדש</h3>
-                                <p className="text-sm text-gray-500">הוספת עובד חדש לארגון עם נתוני בסיס (Table 001).</p>
-                            </Card>
-                        </Link>
 
                         <Link href="/dashboard/core/settings">
                             <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-purple-500">

@@ -3,42 +3,49 @@ Admin Router
 Handles system-wide administrative tasks and announcements.
 """
 
+import os
+
 from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from database import supabase_admin
-from dependencies import require_super_admin, get_current_user
-from schemas import (
+
+from database import supabase_admin  # pylint: disable=import-error
+from dependencies import (  # pylint: disable=import-error
+    require_super_admin, get_current_user
+)
+from schemas import (  # pylint: disable=import-error
     AnnouncementCreate, AnnouncementUpdate, AnnouncementResponse,
     TaskCreate, TaskUpdate
 )
+from supabase import create_client
 
 router = APIRouter(prefix="/api", tags=["Admin"])
 
 
 # Dashboard Stats
 @router.get("/stats/dashboard")
-async def get_dashboard_stats(_user=Depends(require_super_admin)):
+async def get_dashboard_stats(user=Depends(require_super_admin)):
     """Get dashboard statistics for super admin"""
     try:
+        # Import settings for supabase client
+        supabase_url = os.getenv("SUPABASE_URL", "")
+
+        # Use a client with the user's token to satisfy RLS super_admin
+        # policies
+        user_client = create_client(supabase_url, user.token)
+
         # Get total organizations
-        total_orgs_response = supabase_admin.table("organizations")\
+        total_orgs_response = user_client.table("organizations")\
             .select("id", count="exact").execute()
         total_organizations = total_orgs_response.count or 0
 
         # Get active organizations
-        active_orgs_response = supabase_admin.table("organizations")\
+        active_orgs_response = user_client.table("organizations")\
             .select("id", count="exact").eq("is_active", True).execute()
         active_organizations = active_orgs_response.count or 0
 
-        # Get total employees across all organizations
-        employees_response = supabase_admin.table("employees")\
-            .select("id", count="exact").execute()
-        total_employees = employees_response.count or 0
-
         # Calculate MRR (Monthly Recurring Revenue)
-        # Assuming organizations have a subscription_amount field
-        orgs_with_revenue = supabase_admin.table("organizations")\
+        orgs_with_revenue = user_client.table("organizations")\
             .select("subscription_amount").eq("is_active", True).execute()
 
         mrr = 0
@@ -47,7 +54,7 @@ async def get_dashboard_stats(_user=Depends(require_super_admin)):
                       for org in orgs_with_revenue.data)
 
         # Get recent activity (last 5 organizations)
-        recent_orgs = supabase_admin.table("organizations")\
+        recent_orgs = user_client.table("organizations")\
             .select("id, name, created_at, is_active")\
             .order("created_at", desc=True)\
             .limit(5)\
@@ -56,7 +63,6 @@ async def get_dashboard_stats(_user=Depends(require_super_admin)):
         return {
             "total_organizations": total_organizations,
             "active_organizations": active_organizations,
-            "total_employees": total_employees,
             "mrr": mrr,
             "recent_activity": recent_orgs.data or []
         }

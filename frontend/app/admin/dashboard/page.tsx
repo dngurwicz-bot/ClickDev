@@ -10,7 +10,6 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalOrganizations: 0,
     activeOrganizations: 0,
-    totalEmployees: 0,
     mrr: 0,
     recentActivity: []
   })
@@ -61,7 +60,6 @@ export default function DashboardPage() {
       setStats({
         totalOrganizations: data.total_organizations || 0,
         activeOrganizations: data.active_organizations || 0,
-        totalEmployees: data.total_employees || 0,
         mrr: data.mrr || 0,
         recentActivity: data.recent_activity || []
       })
@@ -93,12 +91,6 @@ export default function DashboardPage() {
           value={stats.activeOrganizations}
           icon={Activity}
           color="success"
-        />
-        <StatsCard
-          title="סה״כ עובדים"
-          value={stats.totalEmployees}
-          icon={Users}
-          color="info"
         />
         <StatsCard
           title="הכנסה חודשית (MRR)"

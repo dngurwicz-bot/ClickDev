@@ -23,7 +23,6 @@ const menuItems = [
   { href: '/admin/dashboard', label: 'דשבורד', icon: LayoutDashboard },
   { href: '/admin/organizations', label: 'ארגונים', icon: Building2 },
   { href: '/admin/subscription-tiers', label: 'סוגי מנויים', icon: Package },
-  { href: '/admin/users', label: 'משתמשים', icon: Users },
   { href: '/admin/announcements', label: 'הודעות', icon: Bell },
   { href: '/admin/analytics', label: 'אנליטיקס', icon: BarChart3 },
   { href: '/admin/settings', label: 'הגדרות', icon: Settings },

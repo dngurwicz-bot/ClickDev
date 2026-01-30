@@ -30,12 +30,6 @@ async def get_dashboard_stats(_user=Depends(require_super_admin)):
         active_orgs = len(active_orgs_response.data) \
             if active_orgs_response.data else 0
 
-        # Get total employees
-        employees_response = supabase_admin.table("employees")\
-            .select("id", count="exact").execute()
-        total_employees = len(employees_response.data) \
-            if employees_response.data else 0
-
         # Calculate MRR (Estimated)
         mrr = 0
         if orgs_response.data:
@@ -57,7 +51,6 @@ async def get_dashboard_stats(_user=Depends(require_super_admin)):
         return {
             "total_organizations": total_orgs,
             "active_organizations": active_orgs,
-            "total_employees": total_employees,
             "mrr": mrr,
             "recent_activity": recent_activity
         }
@@ -84,27 +77,20 @@ async def get_analytics_data(_user=Depends(require_super_admin)):
         # Fetch actual totals
         orgs_response = supabase_admin.table("organizations")\
             .select("id, created_at, subscription_tier, is_active").execute()
-        employees_response = supabase_admin.table("employees")\
-            .select("id, created_at").execute()
 
         orgs = orgs_response.data if orgs_response.data else []
-        employees = employees_response.data if employees_response.data else []
-
         total_orgs = len(orgs)
-        total_employees = len(employees)
 
         # Mock growth data
         growth_data = [
             {
                 "name": m,
-                "organizations": int(total_orgs * (0.5 + 0.1 * i)),
-                "employees": int(total_employees * (0.5 + 0.1 * i))
+                "organizations": int(total_orgs * (0.5 + 0.1 * i))
             }
             for i, m in enumerate(display_months)
         ]
         # Make the last one match actuals
         growth_data[-1]["organizations"] = total_orgs
-        growth_data[-1]["employees"] = total_employees
 
         # 2. Distribution Data (Subscription Tiers)
         tiers = {"basic": 0, "pro": 0, "enterprise": 0}
@@ -133,15 +119,11 @@ async def get_analytics_data(_user=Depends(require_super_admin)):
         churn_rate = (inactive_orgs / total_orgs * 100) \
             if total_orgs > 0 else 0
 
-        avg_employees = (total_employees / total_orgs) \
-            if total_orgs > 0 else 0
-
         return {
             "growth_data": growth_data,
             "distribution_data": distribution_data,
             "metrics": {
                 "churn_rate": round(churn_rate, 1),
-                "avg_employees_per_org": round(avg_employees, 1),
                 "total_orgs": total_orgs,
                 "active_orgs": org_status["active"]
             }
@@ -183,31 +165,6 @@ async def generate_report(request: ReportRequest,
                     org.get('subscription_tier'),
                     org.get('created_at'),
                     'Active' if org.get('is_active') else 'Inactive'
-                ])
-
-        elif request.report_type == 'employees':
-            # Columns
-            writer.writerow(
-                ['ID', 'Name', 'Email', 'Job Title',
-                 'Organization ID', 'Hired Date']
-            )
-
-            # Fetch data
-            query = supabase_admin.table("employees")\
-                .select("*").order("created_at", desc=True)
-            if request.start_date:
-                query = query.gte("created_at", request.start_date)
-
-            response = query.execute()
-
-            for emp in response.data:
-                writer.writerow([
-                    emp.get('id'),
-                    f"{emp.get('first_name')} {emp.get('last_name')}",
-                    emp.get('email'),
-                    emp.get('job_title'),
-                    emp.get('organization_id'),
-                    emp.get('hire_date')
                 ])
 
         else:

@@ -7,7 +7,6 @@ import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
-import { EmployeeSelect } from '@/components/core/EmployeeSelect'
 import { UnitSelect } from '@/components/core/UnitSelect'
 import { X, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -170,57 +169,27 @@ export function PositionForm({ initialData, onSuccess, onCancel }: PositionFormP
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">עובד מאייש</label>
+                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">תאריך תחולה</label>
                             <div className="flex-1">
-                                <Controller
-                                    name="occupant_id"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <EmployeeSelect
-                                            value={field.value || ''}
-                                            onChange={field.onChange}
-                                            className="h-8 text-sm"
-                                        />
-                                    )}
+                                <input
+                                    type="date"
+                                    {...register('effective_date')}
+                                    className="w-full h-8 bg-[#E0F5F3] border border-[#00A896]/30 px-2 text-sm focus:border-[#00A896] outline-none"
                                 />
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <label className="text-sm font-bold text-gray-700 w-32 shrink-0">תאריך תחולה</label>
-                                <div className="flex-1">
-                                    <input
-                                        type="date"
-                                        {...register('effective_date')}
-                                        className="w-full h-8 bg-[#E0F5F3] border border-[#00A896]/30 px-2 text-sm focus:border-[#00A896] outline-none"
-                                    />
-                                    {errors.effective_date && <p className="text-red-500 text-[10px]">{errors.effective_date.message}</p>}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                                <label className="text-sm font-bold text-gray-700 w-32 shrink-0">גמר תוקף</label>
-                                <div className="flex-1">
-                                    <input
-                                        type="date"
-                                        {...register('expiry_date')}
-                                        className="w-full h-8 bg-white border border-gray-400 px-2 text-sm focus:border-blue-500 outline-none"
-                                    />
-                                </div>
+                                {errors.effective_date && <p className="text-red-500 text-[10px]">{errors.effective_date.message}</p>}
                             </div>
                         </div>
-                    </div>
 
-                </div>
-
-                {/* Status Bar - Branded Teal */}
-                <div className="mt-8 border-[1.5px] border-[#00A896] bg-white p-3 flex items-start gap-3 shadow-inner">
-                    <div className="w-8 h-8 shrink-0 bg-[#E0F5F3] border border-[#00A896]/30 flex items-center justify-center text-[#00A896]">📖</div>
-                    <div className="flex-1">
-                        <p className="text-[12px] leading-tight text-gray-700 font-medium">
-                            פרטי התקן הארגוני.
-                        </p>
-                        <p className="text-[10px] text-gray-500 mt-1">
-                            הגדרת התקן מאפשרת קישוריות בין המבנה הארגוני לבין מצבת העובדים בפועל.
-                        </p>
+                        <div className="flex items-center gap-4">
+                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">גמר תוקף</label>
+                            <div className="flex-1">
+                                <input
+                                    type="date"
+                                    {...register('expiry_date')}
+                                    className="w-full h-8 bg-white border border-gray-400 px-2 text-sm focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </form>

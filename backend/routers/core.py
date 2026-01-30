@@ -146,7 +146,7 @@ async def get_positions(org_id: str, _user=Depends(require_super_admin)):
     """List positions in an organization."""
     try:
         response = supabase_admin.table("positions").select(
-            "*, job_titles(title), employees(first_name, last_name, email)"
+            "*, job_titles(title)"
         )\
             .eq("organization_id", org_id)\
             .execute()
