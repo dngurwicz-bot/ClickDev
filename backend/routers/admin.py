@@ -16,6 +16,55 @@ from schemas import (
 router = APIRouter(prefix="/api", tags=["Admin"])
 
 
+# Dashboard Stats
+@router.get("/stats/dashboard")
+async def get_dashboard_stats(_user=Depends(require_super_admin)):
+    """Get dashboard statistics for super admin"""
+    try:
+        # Get total organizations
+        total_orgs_response = supabase_admin.table("organizations")\
+            .select("id", count="exact").execute()
+        total_organizations = total_orgs_response.count or 0
+
+        # Get active organizations
+        active_orgs_response = supabase_admin.table("organizations")\
+            .select("id", count="exact").eq("is_active", True).execute()
+        active_organizations = active_orgs_response.count or 0
+
+        # Get total employees across all organizations
+        employees_response = supabase_admin.table("employees")\
+            .select("id", count="exact").execute()
+        total_employees = employees_response.count or 0
+
+        # Calculate MRR (Monthly Recurring Revenue)
+        # Assuming organizations have a subscription_amount field
+        orgs_with_revenue = supabase_admin.table("organizations")\
+            .select("subscription_amount").eq("is_active", True).execute()
+
+        mrr = 0
+        if orgs_with_revenue.data:
+            mrr = sum(org.get("subscription_amount", 0) or 0
+                      for org in orgs_with_revenue.data)
+
+        # Get recent activity (last 5 organizations)
+        recent_orgs = supabase_admin.table("organizations")\
+            .select("id, name, created_at, is_active")\
+            .order("created_at", desc=True)\
+            .limit(5)\
+            .execute()
+
+        return {
+            "total_organizations": total_organizations,
+            "active_organizations": active_organizations,
+            "total_employees": total_employees,
+            "mrr": mrr,
+            "recent_activity": recent_orgs.data or []
+        }
+    except Exception as e:  # pylint: disable=broad-except
+        print(f"Error fetching dashboard stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 # Announcements
 @router.get("/announcements", response_model=List[AnnouncementResponse])
 async def get_announcements(user=Depends(get_current_user)):

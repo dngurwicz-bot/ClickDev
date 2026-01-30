@@ -32,14 +32,12 @@ type MenuItem = {
 
 const defaultMenuItems: MenuItem[] = [
     { href: '/dashboard', label: 'דשבורד', icon: LayoutDashboard },
-    { href: '/dashboard/employees', label: 'עובדים', icon: Users },
     { href: '/dashboard/documents', label: 'מסמכים', icon: FileText },
     { href: '/dashboard/settings', label: 'הגדרות', icon: Settings },
 ]
 
 const coreMenuItems: MenuItem[] = [
     { href: '/dashboard/core', label: 'ראשי', icon: LayoutDashboard },
-    { href: '/dashboard/core/employees', label: 'תיק עובד', icon: Users },
     {
         label: 'מבנה ארגוני',
         icon: Network,
@@ -56,7 +54,6 @@ const coreMenuItems: MenuItem[] = [
         ]
     },
     { href: '/dashboard/core/catalog', label: 'קטלוג משרות', icon: GraduationCap },
-    { href: '/dashboard/core/history', label: 'היסטוריה', icon: GitGraph },
 ]
 
 function CollapsibleMenuItem({ item, pathname }: { item: MenuItem, pathname: string | null }) {

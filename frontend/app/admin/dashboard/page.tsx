@@ -25,21 +25,39 @@ export default function DashboardPage() {
       const { supabase } = await import('@/lib/supabase')
       const { data: { session } } = await supabase.auth.getSession()
 
+      console.log('[Dashboard] Session check:', session ? 'Session exists' : 'No session')
+
+      // Display user ID for super_admin assignment
+      if (session?.user) {
+        console.log('═══════════════════════════════════════════════════════════')
+        console.log('YOUR USER ID (for super_admin assignment):')
+        console.log(session.user.id)
+        console.log('Email:', session.user.email)
+        console.log('═══════════════════════════════════════════════════════════')
+      }
+
       if (!session?.access_token) {
+        console.error('[Dashboard] No access token found')
         throw new Error('No session')
       }
 
+      console.log('[Dashboard] Fetching stats from backend...')
       const response = await fetch('http://127.0.0.1:8000/api/stats/dashboard', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
       })
 
+      console.log('[Dashboard] Response status:', response.status)
+
       if (!response.ok) {
-        throw new Error('Failed to fetch stats')
+        const errorText = await response.text()
+        console.error('[Dashboard] Error response:', errorText)
+        throw new Error(`Failed to fetch stats: ${response.status} - ${errorText}`)
       }
 
       const data = await response.json()
+      console.log('[Dashboard] Stats received:', data)
       setStats({
         totalOrganizations: data.total_organizations || 0,
         activeOrganizations: data.active_organizations || 0,
@@ -48,7 +66,7 @@ export default function DashboardPage() {
         recentActivity: data.recent_activity || []
       })
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('[Dashboard] Error fetching stats:', error)
     } finally {
       setLoading(false)
     }

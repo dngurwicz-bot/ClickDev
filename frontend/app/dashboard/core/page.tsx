@@ -13,7 +13,6 @@ import { he } from 'date-fns/locale'
 
 interface DashboardStats {
     unitsCount: number
-    employeesCount: number
     titlesCount: number
     gradesCount: number
 }
@@ -34,7 +33,7 @@ interface RecentActivity {
 
 export default function CoreDashboard() {
     const { currentOrg } = useOrganization()
-    const [stats, setStats] = useState<DashboardStats>({ unitsCount: 0, employeesCount: 0, titlesCount: 0, gradesCount: 0 })
+    const [stats, setStats] = useState<DashboardStats>({ unitsCount: 0, titlesCount: 0, gradesCount: 0 })
     const [activities, setActivities] = useState<RecentActivity[]>([])
     const [loading, setLoading] = useState(true)
     const [showWizard, setShowWizard] = useState(false)
@@ -46,7 +45,6 @@ export default function CoreDashboard() {
             setLoading(true)
             try {
                 const { count: unitsCount } = await supabase.from('org_units').select('*', { count: 'exact', head: true }).eq('organization_id', currentOrg.id)
-                const { count: employeesCount } = await supabase.from('employees').select('*', { count: 'exact', head: true }).eq('organization_id', currentOrg.id)
 
                 // Job titles and grades might not have RLS setup for viewer correctly or table might be empty
                 // Let's wrap them in try catch to avoid breaking the dashboard
@@ -65,7 +63,6 @@ export default function CoreDashboard() {
 
                 setStats({
                     unitsCount: unitsCount || 0,
-                    employeesCount: employeesCount || 0,
                     titlesCount,
                     gradesCount,
                 })
@@ -123,15 +120,6 @@ export default function CoreDashboard() {
                     </div>
                 </Card>
 
-                <Card className="p-6 flex items-center justify-between hover:shadow-md transition-shadow">
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">עובדים פעילים</p>
-                        <h3 className="text-2xl font-bold mt-1 text-gray-900">{stats.employeesCount}</h3>
-                    </div>
-                    <div className="bg-green-100 p-3 rounded-full text-green-600">
-                        <Users className="w-6 h-6" />
-                    </div>
-                </Card>
 
                 <Card className="p-6 flex items-center justify-between hover:shadow-md transition-shadow">
                     <div>
@@ -163,16 +151,17 @@ export default function CoreDashboard() {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+                        <Link href="/dashboard/core/employees/new">
+                            <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-green-500">
+                                <h3 className="font-bold text-lg mb-2">הקמת עובד חדש</h3>
+                                <p className="text-sm text-gray-500">הוספת עובד חדש לארגון עם נתוני בסיס (Table 001).</p>
+                            </Card>
+                        </Link>
+
                         <Link href="/dashboard/core/settings">
                             <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-purple-500">
                                 <h3 className="font-bold text-lg mb-2">הגדרות תפקידים</h3>
                                 <p className="text-sm text-gray-500">ניהול קטלוג תפקידים, דרגות ורמות היררכיה.</p>
-                            </Card>
-                        </Link>
-                        <Link href="/dashboard/core/employees">
-                            <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-green-500">
-                                <h3 className="font-bold text-lg mb-2">תיק עובד</h3>
-                                <p className="text-sm text-gray-500">חיפוש עובדים, עדכון פרטים וניהול תיקים.</p>
                             </Card>
                         </Link>
 

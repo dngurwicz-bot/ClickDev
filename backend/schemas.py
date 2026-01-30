@@ -1,6 +1,6 @@
 """Module containing Pydantic schemas for the application."""
 from typing import List, Optional, Any, Dict
-from datetime import datetime
+from datetime import datetime, date as date_type
 from pydantic import BaseModel
 
 # Pydantic models
@@ -107,8 +107,42 @@ class AnnouncementResponse(BaseModel):
     created_at: datetime
 
 
+class Table001Data(BaseModel):
+    """Data for Table 001 (Basic Info)."""
+    employee_number: str
+    id_number: str
+    id_type: str  # 'israeli_id', 'passport'
+    first_name_he: str
+    last_name_he: str
+    first_name_he_long: Optional[str] = None
+    last_name_he_long: Optional[str] = None
+    middle_name_he: Optional[str] = None
+    father_name_he: str
+    birth_date: date_type
+    effective_from: date_type
+    effective_to: Optional[date_type] = None
+    page_number: Optional[str] = None
+
+
+class Table001Request(BaseModel):
+    """Request for manage_table_001 operation."""
+    operation_code: str  # 'ADD', 'UPDATE', 'DELETE', 'SET'
+    data: Table001Data
+
+
+class EmployeeBase(BaseModel):
+    """Base Employee record (Static)."""
+    id: str
+    organization_id: str
+    employee_number: str
+    is_active: bool
+    created_at: datetime
+
+
 class EmployeeCreate(BaseModel):
-    """Model for creating an employee."""
+    """DEPRECATED: Model for creating an employee.
+    Use Table001Request instead.
+    """
     organization_id: str
     id_number: str
     first_name: str
