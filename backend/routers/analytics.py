@@ -1,19 +1,20 @@
-import csv
-import io
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
-from database import supabase_admin
-from dependencies import require_super_admin
-from schemas import ReportRequest
-
-
 """
 Analytics Router
 Handles dashboard statistics and reporting.
 """
 
+import csv
+import io
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from database import supabase_admin  # pylint: disable=import-error
+from dependencies import require_super_admin  # pylint: disable=import-error
+from schemas import ReportRequest  # pylint: disable=import-error
+
+
 router = APIRouter(prefix="/api/stats", tags=["Analytics"])
+
 
 @router.get("/dashboard")
 async def get_dashboard_stats(_user=Depends(require_super_admin)):

@@ -1,9 +1,17 @@
 import type { Metadata } from 'next'
 import { Toaster } from 'react-hot-toast'
+import { Rubik } from 'next/font/google'
 import './globals.css'
 import { OrganizationProvider } from '@/lib/contexts/OrganizationContext'
 import { SidebarProvider } from '@/lib/contexts/SidebarContext'
 import { InactivityProvider } from '@/lib/contexts/InactivityContext'
+
+const rubik = Rubik({
+  subsets: ['latin', 'hebrew'],
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  variable: '--font-rubik',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Click',
@@ -16,10 +24,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" suppressHydrationWarning>
-      <head>
-        <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="he" dir="rtl" className={rubik.variable} suppressHydrationWarning>
+      <head />
       <body>
         <OrganizationProvider>
           <SidebarProvider>

@@ -31,7 +31,7 @@ const config: Config = {
         info: '#3498DB',
       },
       fontFamily: {
-        sans: ['Rubik', 'sans-serif'],
+        sans: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
       },
     },
   },

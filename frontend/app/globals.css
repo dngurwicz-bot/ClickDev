@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -30,7 +29,7 @@ html {
 }
 
 body {
-  font-family: 'Rubik', sans-serif;
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
   color: var(--text-primary);
   background-color: var(--bg-main);
   direction: rtl;

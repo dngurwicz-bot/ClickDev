@@ -89,10 +89,11 @@ async def require_super_admin(user=Depends(get_current_user)):
     print(f"[AUTH DEBUG] Checking super_admin for: {user.email} ({user.id})")
 
     try:
-        # Use admin client to check user roles (bypasses RLS for role verification)
-        response = supabase_admin.table("user_roles").select("*")\
-            .eq("user_id", user.id)\
-            .eq("role", "super_admin")\
+        # Use admin client to check user roles
+        # (bypasses RLS for role verification)
+        response = supabase_admin.table("user_roles").select("*") \
+            .eq("user_id", user.id) \
+            .eq("role", "super_admin") \
             .execute()
 
         print(f"[AUTH DEBUG] DB Response: {response.data}")
@@ -122,10 +123,11 @@ async def require_admin(user=Depends(get_current_user)):
     Dependency to ensure user has 'super_admin' or 'organization_admin' role.
     """
     try:
-        # Use admin client to check user roles (bypasses RLS for role verification)
-        response = supabase_admin.table("user_roles").select("*")\
-            .eq("user_id", user.id)\
-            .in_("role", ["super_admin", "organization_admin"])\
+        # Use admin client to check user roles
+        # (bypasses RLS for role verification)
+        response = supabase_admin.table("user_roles").select("*") \
+            .eq("user_id", user.id) \
+            .in_("role", ["super_admin", "organization_admin"]) \
             .execute()
 
         if not response.data:

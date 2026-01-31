@@ -22,12 +22,14 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent))
 
 # Import Routers
-from routers import (
+# pylint: disable=import-error, wrong-import-position
+from routers import (  # noqa: E402
     organizations,
     users,
     core,
     analytics,
-    admin
+    admin,
+    employees
 )
 
 load_dotenv()
@@ -53,6 +55,7 @@ app.include_router(users.router)
 app.include_router(core.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
+app.include_router(employees.router)
 
 
 # Health check
@@ -71,4 +74,4 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("API_PORT", "8000"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

@@ -152,6 +152,13 @@ export default function CoreDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
 
+                        <Link href="/dashboard/core/employees">
+                            <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-blue-500">
+                                <h3 className="font-bold text-lg mb-2">תיק עובד</h3>
+                                <p className="text-sm text-gray-500">ניהול פרטי עובדים, חוזים, תנאי העסקה והיסטוריה.</p>
+                            </Card>
+                        </Link>
+
                         <Link href="/dashboard/core/settings">
                             <Card className="p-6 hover:bg-gray-50 transition-colors cursor-pointer border-r-4 border-r-purple-500">
                                 <h3 className="font-bold text-lg mb-2">הגדרות תפקידים</h3>

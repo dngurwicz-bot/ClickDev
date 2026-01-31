@@ -14,7 +14,8 @@ import {
     Network,
     Briefcase,
     GraduationCap,
-    GitGraph
+    GitGraph,
+    ArrowLeft
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -38,6 +39,7 @@ const defaultMenuItems: MenuItem[] = [
 
 const coreMenuItems: MenuItem[] = [
     { href: '/dashboard/core', label: 'ראשי', icon: LayoutDashboard },
+    { href: '/dashboard/core/employees', label: 'תיק עובד', icon: Users },
     {
         label: 'מבנה ארגוני',
         icon: Network,
@@ -54,6 +56,11 @@ const coreMenuItems: MenuItem[] = [
         ]
     },
     { href: '/dashboard/core/catalog', label: 'קטלוג משרות', icon: GraduationCap },
+]
+
+const employeeFileMenuItems: MenuItem[] = [
+    { href: '/dashboard/core', label: 'חזרה למערכת ראשי', icon: ArrowLeft },
+    // אלו הפריטים שיתווספו בהמשך כפי שביקשת
 ]
 
 function CollapsibleMenuItem({ item, pathname }: { item: MenuItem, pathname: string | null }) {
@@ -138,8 +145,21 @@ export default function Sidebar() {
     const [menuItems, setMenuItems] = useState<MenuItem[]>([])
 
     useEffect(() => {
+        const isEmployeeFile = pathname?.startsWith('/dashboard/core/employees')
         const isCore = pathname?.startsWith('/dashboard/core')
-        const items = isCore ? coreMenuItems : defaultMenuItems
+
+        // Contextual menu selection
+        let items = defaultMenuItems
+        if (isEmployeeFile) {
+            items = employeeFileMenuItems
+        } else if (isCore) {
+            items = coreMenuItems
+        }
+
+        if (isEmployeeFile) {
+            setMenuItems(items)
+            return
+        }
 
         if (isCore && currentOrg) {
             // Filter core items based on hierarchy

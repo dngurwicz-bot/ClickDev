@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "C:\ClickDev\ClickDev\backend\main.py", line 26, in <module>
+    from routers import (  # noqa: E402
+    ...<5 lines>...
+    )
+  File "C:\ClickDev\ClickDev\backend\routers\organizations.py", line 6, in <module>
+    from database import supabase_admin
+  File "C:\ClickDev\ClickDev\backend\database.py", line 4, in <module>
+    from supabase import Client, create_client
+  File "C:\ClickDev\ClickDev\backend\.venv\Lib\site-packages\supabase\__init__.py", line 1, in <module>
+    from postgrest import APIError as PostgrestAPIError
+  File "C:\ClickDev\ClickDev\backend\.venv\Lib\site-packages\postgrest\__init__.py", line 5, in <module>
+    from httpx import Timeout
+  File "C:\ClickDev\ClickDev\backend\.venv\Lib\site-packages\httpx\__init__.py", line 2, in <module>
+    from ._api import delete, get, head, options, patch, post, put, request, stream
+  File "C:\ClickDev\ClickDev\backend\.venv\Lib\site-packages\httpx\_api.py", line 4, in <module>
+    from ._client import Client
+  File "C:\ClickDev\ClickDev\backend\.venv\Lib\site-packages\httpx\_client.py", line 30, in <module>
+    from ._transports.default import AsyncHTTPTransport, HTTPTransport
+  File "C:\ClickDev\ClickDev\backend\.venv\Lib\site-packages\httpx\_transports\default.py", line 30, in <module>
+    import httpcore
+  File "C:\ClickDev\ClickDev\backend\.venv\Lib\site-packages\httpcore\__init__.py", line 139, in <module>
+    setattr(__locals[__name], "__module__", "httpcore")  # noqa
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'typing.Union' object has no attribute '__module__' and no __dict__ for setting new attributes. Did you mean: '__reduce__'?

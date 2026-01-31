@@ -21,9 +21,6 @@ CREATE TABLE IF NOT EXISTS employees (
     -- Hebrew Names
     first_name_he TEXT, -- Short (max 7)
     last_name_he TEXT, -- Short (max 10)
-    first_name_he_long TEXT, -- Max 50
-    last_name_he_long TEXT, -- Max 50
-    middle_name_he TEXT,
     father_name_he TEXT, -- Max 7
     
     birth_date DATE NOT NULL,
@@ -72,6 +69,8 @@ CREATE TABLE IF NOT EXISTS employee_name_history (
     last_name_he TEXT,
     changed_at TIMESTAMPTZ DEFAULT NOW(),
     changed_by UUID REFERENCES auth.users(id),
+    effective_from DATE,
+    effective_to DATE,
     reason TEXT
 );
 
@@ -131,6 +130,8 @@ DECLARE
     v_first_name text;
     v_last_name text;
     v_birth_date date;
+    v_current_first_name text;
+    v_current_last_name text;
 BEGIN
     -- 1. Validate ID if '200' and new
     IF p_event_code = '200' THEN
@@ -166,7 +167,9 @@ BEGIN
         
     ELSE
         -- For updates, find employee
-        SELECT id INTO v_employee_id FROM employees 
+        SELECT id, first_name_he, last_name_he 
+        INTO v_employee_id, v_current_first_name, v_current_last_name
+        FROM employees 
         WHERE organization_id = p_organization_id 
         AND (id_number = p_id_number OR employee_number = p_employee_number);
         
@@ -184,6 +187,67 @@ BEGIN
              -- Track name change history
              INSERT INTO employee_name_history (employee_id, first_name_he, last_name_he, changed_by)
              VALUES (v_employee_id, p_event_data->>'firstName', p_event_data->>'lastName', p_user_id);
+        END IF;
+
+        -- Handle Event 100 (Name Update / 552)
+        IF p_event_code = '100' THEN
+             DECLARE
+                v_date DATE;
+             BEGIN
+                 -- Parse date from inputs
+                 v_date := COALESCE((p_event_data->>'effectiveFrom')::date, CURRENT_DATE);
+
+                 -- OPERATION CODE: ' ' (Name Change)
+                 IF p_operation_code = ' ' THEN
+                     -- Insert OLD values into history
+                     INSERT INTO employee_name_history (
+                        employee_id, 
+                        first_name_he, 
+                        last_name_he,
+                        changed_by,
+                        effective_from,
+                        reason
+                     ) VALUES (
+                        v_employee_id, 
+                        v_current_first_name, 
+                        v_current_last_name,
+                        p_user_id,
+                        v_date,
+                        'Name Change'
+                     );
+                     
+                     -- Update Employees Table with NEW values
+                     UPDATE employees SET
+                        first_name_he = COALESCE(p_event_data->>'firstName', first_name_he),
+                        last_name_he = COALESCE(p_event_data->>'lastName', last_name_he)
+                     WHERE id = v_employee_id;
+                 
+                 -- OPERATION CODE: '2' (Correction)
+                 ELSIF p_operation_code = '2' THEN
+                     UPDATE employees SET
+                        first_name_he = COALESCE(p_event_data->>'firstName', first_name_he),
+                        last_name_he = COALESCE(p_event_data->>'lastName', last_name_he)
+                     WHERE id = v_employee_id;
+                     
+                 -- OPERATION CODE: '4' (Historical Insert)
+                 ELSIF p_operation_code = '4' THEN
+                     INSERT INTO employee_name_history (
+                        employee_id, 
+                        first_name_he, 
+                        last_name_he,
+                        changed_by,
+                        effective_from,
+                        reason
+                     ) VALUES (
+                        v_employee_id, 
+                        p_event_data->>'firstName', 
+                        p_event_data->>'lastName', 
+                        p_user_id,
+                        v_date,
+                        'Historical Insert'
+                     );
+                 END IF;
+             END;
         END IF;
     END IF;
 
@@ -278,6 +342,20 @@ USING (
     SELECT 1 FROM employees e
     JOIN organization_members om ON e.organization_id = om.organization_id
     WHERE e.id = employee_events.employee_id
+    AND om.user_id = auth.uid()
+  )
+);
+
+-- Name History Read
+ALTER TABLE employee_name_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view name history for their org employees"
+ON employee_name_history FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM employees e
+    JOIN organization_members om ON e.organization_id = om.organization_id
+    WHERE e.id = employee_name_history.employee_id
     AND om.user_id = auth.uid()
   )
 );

@@ -114,9 +114,6 @@ class Table001Data(BaseModel):
     id_type: str  # 'israeli_id', 'passport'
     first_name_he: str
     last_name_he: str
-    first_name_he_long: Optional[str] = None
-    last_name_he_long: Optional[str] = None
-    middle_name_he: Optional[str] = None
     father_name_he: str
     birth_date: date_type
     effective_from: date_type
@@ -127,6 +124,7 @@ class Table001Data(BaseModel):
 class Table001Request(BaseModel):
     """Request for manage_table_001 operation."""
     operation_code: str  # 'ADD', 'UPDATE', 'DELETE', 'SET'
+    event_code: Optional[str] = "200"
     data: Table001Data
 
 

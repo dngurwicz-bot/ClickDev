@@ -10,7 +10,7 @@ interface InactivityContextType {
 
 const InactivityContext = createContext<InactivityContextType | undefined>(undefined)
 
-const TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+const TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes
 // const TIMEOUT_MS = 10000 // 10 seconds for testing
 
 export function InactivityProvider({ children }: { children: ReactNode }) {
