@@ -111,21 +111,35 @@ class Table001Data(BaseModel):
     """Data for Table 001 (Basic Info)."""
     employee_number: str
     id_number: str
-    id_type: str  # 'israeli_id', 'passport'
-    first_name_he: str
-    last_name_he: str
-    father_name_he: str
-    birth_date: date_type
+    id_type: Optional[str] = 'israeli_id'  # 'israeli_id', 'passport'
+    first_name_he: Optional[str] = None
+    last_name_he: Optional[str] = None
+    father_name_he: Optional[str] = None
+    birth_date: Optional[date_type] = None
     effective_from: date_type
     effective_to: Optional[date_type] = None
     page_number: Optional[str] = None
 
 
+class Table101Data(BaseModel):
+    """Data for Table 101 (Address)."""
+    cityName: Optional[str] = None
+    cityCode: Optional[str] = None
+    street: Optional[str] = None
+    houseNumber: Optional[str] = None
+    apartment: Optional[str] = None
+    entrance: Optional[str] = None
+    postalCode: Optional[str] = None
+    phone: Optional[str] = None
+    phoneAdditional: Optional[str] = None
+    effectiveFrom: date_type
+
+
 class Table001Request(BaseModel):
-    """Request for manage_table_001 operation."""
+    """Request for manage_table operation (Generalized)."""
     operation_code: str  # 'ADD', 'UPDATE', 'DELETE', 'SET'
     event_code: Optional[str] = "200"
-    data: Table001Data
+    data: Dict[str, Any]
 
 
 class EmployeeBase(BaseModel):

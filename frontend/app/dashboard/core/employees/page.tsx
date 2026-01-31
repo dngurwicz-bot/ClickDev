@@ -40,7 +40,7 @@ export default function EmployeeFilePage() {
     const [error, setError] = useState<string | null>(null)
 
     const fetchEmployees = async () => {
-        if (!currentOrg?.id) return
+        if (!currentOrg?.id) return []
         try {
             setError(null)
             const { supabase } = await import('@/lib/supabase')
@@ -56,11 +56,14 @@ export default function EmployeeFilePage() {
             })
             if (!response.ok) throw new Error('Failed to fetch employees')
             const data = await response.json()
-            setEmployees(data.length > 0 ? data : mockEmployees)
+            const list = data.length > 0 ? data : mockEmployees
+            setEmployees(list)
+            return list
         } catch (err) {
             console.error('Error fetching employees:', err)
             setError('אירעה שגיאה בטעינת העובדים')
             setEmployees(mockEmployees)
+            return mockEmployees
         } finally {
             setIsLoaded(true)
         }
@@ -159,11 +162,11 @@ export default function EmployeeFilePage() {
                         employee_number: employee.employeeNumber,
                         id_number: employee.idNumber,
                         id_type: 'israeli_id',
-                        first_name_he: employee.firstName,
-                        last_name_he: employee.lastName,
-                        father_name_he: employee.fatherName,
-                        birth_date: formattedBirthDate,
-                        effective_from: new Date().toISOString().split('T')[0],
+                        firstName: employee.firstName,
+                        lastName: employee.lastName,
+                        fatherName: employee.fatherName,
+                        birthDate: formattedBirthDate,
+                        effectiveFrom: new Date().toISOString().split('T')[0],
                     }
                 })
             })
@@ -210,15 +213,28 @@ export default function EmployeeFilePage() {
 
             // Map data for Update (Event 100/Table 100 or General)
             // Ensure we match Table001Data schema required fields
-            const payloadData = {
+            // Construct payload
+            let payloadData: any = {
                 employee_number: selectedEmployee.employeeNumber || selectedEmployee.id,
                 id_number: selectedEmployee.idNumber || '',
-                id_type: 'israeli_id', // Default assumption
-                first_name_he: data.firstName || selectedEmployee.firstName,
-                last_name_he: data.lastName || selectedEmployee.lastName,
-                father_name_he: selectedEmployee.fatherName || '---',
-                birth_date: formatDateForBackend(selectedEmployee.birthDate || '2000-01-01'),
-                effective_from: data.effectiveFrom || new Date().toISOString().split('T')[0]
+                id_type: 'israeli_id',
+            }
+
+            if (eventCode === '100') {
+                payloadData = {
+                    ...payloadData,
+                    firstName: operationCode === '3' ? data.firstName : (data.firstName || selectedEmployee.firstName),
+                    lastName: operationCode === '3' ? data.lastName : (data.lastName || selectedEmployee.lastName),
+                    fatherName: selectedEmployee.fatherName || '---',
+                    birthDate: formatDateForBackend(selectedEmployee.birthDate || '2000-01-01'),
+                    effectiveFrom: data.effectiveFrom || new Date().toISOString().split('T')[0]
+                }
+            } else {
+                payloadData = {
+                    ...payloadData,
+                    ...data,
+                    effectiveFrom: data.effectiveFrom || data.effective_from || new Date().toISOString().split('T')[0]
+                }
             }
 
             const response = await fetch(`/api/organizations/${currentOrg.id}/employees`, {
@@ -243,18 +259,20 @@ export default function EmployeeFilePage() {
             }
 
             // Reload employees and update view
-            await fetchEmployees()
+            const updatedList = await fetchEmployees()
 
-            // Optimistically update selected employee or find it again from list
-            // Fetch employees updates the list, but we need to update selectedEmployee ref if we want instant feedback
-            // or just rely on the list update if we switch views.
-            // Let's re-find the selected employee from the new list (needs state update effect or manual search)
-            // For now, let's just alert success
-            alert('הפרטים עודכנו בהצלחה')
+            // Find the updated employee and refresh selectedEmployee state
+            if (updatedList) {
+                const updated = updatedList.find((e: Employee) => e.id === selectedEmployee.id)
+                if (updated) {
+                    setSelectedEmployee(updated)
+                }
+            }
 
         } catch (err: any) {
             console.error('Error updating employee:', err)
-            alert(`שגיאה בעדכון הפריט:\n${err.message || 'Unknown error'}`)
+            const errorMsg = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err))
+            alert(`שגיאה בעדכון הפרטים:\n${errorMsg}`)
         }
     }
 

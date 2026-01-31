@@ -1,7 +1,7 @@
 """
 Employees Router
 Handles employee-related operations including creation via the
-event-based system (Table 001).
+event-based system (Table 001, 101, etc.).
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -53,41 +53,29 @@ async def manage_employee(
     req: Table001Request,
     user=Depends(get_current_user)
 ):
-    """Manage employee data using the Table 001 event-based system."""
+    """Manage employee data using the event-based system."""
     try:
         # Map operation codes: ADD -> ' ', UPDATE -> '2', DELETE -> '3'
-        # Also allow direct passing of ' ', '2', '3'
         op_map = {
-            'ADD': ' ',
-            'UPDATE': '2',
-            'DELETE': '3',
-            ' ': ' ',
-            '2': '2',
-            '3': '3'
+            'ADD': ' ', 'UPDATE': '2', 'DELETE': '3',
+            ' ': ' ', '2': '2', '3': '3'
         }
         op_code = op_map.get(req.operation_code, ' ')
 
         # Prepare payload for RPC
+        data = req.data
         rpc_data = {
             "p_organization_id": org_id,
-            "p_employee_number": req.data.employee_number,
-            "p_id_number": req.data.id_number,
+            "p_employee_number": data.get("employee_number")
+            if isinstance(data, dict)
+            else getattr(data, "employee_number", None),
+            "p_id_number": data.get("id_number")
+            if isinstance(data, dict)
+            else getattr(data, "id_number", None),
             "p_operation_code": op_code,
-            "p_event_data": {
-                "firstName": req.data.first_name_he,
-                "lastName": req.data.last_name_he,
-                "fatherName": req.data.father_name_he,
-                "birthDate": req.data.birth_date.isoformat()
-                if hasattr(req.data.birth_date, 'isoformat')
-                else req.data.birth_date,
-                "idType": req.data.id_type,
-                "effectiveFrom": req.data.effective_from.isoformat()
-                if hasattr(req.data.effective_from, 'isoformat')
-                else req.data.effective_from,
-                "pageNumber": req.data.page_number
-            },
+            "p_event_data": data,
             "p_user_id": user.id,
-            "p_event_code": req.event_code  # Use event code from request
+            "p_event_code": req.event_code
         }
 
         response = supabase_admin.rpc(

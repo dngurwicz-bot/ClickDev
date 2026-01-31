@@ -199,7 +199,7 @@ BEGIN
 
                  -- OPERATION CODE: ' ' (Name Change)
                  IF p_operation_code = ' ' THEN
-                     -- Insert OLD values into history
+                     -- Insert OLD values into history (only if changed, NULL if same)
                      INSERT INTO employee_name_history (
                         employee_id, 
                         first_name_he, 
@@ -209,8 +209,8 @@ BEGIN
                         reason
                      ) VALUES (
                         v_employee_id, 
-                        v_current_first_name, 
-                        v_current_last_name,
+                        CASE WHEN v_current_first_name = (p_event_data->>'firstName') THEN NULL ELSE v_current_first_name END,
+                        CASE WHEN v_current_last_name = (p_event_data->>'lastName') THEN NULL ELSE v_current_last_name END,
                         p_user_id,
                         v_date,
                         'Name Change'
@@ -249,6 +249,69 @@ BEGIN
                  END IF;
              END;
         END IF;
+
+        -- Event 101 (Address / 218)
+        IF p_event_code = '101' THEN
+            v_effective_from := COALESCE((p_event_data->>'effectiveFrom')::date, CURRENT_DATE);
+            
+            -- Op ' ': New Event (Close current, open new)
+            IF p_operation_code = ' ' THEN
+                -- CHECK: If there is already a record starting today, this should be a CORRECTION instead of a NEW record
+                IF EXISTS (SELECT 1 FROM employee_address WHERE employee_id = v_employee_id AND valid_from = v_effective_from) THEN
+                    UPDATE employee_address SET
+                        city_name = COALESCE(p_event_data->>'cityName', city_name),
+                        city_code = COALESCE(p_event_data->>'cityCode', city_code),
+                        street = COALESCE(p_event_data->>'street', street),
+                        house_number = COALESCE(p_event_data->>'houseNumber', house_number),
+                        apartment = COALESCE(p_event_data->>'apartment', apartment),
+                        entrance = COALESCE(p_event_data->>'entrance', entrance),
+                        postal_code = COALESCE(p_event_data->>'postalCode', postal_code),
+                        phone = COALESCE(p_event_data->>'phone', phone),
+                        phone_additional = COALESCE(p_event_data->>'phoneAdditional', phone_additional),
+                        updated_at = NOW(),
+                        changed_by = p_user_id
+                    WHERE employee_id = v_employee_id AND valid_from = v_effective_from;
+                ELSE
+                    -- Close current record (only if it started BEFORE today)
+                    UPDATE employee_address 
+                    SET valid_to = v_effective_from - interval '1 day'
+                    WHERE employee_id = v_employee_id AND valid_to IS NULL AND valid_from < v_effective_from;
+                    
+                    -- Insert new record
+                    INSERT INTO employee_address (
+                        employee_id, organization_id, 
+                        city_name, city_code, street, house_number, 
+                        apartment, entrance, postal_code, 
+                        phone, phone_additional,
+                        valid_from, changed_by
+                    ) VALUES (
+                        v_employee_id, p_organization_id,
+                        p_event_data->>'cityName', p_event_data->>'cityCode', p_event_data->>'street', p_event_data->>'houseNumber', 
+                        p_event_data->>'apartment', p_event_data->>'entrance', p_event_data->>'postalCode', 
+                        p_event_data->>'phone', p_event_data->>'phoneAdditional',
+                        v_effective_from, p_user_id
+                    );
+                END IF;
+            
+            -- Op '2': Correction
+            ELSIF p_operation_code = '2' THEN
+                -- For correction, we update the CURRENT active record regardless of its valid_from
+                UPDATE employee_address SET
+                    city_name = COALESCE(p_event_data->>'cityName', city_name),
+                    city_code = COALESCE(p_event_data->>'cityCode', city_code),
+                    street = COALESCE(p_event_data->>'street', street),
+                    house_number = COALESCE(p_event_data->>'houseNumber', house_number),
+                    apartment = COALESCE(p_event_data->>'apartment', apartment),
+                    entrance = COALESCE(p_event_data->>'entrance', entrance),
+                    postal_code = COALESCE(p_event_data->>'postalCode', postal_code),
+                    phone = COALESCE(p_event_data->>'phone', phone),
+                    phone_additional = COALESCE(p_event_data->>'phoneAdditional', phone_additional),
+                    updated_at = NOW(),
+                    changed_by = p_user_id
+                WHERE employee_id = v_employee_id AND valid_to IS NULL;
+            END IF;
+        END IF;
+
     END IF;
 
     -- 3. Log Event

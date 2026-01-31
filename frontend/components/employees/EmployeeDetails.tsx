@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { toast } from 'react-hot-toast'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,7 +30,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import DateRangeSelector, { DateRangeType } from './DateRangeSelector'
-import { EmployeeTablesManager } from './EmployeeTablesManager'
+import { EmployeeTablesManager, EmployeeTableViewer } from './EmployeeTablesManager'
 
 export interface Employee {
     id: string
@@ -50,6 +51,33 @@ export interface Employee {
     passport?: string
     altLastName?: string
     altFirstName?: string
+    first_name_he?: string
+    last_name_he?: string
+    effective_from?: string
+}
+
+export interface NameHistoryRecord {
+    id: string;
+    employee_id: string;
+    first_name_he: string;
+    last_name_he: string;
+    effective_from: string;
+    created_at: string;
+}
+
+export interface AddressHistoryRecord {
+    id: string
+    city_name: string
+    city_code?: string
+    street?: string
+    house_number?: string
+    apartment?: string
+    entrance?: string
+    postal_code?: string
+    phone?: string
+    phone_additional?: string
+    valid_from: string
+    effective_from: string
 }
 
 interface EmployeeDetailsProps {
@@ -63,7 +91,7 @@ interface EmployeeDetailsProps {
     lastCreatedId?: string
     existingIds?: string[]
     existingNationalIds?: string[]
-    onUpdate?: (eventCode: string, data: any, operationCode?: string) => void
+    onUpdate?: (eventCode: string, data: any, operationCode?: string) => Promise<void> | void
 }
 
 type TabType = 'favorites' | 'personal' | 'employment' | 'salary' | 'attendance' | 'hr' | 'documents' | 'process'
@@ -94,26 +122,93 @@ export default function EmployeeDetails({
     const [dateRange, setDateRange] = useState<DateRangeType>('all')
     const [isEditing, setIsEditing] = useState(isNew)
     const [error, setError] = useState<string | null>(null)
-    const [nameHistory, setNameHistory] = useState<any[]>([])
+    const [filteredNameHistory, setFilteredNameHistory] = useState<NameHistoryRecord[]>([])
+    const [addressHistory, setAddressHistory] = useState<AddressHistoryRecord[]>([])
+    const [table101Mode, setTable101Mode] = useState<'table' | 'form'>('table')
+    const [selectedAddressRecord, setSelectedAddressRecord] = useState<AddressHistoryRecord | null>(null)
+    const [filterMode, setFilterMode] = useState<'all' | 'dates'>('all')
+    const [filterFromDate, setFilterFromDate] = useState('01/2020')
+    const [filterToDate, setFilterToDate] = useState('12/2024')
+    const [tableInputValue, setTableInputValue] = useState('001')
+    const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<any | null>(null)
+    const [addressFormData, setAddressFormData] = useState({
+        city_name: '',
+        city_code: '',
+        street: '',
+        house_number: '',
+        apartment: '',
+        entrance: '',
+        postal_code: '',
+        phone: '',
+        phone_additional: '',
+        effectiveDate: (() => {
+            const d = new Date()
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+        })()
+    })
+
+    // Auto-format date input: 122020 -> 12/2020
+    const formatDateInput = (value: string): string => {
+        const digits = value.replace(/\D/g, '')
+        if (digits.length === 6) {
+            return `${digits.slice(0, 2)}/${digits.slice(2)}`
+        }
+        return value
+    }
+
+    // Filter name history by date range
+    const filterNameHistoryByDate = (history: NameHistoryRecord[]) => {
+        return history.filter(record => {
+            if (filterMode === 'all') return true
+            if (!record.effective_from) return true
+            const recordDate = new Date(record.effective_from)
+            const [fromMonth, fromYear] = filterFromDate.split('/').map(Number)
+            const [toMonth, toYear] = filterToDate.split('/').map(Number)
+            if (!fromMonth || !fromYear || !toMonth || !toYear) return true
+            const fromDate = new Date(fromYear, fromMonth - 1, 1)
+            const toDate = new Date(toYear, toMonth, 0) // Last day of month
+            return recordDate >= fromDate && recordDate <= toDate
+        })
+    }
+
+    const fetchNameHistory = async () => {
+        if (!employee?.id) return
+        try {
+            const { data, error } = await supabase
+                .from('employee_name_history')
+                .select('*')
+                .eq('employee_id', employee.id)
+                .order('effective_from', { ascending: false })
+
+            if (error) throw error
+            setFilteredNameHistory(filterNameHistoryByDate(data || []))
+        } catch (err) {
+            console.error('Error fetching name history:', err)
+        }
+    }
+
+    const fetchAddressHistory = async () => {
+        if (!employee?.id) return
+        try {
+            const { data, error } = await supabase
+                .from('employee_address')
+                .select('*')
+                .eq('employee_id', employee.id)
+                .order('valid_from', { ascending: false })
+
+            if (error) throw error
+            // Map valid_from to effective_from for consistency
+            const mapped = (data || []).map(r => ({ ...r, effective_from: r.valid_from }))
+            setAddressHistory(mapped)
+        } catch (err) {
+            console.error('Error fetching address history:', err)
+        }
+    }
 
     useEffect(() => {
-        if (activeTable === '100' && employee?.id) {
-            const fetchHistory = async () => {
-                const { data, error } = await supabase
-                    .from('employee_name_history')
-                    .select('*')
-                    .eq('employee_id', employee.id)
-                    .order('effective_from', { ascending: false })
-
-                if (data) {
-                    setNameHistory(data)
-                } else if (error) {
-                    console.error('Error fetching name history for employee:', employee.id, JSON.stringify(error, null, 2))
-                }
-            }
-            fetchHistory()
-        }
-    }, [activeTable, employee?.id])
+        if (activeTable === '100') fetchNameHistory()
+        if (activeTable === '101') fetchAddressHistory()
+    }, [activeTable, employee?.id, employee, filterMode, filterFromDate, filterToDate]) // Refresh history when employee data changes (prop update)
 
 
     const idInputRef = useRef<HTMLInputElement>(null)
@@ -141,11 +236,30 @@ export default function EmployeeDetails({
         })()
     })
 
+    // Sync form data when employee prop changes (e.g., after onUpdate refresh)
+    useEffect(() => {
+        if (employee) {
+            setFormData(prev => ({
+                ...prev,
+                firstName: employee.firstName || '',
+                lastName: employee.lastName || '',
+                employeeId: employee.employeeNumber || '',
+                idNumber: employee.idNumber || '',
+                fatherName: employee.fatherName || '',
+                birthDate: employee.birthDate ? (employee.birthDate.match(/^\d{4}-\d{2}-\d{2}$/) ? `${employee.birthDate.split('-')[2]}/${employee.birthDate.split('-')[1]}/${employee.birthDate.split('-')[0]}` : employee.birthDate) : ''
+            }))
+        }
+    }, [employee])
+
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
 
-    const handleSave = () => {
+    const handleAddressInputChange = (field: string, value: string) => {
+        setAddressFormData(prev => ({ ...prev, [field]: value }))
+    }
+
+    const handleSave = async () => {
         setError(null)
 
         if (isNew) {
@@ -169,10 +283,15 @@ export default function EmployeeDetails({
             }
 
             if (onSaveNew) {
-                onSaveNew({
-                    employeeNumber: formData.employeeId,
-                    ...formData
-                })
+                try {
+                    await onSaveNew({
+                        employeeNumber: formData.employeeId,
+                        ...formData
+                    })
+                    toast.success('האירוע נקלט')
+                } catch (err) {
+                    toast.error('האירוע לא נקלט')
+                }
             }
         } else if (activeTable === '100') {
             // Handle Table 100 Save (Name Update - Event 552)
@@ -187,12 +306,85 @@ export default function EmployeeDetails({
             }
 
             if (onUpdate) {
-                // Determine Op Code: For now default to ' ' (Change Name)
-                onUpdate('100', {
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    effectiveFrom: effectiveFrom
-                }, ' ') // Pass ' ' (Space) as Operation Code for History
+                try {
+                    // Determine Op Code: For now default to ' ' (Change Name)
+                    await onUpdate('100', {
+                        firstName: formData.firstName || employee?.firstName || '',
+                        lastName: formData.lastName || employee?.lastName || '',
+                        effectiveFrom: effectiveFrom
+                    }, ' ') // Pass ' ' (Space) as Operation Code for History
+
+                    toast.success('האירוע נקלט')
+
+                    // Switch to table view after update
+                    setTable100Mode('table')
+                    setSelectedHistoryRecord(null)
+                } catch (err) {
+                    toast.error('האירוע לא נקלט')
+                }
+            }
+        } else if (activeTable === '101') {
+            handleAddressSave()
+        }
+    }
+
+    const handleAddressSave = async () => {
+        if (!onUpdate) return
+
+        let effectiveFrom = new Date().toISOString().split('T')[0]
+        if (addressFormData.effectiveDate && addressFormData.effectiveDate.includes('/')) {
+            const [d, m, y] = addressFormData.effectiveDate.split('/')
+            effectiveFrom = `${y}-${m}-${d}`
+        }
+
+        const payload = {
+            cityName: addressFormData.city_name,
+            cityCode: addressFormData.city_code,
+            street: addressFormData.street,
+            houseNumber: addressFormData.house_number,
+            apartment: addressFormData.apartment,
+            entrance: addressFormData.entrance,
+            postalCode: addressFormData.postal_code,
+            phone: addressFormData.phone,
+            phoneAdditional: addressFormData.phone_additional,
+            effectiveFrom: effectiveFrom
+        }
+
+        const opCode = selectedAddressRecord ? '2' : ' '
+
+        try {
+            await onUpdate('101', payload, opCode)
+            toast.success('האירוע נקלט')
+
+            // Refresh history immediately for feedback
+            fetchAddressHistory()
+
+            setTable101Mode('table')
+            setSelectedAddressRecord(null)
+        } catch (err) {
+            toast.error('האירוע לא נקלט')
+        }
+    }
+
+    const handleDeleteRecord = async () => {
+        if (!selectedHistoryRecord || !onUpdate) return
+
+        if (confirm('האם אתה בטוח שברצונך לבטל רשומה זו?')) {
+            try {
+                await onUpdate('100', {
+                    firstName: selectedHistoryRecord.first_name_he,
+                    lastName: selectedHistoryRecord.last_name_he,
+                    effectiveFrom: selectedHistoryRecord.effective_from
+                }, '3') // Operation Code '3' = Delete
+
+                toast.success('האירוע נקלט')
+
+                // On success, reset state
+                setTable100Mode('table')
+                setSelectedHistoryRecord(null)
+            } catch (err) {
+                console.error('Error deleting record:', err)
+                toast.error('האירוע לא נקלט')
             }
         }
     }
@@ -253,8 +445,8 @@ export default function EmployeeDetails({
                 <div className="flex flex-col">
                     <span className="text-xs font-bold text-black uppercase leading-tight">שם משפחה ושם פרטי</span>
                     <div className="flex items-center gap-2 text-2xl font-black text-black leading-tight min-h-[32px]">
-                        <span>{formData.lastName || (isNew ? '---' : '')}</span>
-                        <span>{formData.firstName || (isNew ? '---' : '')}</span>
+                        <span>{formData.lastName || employee?.lastName || (isNew ? '---' : '')}</span>
+                        <span>{formData.firstName || employee?.firstName || (isNew ? '---' : '')}</span>
                     </div>
                 </div>
 
@@ -304,22 +496,56 @@ export default function EmployeeDetails({
             </div>
 
 
-            {/* Tabs - Aligned to Start (Right in RTL) */}
-            <div className="bg-white border-b border-gray-200 flex px-2 overflow-x-auto no-scrollbar">
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={cn(
-                            "px-5 py-3 text-sm font-bold transition-all relative border-b-2 whitespace-nowrap",
-                            activeTab === tab.id
-                                ? "text-primary border-primary"
-                                : "text-text-muted border-transparent hover:text-primary hover:border-primary/30"
-                        )}
+            {/* Tabs - Aligned to Start (Right in RTL) with Date Filter on Left */}
+            <div className="bg-white border-b border-gray-200 flex items-center justify-between px-2 overflow-x-auto no-scrollbar">
+                <div className="flex">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={cn(
+                                "px-5 py-3 text-sm font-bold transition-all relative border-b-2 whitespace-nowrap",
+                                activeTab === tab.id
+                                    ? "text-primary border-primary"
+                                    : "text-text-muted border-transparent hover:text-primary hover:border-primary/30"
+                            )}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                {/* Date Filter - Left Side */}
+                <div className="flex items-center gap-2 text-xs py-2">
+                    <select
+                        className="bg-yellow-50 border border-yellow-200 px-2 py-1 rounded cursor-pointer"
+                        value={filterMode}
+                        onChange={(e) => setFilterMode(e.target.value as 'all' | 'dates')}
                     >
-                        {tab.label}
-                    </button>
-                ))}
+                        <option value="all">הכל</option>
+                        <option value="dates">לפי תאריכים</option>
+                    </select>
+                    {filterMode === 'dates' && (
+                        <>
+                            <input
+                                type="text"
+                                className="border border-gray-300 px-2 py-1 bg-white w-20 text-center rounded"
+                                value={filterFromDate}
+                                onChange={(e) => setFilterFromDate(e.target.value)}
+                                onBlur={(e) => setFilterFromDate(formatDateInput(e.target.value))}
+                                placeholder="MM/YYYY"
+                            />
+                            <span>-</span>
+                            <input
+                                type="text"
+                                className="border border-gray-300 px-2 py-1 bg-white w-20 text-center rounded"
+                                value={filterToDate}
+                                onChange={(e) => setFilterToDate(e.target.value)}
+                                onBlur={(e) => setFilterToDate(formatDateInput(e.target.value))}
+                                placeholder="MM/YYYY"
+                            />
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Main Content Area */}
@@ -328,7 +554,10 @@ export default function EmployeeDetails({
                     {/* Inner Header - Table Selector Style */}
                     <div className="bg-primary text-white px-8 py-3 flex items-center justify-between">
                         <h2 className="text-xl font-black tracking-tight">
-                            {activeTable === '001' ? 'טבלה 001 - פרטים אישיים' : 'טבלה 100 - עדכון שם'}
+                            {activeTable === '001' ? 'טבלה 001 - פרטים אישיים' :
+                                activeTable === '100' ? 'טבלה 100 - עדכון שם' :
+                                    activeTable === '101' ? 'טבלה 101 - כתובת' :
+                                        `טבלה ${activeTable}`}
                         </h2>
                         <div className="flex items-center gap-3">
                             <button className="p-2 hover:bg-white/20 rounded-xl transition-colors">
@@ -344,7 +573,7 @@ export default function EmployeeDetails({
                     <div className="flex-1 p-3 bg-white overflow-y-auto">
                         <div className="max-w-xl">
                             {activeTab === 'personal' && activeTable === '001' && (
-                                <div className="space-y-4 flex flex-col items-start pr-4">
+                                <div className="space-y-4 flex flex-col items-start pr-4 employee-form">
                                     <DetailRow
                                         label="שם האב:"
                                         value={formData.fatherName}
@@ -410,7 +639,20 @@ export default function EmployeeDetails({
                                         {/* Toolbar Icons - Mode Switchers */}
                                         <div className="flex gap-1">
                                             <button
-                                                onClick={() => setTable100Mode('form')}
+                                                onClick={() => {
+                                                    setTable100Mode('form')
+                                                    // When manually switching to form, it's a new entry
+                                                    setSelectedHistoryRecord(null)
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        firstName: '',
+                                                        lastName: '',
+                                                        effectiveDate: (() => {
+                                                            const d = new Date()
+                                                            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+                                                        })()
+                                                    }))
+                                                }}
                                                 className={cn(
                                                     "p-1 rounded border hover:bg-white/50 transition-colors",
                                                     table100Mode === 'form' ? "bg-[#FFE8A6] border-[#E8C060] shadow-inner" : "bg-transparent border-transparent"
@@ -420,7 +662,10 @@ export default function EmployeeDetails({
                                                 <FileText className="w-4 h-4 text-[#1F497D]" />
                                             </button>
                                             <button
-                                                onClick={() => setTable100Mode('table')}
+                                                onClick={() => {
+                                                    setTable100Mode('table')
+                                                    setSelectedHistoryRecord(null)
+                                                }}
                                                 className={cn(
                                                     "p-1 rounded border hover:bg-white/50 transition-colors",
                                                     table100Mode === 'table' ? "bg-[#FFE8A6] border-[#E8C060] shadow-inner" : "bg-transparent border-transparent"
@@ -429,11 +674,6 @@ export default function EmployeeDetails({
                                             >
                                                 <div className="h-4 w-4 grid grid-cols-2 gap-0.5 opacity-80 border border-[#1F497D] bg-white" />
                                             </button>
-                                        </div>
-                                        <div className="h-4 w-px bg-[#8497B0] mx-2" />
-                                        <div className="flex gap-1 opacity-60 grayscale hover:grayscale-0 transition-all">
-                                            <div className="w-4 h-4 bg-gray-200 border border-gray-400 rounded-sm shadow-sm" />
-                                            <div className="w-4 h-4 bg-gray-200 border border-gray-400 rounded-sm shadow-sm" />
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -446,7 +686,7 @@ export default function EmployeeDetails({
 
                                     {/* MODE: FORM (INPUT) */}
                                     {table100Mode === 'form' && (
-                                        <div className="w-full space-y-3 pt-6 mr-0">
+                                        <div className="w-full space-y-3 pt-6 mr-0 employee-form">
                                             <DetailRow label="שם משפחה חדש" value={formData.lastName} isEditMode onChange={(v) => handleInputChange('lastName', v)} />
                                             <DetailRow label="שם פרטי חדש" value={formData.firstName} isEditMode onChange={(v) => handleInputChange('firstName', v)} />
 
@@ -465,14 +705,6 @@ export default function EmployeeDetails({
                                     {/* MODE: TABLE (READ) */}
                                     {table100Mode === 'table' && (
                                         <div className="h-full flex flex-col">
-                                            {/* Filter / Top Bar mimicking image */}
-                                            <div className="flex items-center justify-end gap-2 mb-2 pb-2 border-b border-gray-100 text-xs">
-                                                <div className="flex items-center gap-1 bg-yellow-50 border border-yellow-200 px-2 py-0.5">
-                                                    <span>לפי תאריכים</span>
-                                                </div>
-                                                <div className="border border-gray-300 px-2 py-0.5 bg-white">01/2020 - מ</div>
-                                                <div className="border border-gray-300 px-2 py-0.5 bg-white">02/2026 עד</div>
-                                            </div>
 
                                             <div className="overflow-x-auto border border-[#8497B0]" dir="rtl">
                                                 <table className="w-full border-collapse text-xs">
@@ -484,15 +716,28 @@ export default function EmployeeDetails({
                                                         </tr>
                                                     </thead>
                                                     <tbody className="bg-white">
-                                                        {nameHistory.length === 0 ? (
+                                                        {filteredNameHistory.length === 0 ? (
                                                             <tr>
                                                                 <td colSpan={6} className="border-b border-gray-200 px-2 py-4 text-center text-gray-400">
-                                                                    אין היסטוריית שינויים
+                                                                    אין היסטוריית שינויים בטווח התאריכים הנבחר
                                                                 </td>
                                                             </tr>
                                                         ) : (
-                                                            nameHistory.map((record, idx) => (
-                                                                <tr key={record.id || idx} className="hover:bg-[#FCE4D6] transition-colors border-b border-gray-200 group text-center h-7">
+                                                            filteredNameHistory.map((record, idx) => (
+                                                                <tr
+                                                                    key={record.id || idx}
+                                                                    className="hover:bg-[#FCE4D6] transition-colors border-b border-gray-200 group text-center h-7 cursor-pointer"
+                                                                    onClick={() => {
+                                                                        setSelectedHistoryRecord(record)
+                                                                        setFormData(prev => ({
+                                                                            ...prev,
+                                                                            firstName: record.first_name_he || '',
+                                                                            lastName: record.last_name_he || '',
+                                                                            effectiveDate: record.effective_from ? new Date(record.effective_from).toLocaleDateString('en-GB') : prev.effectiveDate
+                                                                        }))
+                                                                        setTable100Mode('form')
+                                                                    }}
+                                                                >
                                                                     <td className="border-l border-gray-200 px-2 text-black">{record.first_name_he}</td>
                                                                     <td className="border-l border-gray-200 px-2 text-black">{record.last_name_he}</td>
                                                                     <td className="px-2 text-black font-medium">
@@ -502,13 +747,161 @@ export default function EmployeeDetails({
                                                             ))
                                                         )}
                                                         {/* Empty rows filler for visual fidelity */}
-                                                        {Array.from({ length: Math.max(0, 10 - nameHistory.length) }).map((_, i) => (
+                                                        {Array.from({ length: Math.max(0, 10 - filteredNameHistory.length) }).map((_, i) => (
                                                             <tr key={`empty-${i}`} className="border-b border-gray-100 h-7">
                                                                 <td className="border-l border-gray-100"></td>
                                                                 <td className="border-l border-gray-100"></td>
                                                                 <td></td>
                                                             </tr>
                                                         ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {activeTab === 'personal' && activeTable === '101' && (
+                            <div className="flex flex-col h-full">
+                                {/* Hilan 101 Window Header with Toolbar */}
+                                <div className="bg-gradient-to-r from-[#E3EFFF] to-[#F1F7FF] border border-[#8497B0] flex items-center justify-between px-2 h-9 shadow-sm shrink-0" dir="rtl">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    setTable101Mode('form')
+                                                    setSelectedAddressRecord(null)
+                                                    setAddressFormData(prev => ({
+                                                        ...prev,
+                                                        city_name: '',
+                                                        city_code: '',
+                                                        street: '',
+                                                        house_number: '',
+                                                        apartment: '',
+                                                        entrance: '',
+                                                        postal_code: '',
+                                                        phone: '',
+                                                        phone_additional: '',
+                                                        effectiveDate: (() => {
+                                                            const d = new Date()
+                                                            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+                                                        })()
+                                                    }))
+                                                }}
+                                                className={cn(
+                                                    "p-1 rounded border hover:bg-white/50 transition-colors",
+                                                    table101Mode === 'form' ? "bg-[#FFE8A6] border-[#E8C060] shadow-inner" : "bg-transparent border-transparent"
+                                                )}
+                                                title="תצוגת טופס"
+                                            >
+                                                <FileText className="w-4 h-4 text-[#1F497D]" />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setTable101Mode('table')
+                                                    setSelectedAddressRecord(null)
+                                                }}
+                                                className={cn(
+                                                    "p-1 rounded border hover:bg-white/50 transition-colors",
+                                                    table101Mode === 'table' ? "bg-[#FFE8A6] border-[#E8C060] shadow-inner" : "bg-transparent border-transparent"
+                                                )}
+                                                title="תצוגת טבלה"
+                                            >
+                                                <div className="h-4 w-4 grid grid-cols-2 gap-0.5 opacity-80 border border-[#1F497D] bg-white" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-[#000080] text-sm tracking-tight">כתובת</span>
+                                    </div>
+                                </div>
+
+                                {/* CONTENT AREA */}
+                                <div className="border-x border-b border-[#8497B0] bg-white p-4 flex-1 overflow-auto">
+                                    {table101Mode === 'form' && (
+                                        <div className="w-full space-y-2 pt-4 mr-0 employee-form">
+                                            <div className="grid grid-cols-2 gap-x-8">
+                                                <DetailRow label="שם יישוב" value={addressFormData.city_name} isEditMode onChange={(v) => handleAddressInputChange('city_name', v)} />
+                                                <DetailRow label="סמל יישוב" value={addressFormData.city_code} isEditMode onChange={(v) => handleAddressInputChange('city_code', v)} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-x-8">
+                                                <DetailRow label="רחוב" value={addressFormData.street} isEditMode onChange={(v) => handleAddressInputChange('street', v)} />
+                                                <DetailRow label="מס' בית" value={addressFormData.house_number} isEditMode onChange={(v) => handleAddressInputChange('house_number', v)} />
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-x-4">
+                                                <DetailRow label="דירה" value={addressFormData.apartment} isEditMode onChange={(v) => handleAddressInputChange('apartment', v)} />
+                                                <DetailRow label="כניסה" value={addressFormData.entrance} isEditMode onChange={(v) => handleAddressInputChange('entrance', v)} />
+                                                <DetailRow label="מיקוד" value={addressFormData.postal_code} isEditMode onChange={(v) => handleAddressInputChange('postal_code', v)} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-x-8">
+                                                <DetailRow label="טלפון" value={addressFormData.phone} isEditMode onChange={(v) => handleAddressInputChange('phone', v)} />
+                                                <DetailRow label="טלפון נוסף" value={addressFormData.phone_additional} isEditMode onChange={(v) => handleAddressInputChange('phone_additional', v)} />
+                                            </div>
+                                            <div className="pt-2 border-t border-gray-100 mt-2">
+                                                <DetailRow
+                                                    label="תאריך שינוי"
+                                                    value={addressFormData.effectiveDate}
+                                                    highlight
+                                                    isEditMode
+                                                    onChange={(v) => handleAddressInputChange('effectiveDate', formatDate(v))}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {table101Mode === 'table' && (
+                                        <div className="h-full flex flex-col">
+                                            <div className="overflow-x-auto border border-[#8497B0]" dir="rtl">
+                                                <table className="w-full border-collapse text-xs">
+                                                    <thead>
+                                                        <tr className="bg-[#B9CDE5] text-center text-[#1F497D] font-bold border-b border-[#8497B0] h-8">
+                                                            <th className="border-l border-[#8497B0] px-2 min-w-[100px]">יישוב</th>
+                                                            <th className="border-l border-[#8497B0] px-2 min-w-[100px]">רחוב</th>
+                                                            <th className="border-l border-[#8497B0] px-2">בית</th>
+                                                            <th className="border-l border-[#8497B0] px-2">טלפון</th>
+                                                            <th className="px-2 min-w-[90px]">תאריך</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white">
+                                                        {addressHistory.length === 0 ? (
+                                                            <tr>
+                                                                <td colSpan={5} className="border-b border-gray-200 px-2 py-4 text-center text-gray-400">
+                                                                    אין היסטוריית כתובות
+                                                                </td>
+                                                            </tr>
+                                                        ) : (
+                                                            addressHistory.map((record, idx) => (
+                                                                <tr
+                                                                    key={record.id || idx}
+                                                                    className="hover:bg-[#FCE4D6] transition-colors border-b border-gray-200 group text-center h-7 cursor-pointer"
+                                                                    onClick={() => {
+                                                                        setSelectedAddressRecord(record)
+                                                                        setAddressFormData({
+                                                                            city_name: record.city_name || '',
+                                                                            city_code: record.city_code || '',
+                                                                            street: record.street || '',
+                                                                            house_number: record.house_number || '',
+                                                                            apartment: record.apartment || '',
+                                                                            entrance: record.entrance || '',
+                                                                            postal_code: record.postal_code || '',
+                                                                            phone: record.phone || '',
+                                                                            phone_additional: record.phone_additional || '',
+                                                                            effectiveDate: record.effective_from ? new Date(record.effective_from).toLocaleDateString('en-GB') : addressFormData.effectiveDate
+                                                                        })
+                                                                        setTable101Mode('form')
+                                                                    }}
+                                                                >
+                                                                    <td className="border-l border-gray-200 px-2 text-black">{record.city_name}</td>
+                                                                    <td className="border-l border-gray-200 px-2 text-black">{record.street}</td>
+                                                                    <td className="border-l border-gray-200 px-2 text-black">{record.house_number}</td>
+                                                                    <td className="border-l border-gray-200 px-2 text-black">{record.phone}</td>
+                                                                    <td className="px-2 text-black font-medium">
+                                                                        {record.effective_from ? new Date(record.effective_from).toLocaleDateString('en-GB') : '-'}
+                                                                    </td>
+                                                                </tr>
+                                                            ))
+                                                        )}
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -524,7 +917,17 @@ export default function EmployeeDetails({
                         <div className="flex items-center gap-4">
                             <Button
                                 variant="outline"
-                                onClick={onBack}
+                                onClick={() => {
+                                    if (table100Mode === 'form' && activeTable === '100') {
+                                        setTable100Mode('table')
+                                        setSelectedHistoryRecord(null)
+                                    } else if (table101Mode === 'form' && activeTable === '101') {
+                                        setTable101Mode('table')
+                                        setSelectedAddressRecord(null)
+                                    } else {
+                                        onBack?.()
+                                    }
+                                }}
                                 className="h-10 px-8 border-gray-200 text-secondary font-bold hover:bg-gray-50 rounded-xl"
                             >
                                 <X className="h-4 w-4 ml-2" />
@@ -532,15 +935,24 @@ export default function EmployeeDetails({
                             </Button>
 
                             {/* Save/Update Button - Show only in Form Mode or New Employee */}
-                            {(activeTable === '100' ? table100Mode === 'form' : true) && (
+                            {(activeTable === '100' ? table100Mode === 'form' : activeTable === '101' ? table101Mode === 'form' : true) && (
                                 <Button
                                     onClick={handleSave}
                                     className="h-10 px-10 bg-primary hover:bg-primary-dark text-white font-black rounded-xl shadow-md"
                                 >
-                                    {activeTable === '100' ? (
+                                    {activeTable === '100' || activeTable === '101' ? (
                                         <>
-                                            <CheckCircle2 className="h-4 w-4 ml-2" />
-                                            עדכון
+                                            {(activeTable === '100' ? selectedHistoryRecord : selectedAddressRecord) ? (
+                                                <>
+                                                    <CheckCircle2 className="h-4 w-4 ml-2" />
+                                                    עדכון
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Plus className="h-4 w-4 ml-2" />
+                                                    הוספה
+                                                </>
+                                            )}
                                         </>
                                     ) : (
                                         <>
@@ -553,14 +965,16 @@ export default function EmployeeDetails({
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <Button
-                                variant="ghost"
-                                onClick={onBack}
-                                className="text-danger hover:bg-danger/5 font-bold gap-2 px-4 h-10 rounded-xl"
-                            >
-                                <X className="h-4 w-4" />
-                                ביטול רשומה
-                            </Button>
+                            {table100Mode === 'form' && selectedHistoryRecord && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleDeleteRecord}
+                                    className="text-danger hover:bg-danger/5 font-bold gap-2 px-4 h-10 rounded-xl"
+                                >
+                                    <X className="h-4 w-4" />
+                                    ביטול רשומה
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -578,19 +992,95 @@ export default function EmployeeDetails({
                         <div onClick={() => setActiveTable('100')}>
                             <SummaryItem code="100" label="עדכון שם" active={activeTable === '100'} />
                         </div>
+                        <div onClick={() => setActiveTable('101')}>
+                            <SummaryItem code="101" label="כתובת" active={activeTable === '101'} />
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Dark Bottom Bar - Sibling to the Main Row Container (at the root flex-col level) */}
             <div className="bg-secondary text-white px-8 py-2 flex items-center justify-start gap-8 z-20 h-10 border-t border-white/5 shadow-2xl shrink-0">
-                <div className="flex items-center gap-3 border-l border-white/10 pl-8">
+                <div className="flex items-center gap-3">
                     <span className="text-[10px] font-black opacity-40 uppercase tracking-tighter">טבלה</span>
-                    <span className="text-sm font-black tracking-widest text-[#00E5FF]">{activeTable}</span>
-                </div>
-                <div className="flex items-center gap-3 border-l border-white/10 pl-8">
-                    <span className="text-[10px] font-black opacity-40 uppercase tracking-tighter">תת-שירות</span>
-                    <span className="text-sm font-black tracking-widest text-[#00E5FF]">02</span>
+                    <input
+                        type="text"
+                        className="bg-secondary border border-white/20 text-[#00E5FF] text-sm font-black tracking-widest w-24 text-center rounded px-3 py-1 focus:outline-none focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]/50"
+                        value={tableInputValue}
+                        onChange={(e) => setTableInputValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                const val = tableInputValue
+                                let newTable = activeTable
+                                if (val.length === 4) {
+                                    const mode = val[0] // 1=view, 2=input
+                                    const tableCode = val.slice(1)
+                                    newTable = tableCode
+
+                                    // Set table mode based on prefix
+                                    if (tableCode === '100') {
+                                        setTable100Mode(mode === '2' ? 'form' : 'table')
+                                        if (mode === '2') {
+                                            // Clear fields for new entry
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                firstName: '',
+                                                lastName: '',
+                                                effectiveDate: (() => {
+                                                    const d = new Date()
+                                                    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+                                                })()
+                                            }))
+                                        }
+                                    } else if (tableCode === '001' && mode === '2') {
+                                        setIsEditing(true)
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            firstName: '',
+                                            lastName: '',
+                                            fatherName: '',
+                                            birthDate: '',
+                                            passport: '',
+                                            altFirstName: '',
+                                            altLastName: '',
+                                            idNumber: ''
+                                        }))
+                                    } else if (tableCode === '101') {
+                                        setTable101Mode(mode === '2' ? 'form' : 'table')
+                                        setSelectedAddressRecord(null)
+                                        if (mode === '2') {
+                                            setAddressFormData(prev => ({
+                                                ...prev,
+                                                city_name: '',
+                                                city_code: '',
+                                                street: '',
+                                                house_number: '',
+                                                apartment: '',
+                                                entrance: '',
+                                                postal_code: '',
+                                                phone: '',
+                                                phone_additional: '',
+                                            }))
+                                        }
+                                    }
+                                } else if (val.length === 3) {
+                                    newTable = val
+                                }
+                                setActiveTable(newTable)
+                                setTableInputValue(newTable)
+                            } else if (e.key === 'Tab') {
+                                e.preventDefault()
+                                // Focus first editable input in the form
+                                const firstInput = document.querySelector('.employee-form input:not([disabled]), .employee-form select:not([disabled])') as HTMLElement
+                                if (firstInput) {
+                                    firstInput.focus()
+                                }
+                            }
+                        }}
+                        onBlur={() => setTableInputValue(activeTable)}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="1100"
+                    />
                 </div>
                 <div className="flex items-center gap-4 mr-auto">
                     <div className="flex items-center gap-1 border-l border-white/10 pl-6 ml-6">

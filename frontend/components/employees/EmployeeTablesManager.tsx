@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { ChevronLeft, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Table001Form, { Table001Data } from './tables/Table001Form'
+import Table101Form, { Table101Data } from './tables/Table101Form'
+import { useParams } from 'next/navigation'
 
 // Table definitions for the employee file
 interface EmployeeTable {
@@ -30,6 +32,13 @@ export const employeeTables: EmployeeTable[] = [
         description: 'שינוי שם עובד עם היסטוריה',
         category: 'personal',
         disabled: true // Not yet implemented
+    },
+    {
+        id: '101',
+        name: 'כתובת',
+        description: 'כתובת העובד ופרטי התקשרות',
+        category: 'personal',
+        disabled: false
     },
 ]
 
@@ -92,7 +101,7 @@ export function EmployeeTableViewer({
     onBack,
     onSave
 }: EmployeeTableViewerProps) {
-    const handleSave = (data: Table001Data) => {
+    const handleSaveInner = (data: any) => {
         onSave?.(tableId, data)
     }
 
@@ -101,7 +110,7 @@ export function EmployeeTableViewer({
             return (
                 <Table001Form
                     mode={mode}
-                    onSave={handleSave}
+                    onSave={handleSaveInner}
                     onCancel={onBack}
                     onExit={onBack}
                 />
@@ -116,6 +125,15 @@ export function EmployeeTableViewer({
                         <p className="text-sm mt-2">בפיתוח...</p>
                     </div>
                 </div>
+            )
+        case '101':
+            return (
+                <Table101Form
+                    mode={mode}
+                    onSave={handleSaveInner}
+                    onCancel={onBack}
+                    onExit={onBack}
+                />
             )
         default:
             return (
@@ -135,6 +153,8 @@ interface EmployeeTablesManagerProps {
 export function EmployeeTablesManager({ category, employeeId }: EmployeeTablesManagerProps) {
     const [selectedTable, setSelectedTable] = useState<TableId | null>(null)
     const [mode, setMode] = useState<'view' | 'add' | 'edit'>('view')
+    const params = useParams()
+    const orgId = params.orgId as string
 
     const handleSelectTable = (tableId: TableId) => {
         setSelectedTable(tableId)
@@ -145,9 +165,33 @@ export function EmployeeTablesManager({ category, employeeId }: EmployeeTablesMa
         setSelectedTable(null)
     }
 
-    const handleSave = (tableId: TableId, data: unknown) => {
+    const handleSave = async (tableId: TableId, data: any) => {
         console.log('Saving table data:', tableId, data)
-        // TODO: Implement actual save logic
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/organizations/${orgId}/employees`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('sb-access-token')}`
+                },
+                body: JSON.stringify({
+                    operation_code: 'ADD', // For now, default to ADD (new event)
+                    event_code: tableId,
+                    data: data
+                })
+            })
+
+            if (!response.ok) {
+                const error = await response.json()
+                throw new Error(error.detail || 'Failed to save')
+            }
+
+            alert('הנתונים נשמרו בהצלחה')
+            setSelectedTable(null)
+        } catch (error: any) {
+            console.error('Error saving table:', error)
+            alert('שגיאה בשמירת הנתונים: ' + error.message)
+        }
     }
 
     if (selectedTable) {
