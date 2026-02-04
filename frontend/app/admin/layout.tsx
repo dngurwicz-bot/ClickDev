@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/admin/Sidebar'
 import { isSuperAdmin, getCurrentUser } from '@/lib/auth'
+
+import TopNavigation from '@/components/dashboard/TopNavigation'
 
 // Force HMR update
 export default function AdminLayout({
@@ -47,9 +48,12 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-bg-main">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto mr-64">
+    <div className="flex flex-col h-screen bg-bg-main" dir="rtl">
+      <div className="w-full z-20 shadow-sm relative">
+        <TopNavigation />
+      </div>
+
+      <main className="flex-1 overflow-y-auto p-6 transition-all duration-300">
         {children}
       </main>
     </div>

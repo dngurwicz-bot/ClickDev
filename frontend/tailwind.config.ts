@@ -10,29 +10,30 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#00A896',
-          dark: '#008577',
-          light: '#E0F5F3',
+          DEFAULT: '#1a237e', // Deep Royal Blue
+          dark: '#000051',
+          light: '#534bae',
         },
         secondary: {
-          DEFAULT: '#2C3E50',
+          DEFAULT: '#ffa000', // Amber/Gold
+          dark: '#c67100',
+          light: '#ffd149',
         },
-        text: {
-          primary: '#2C3E50',
-          secondary: '#7F8C8D',
-          muted: '#BDC3C7',
-        },
-        bg: {
-          main: '#F5F7FA',
-        },
-        success: '#27AE60',
-        warning: '#F39C12',
-        danger: '#E74C3C',
-        info: '#3498DB',
+        success: '#2e7d32',
+        warning: '#ed6c02',
+        danger: '#d32f2f',
+        info: '#0288d1',
+        background: '#f5f5f5',
+        surface: '#ffffff',
+        muted: '#9e9e9e',
       },
       fontFamily: {
         sans: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
       },
+      boxShadow: {
+        'premium': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'premium-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+      }
     },
   },
   plugins: [

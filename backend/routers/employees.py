@@ -57,8 +57,8 @@ async def manage_employee(
     try:
         # Map operation codes: ADD -> ' ', UPDATE -> '2', DELETE -> '3'
         op_map = {
-            'ADD': ' ', 'UPDATE': '2', 'DELETE': '3',
-            ' ': ' ', '2': '2', '3': '3'
+            'ADD': ' ', 'UPDATE': '2', 'DELETE': '3', 'SET': '4',
+            ' ': ' ', '2': '2', '3': '3', '4': '4'
         }
         op_code = op_map.get(req.operation_code, ' ')
 

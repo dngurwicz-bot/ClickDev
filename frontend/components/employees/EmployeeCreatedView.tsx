@@ -161,11 +161,11 @@ export default function EmployeeCreatedView({ employee, onBack }: EmployeeCreate
                     </div>
                 </div>
 
-                {/* Right Sidebar - Summary Items */}
+                {/* Right Sidebar - Quick Navigation */}
                 <div className="w-64 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
                     <div className="bg-secondary text-white px-4 py-3 flex items-center gap-2">
                         <FileText className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-black uppercase tracking-tight">תקציר פרטים אישיים</span>
+                        <span className="text-sm font-black uppercase tracking-tight">ניווט מהיר</span>
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {summaryItems.map((item) => (

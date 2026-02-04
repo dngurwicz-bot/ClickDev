@@ -12,6 +12,7 @@ import { useSidebarActions } from '@/lib/contexts/SidebarContext'
 import { mockEmployees } from './mockData'
 import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type ViewMode = 'list' | 'details' | 'add' | 'created'
 
@@ -78,12 +79,11 @@ export default function EmployeeFilePage() {
     const existingIds = employees.map(e => e.employeeNumber || e.id)
     const existingNationalIds = employees.map(e => e.idNumber || '').filter(id => id !== '')
 
-    // Hide sidebar when entering employee file page (full screen mode)
-    useEffect(() => {
-        hideSidebar()
-        // Cleanup: show sidebar when leaving the page
-        return () => showSidebar()
-    }, [hideSidebar, showSidebar])
+    // Sidebar visibility is controlled globally, we don't force hide it anymore.
+    // useEffect(() => {
+    //    hideSidebar()
+    //    return () => showSidebar()
+    // }, [hideSidebar, showSidebar])
 
     const handleSelectEmployee = (employee: Employee) => {
         setSelectedEmployee(employee)
@@ -197,9 +197,8 @@ export default function EmployeeFilePage() {
             setLastCreatedId(employee.employeeNumber)
             setViewMode('created')
         } catch (err: any) {
-            console.error('Error saving employee:', err)
-            // Use just the message, not the full object
-            alert(`שגיאה בשמירת העובד:\n${err.message || 'Unknown error'}`)
+            // Re-throw to be handled by the UI
+            throw err
         }
     }
 
@@ -270,9 +269,8 @@ export default function EmployeeFilePage() {
             }
 
         } catch (err: any) {
-            console.error('Error updating employee:', err)
-            const errorMsg = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err))
-            alert(`שגיאה בעדכון הפרטים:\n${errorMsg}`)
+            // Re-throw to be handled by the UI
+            throw err
         }
     }
 
@@ -296,7 +294,7 @@ export default function EmployeeFilePage() {
                         isNew={true}
                         onSaveNew={(data) => handleSaveNewEmployee(data as any)}
                         onBack={handleBackToList}
-                        lastCreatedId={lastCreatedId}
+                        lastCreatedId={lastCreatedId || (employees.length > 0 ? String(Math.max(0, ...employees.map(e => parseInt(e.employeeNumber || '0')).filter(n => !isNaN(n)))) : undefined)}
                         existingIds={existingIds}
                         existingNationalIds={existingNationalIds}
                     />
@@ -321,17 +319,50 @@ export default function EmployeeFilePage() {
     if (viewMode === 'details' && selectedEmployee) {
         return (
             <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-[#e0e0e0] p-1" dir="rtl">
-                {/* Top header removed as it's redundant with EmployeeDetails internal header */}
+                <div className="flex flex-1 gap-1 overflow-hidden">
+                    {/* Collapsible List / Sidebar on Right */}
+                    <div className="hidden lg:block w-72 rounded-sm overflow-hidden shadow-sm bg-white flex-shrink-0">
+                        <EmployeeSidebar onAction={handleAction} />
+                        {/* Optionally show a mini list here if desired, for now keeping sidebar actions implies context */}
+                        <div className="h-full overflow-y-auto border-t border-gray-100">
+                            <div className="p-2">
+                                <Button variant="outline" size="sm" className="w-full text-xs" onClick={handleBackToList}>
+                                    <ArrowRight className="w-3 h-3 ml-1" />
+                                    חזרה לרשימה
+                                </Button>
+                            </div>
+                            {/* Mini List could go here */}
+                            {employees.map(e => (
+                                <div
+                                    key={e.id}
+                                    className={cn(
+                                        "px-3 py-2 text-xs border-b border-gray-50 cursor-pointer hover:bg-gray-50 flex items-center gap-2",
+                                        selectedEmployee.id === e.id ? "bg-blue-50 border-r-4 border-r-primary" : ""
+                                    )}
+                                    onClick={() => setSelectedEmployee(e)}
+                                >
+                                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold">
+                                        {e.firstName?.[0]}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold">{e.firstName} {e.lastName}</div>
+                                        <div className="text-gray-400">{e.employeeNumber}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                {/* Full width employee details */}
-                <div className="flex-1 rounded-sm overflow-hidden shadow-sm bg-white">
-                    <EmployeeDetails
-                        employee={selectedEmployee}
-                        onNext={handleNextEmployee}
-                        onPrevious={handlePreviousEmployee}
-                        onBack={handleBackToList}
-                        onUpdate={handleUpdateEmployee}
-                    />
+                    {/* Main Details Area */}
+                    <div className="flex-1 rounded-sm overflow-hidden shadow-sm bg-white">
+                        <EmployeeDetails
+                            employee={selectedEmployee}
+                            onNext={handleNextEmployee}
+                            onPrevious={handlePreviousEmployee}
+                            onBack={handleBackToList} // Logic handled by sidebar button too
+                            onUpdate={handleUpdateEmployee}
+                        />
+                    </div>
                 </div>
 
                 {/* Bottom Bar */}

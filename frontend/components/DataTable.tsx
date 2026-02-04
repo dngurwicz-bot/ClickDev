@@ -230,7 +230,7 @@ export default function DataTable<TData>({
                                                 key={cell.id}
                                                 className="px-1 py-0 border-l border-gray-300 last:border-l-0 truncate align-middle text-[11px] h-6"
                                                 style={{ width: cell.column.getSize() !== 150 ? cell.column.getSize() : undefined }}
-                                                title={cell.getValue() as string}
+                                                title={String(cell.getValue() ?? '')}
                                             >
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </td>
