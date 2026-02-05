@@ -1,4 +1,4 @@
-import MainLayout from '@/components/layout/MainLayout'
+import PriorityMainLayout from '@/components/layout/PriorityMainLayout'
 
 export default function DashboardLayout({
     children,
@@ -6,8 +6,8 @@ export default function DashboardLayout({
     children: React.ReactNode
 }) {
     return (
-        <MainLayout>
+        <PriorityMainLayout>
             {children}
-        </MainLayout>
+        </PriorityMainLayout>
     )
 }

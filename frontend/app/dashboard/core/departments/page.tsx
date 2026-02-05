@@ -111,24 +111,26 @@ export default function DepartmentsPage() {
     if (loading) return <div className="p-8">טוען נתונים...</div>
 
     return (
-        <div className="p-8" dir="rtl">
+        <div className="flex flex-col h-full w-full bg-bg-main p-8" dir="rtl">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold">טבלת מחלקות</h1>
+                    <h1 className="text-3xl font-bold text-secondary">טבלת מחלקות</h1>
                     <p className="text-gray-500 mt-1">רשימת המחלקות בארגון.</p>
                 </div>
-                <Button onClick={() => router.push('/dashboard/core/departments/new')} className="flex items-center gap-2">
+                <Button onClick={() => router.push('/dashboard/core/departments/new')} className="flex items-center gap-2 bg-primary hover:bg-primary-dark">
                     <Plus className="w-4 h-4" />
                     הוסף מחלקה
                 </Button>
             </div>
 
-            <DataTable
-                columns={columns}
-                data={data}
-                showSearch={true}
-                onRowClick={(row) => router.push(`/dashboard/core/departments/${row.id}`)}
-            />
+            <div className="flex-1 overflow-hidden bg-surface rounded-xl shadow-sm border border-border flex flex-col">
+                <DataTable
+                    columns={columns}
+                    data={data}
+                    showSearch={true}
+                    onRowClick={(row) => router.push(`/dashboard/core/departments/${row.id}`)}
+                />
+            </div>
         </div>
     )
 }

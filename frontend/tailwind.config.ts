@@ -10,22 +10,23 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1a237e', // Deep Royal Blue
-          dark: '#000051',
-          light: '#534bae',
+          DEFAULT: 'var(--primary)',
+          dark: 'var(--primary-dark)',
+          light: 'var(--primary-light)',
         },
         secondary: {
-          DEFAULT: '#ffa000', // Amber/Gold
-          dark: '#c67100',
-          light: '#ffd149',
+          DEFAULT: 'var(--secondary)',
+          dark: '#1a252f', // Darker shade of #2C3E50
+          light: 'var(--secondary-light)',
         },
-        success: '#2e7d32',
-        warning: '#ed6c02',
-        danger: '#d32f2f',
-        info: '#0288d1',
-        background: '#f5f5f5',
-        surface: '#ffffff',
-        muted: '#9e9e9e',
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        danger: 'var(--danger)',
+        info: 'var(--info)',
+        background: 'var(--bg-main)',
+        surface: 'var(--surface)',
+        muted: 'var(--text-muted)',
+        border: 'var(--border)',
       },
       fontFamily: {
         sans: ['var(--font-rubik)', 'Rubik', 'sans-serif'],

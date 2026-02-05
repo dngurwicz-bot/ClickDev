@@ -67,7 +67,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="space-y-6 relative z-10">
           {/* Username Field */}
           <div className="flex items-center justify-between gap-6">
-            <label htmlFor="email" className="w-24 text-sm font-bold text-brand-dark shrink-0">
+            <label htmlFor="email" className="w-24 text-sm font-bold text-secondary shrink-0">
               שם משתמש
             </label>
             <input
@@ -76,14 +76,15 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 h-10 px-3 py-2 bg-white border border-slate-200 rounded text-right text-slate-800 focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all"
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin(e)}
+              className="flex-1 h-10 px-3 py-2 bg-white border border-slate-200 rounded text-right text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               dir="ltr"
             />
           </div>
 
           {/* Password Field */}
           <div className="flex items-center justify-between gap-6">
-            <label htmlFor="password" className="w-24 text-sm font-bold text-brand-dark shrink-0">
+            <label htmlFor="password" className="w-24 text-sm font-bold text-secondary shrink-0">
               סיסמה
             </label>
             <div className="relative flex-1">
@@ -93,7 +94,8 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-10 px-3 py-2 bg-white border border-slate-200 rounded text-right text-slate-800 focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all"
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin(e)}
+                className="w-full h-10 px-3 py-2 bg-white border border-slate-200 rounded text-right text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 dir="ltr"
               />
               <button
@@ -115,14 +117,14 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-brand-teal hover:bg-teal-700 text-white px-8 py-2.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
+              className="bg-primary hover:bg-primary-dark text-white px-8 py-2.5 rounded text-sm font-medium transition-colors disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'כניסה'}
             </button>
 
             <Link
               href="/forgot-password"
-              className="text-brand-teal text-sm hover:underline font-medium"
+              className="text-primary text-sm hover:underline font-medium"
             >
               שכחת סיסמה?
             </Link>

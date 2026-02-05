@@ -50,6 +50,11 @@ BEGIN
         INSERT INTO employee_name_history (employee_id, first_name_he, last_name_he, effective_from, changed_by, reason)
         VALUES (v_employee_id, p_event_data->>'firstName', p_event_data->>'lastName', (p_event_data->>'birthDate')::date, p_user_id, 'Initial Creation');
 
+        -- Update father_name_he if provided during creation
+        IF p_event_data ? 'fatherName' THEN
+            UPDATE employees SET father_name_he = p_event_data->>'fatherName' WHERE id = v_employee_id;
+        END IF;
+
     ELSE
         -- Existing Employee Lookup
         SELECT id, first_name_he, last_name_he 
@@ -60,6 +65,28 @@ BEGIN
         
         IF NOT FOUND THEN
              RETURN json_build_object('success', false, 'error', 'לא נמצא עובד');
+        END IF;
+
+        -- Handle Deletion (Gria 3) for Event 200
+        IF p_operation_code = '3' AND p_event_code = '200' THEN
+             UPDATE employees SET
+                is_active = false,
+                deleted_at = NOW(),
+                -- Add timestamp suffix to avoid unique constraint collisions on re-entry
+                employee_number = employee_number || '_DEL_' || extract(epoch from now())::text,
+                id_number = id_number || '_DEL_' || extract(epoch from now())::text
+             WHERE id = v_employee_id;
+
+             -- Log and return
+             INSERT INTO employee_events (
+                organization_id, employee_id, event_code, operation_code, 
+                event_data, created_by, processed
+             ) VALUES (
+                p_organization_id, v_employee_id, p_event_code, p_operation_code,
+                p_event_data, p_user_id, true
+             );
+
+             RETURN json_build_object('success', true, 'employee_id', v_employee_id);
         END IF;
     END IF;
 
@@ -212,7 +239,9 @@ BEGIN
         -- Update Main Employee Table
         UPDATE employees SET
             first_name_he = (SELECT first_name_he FROM employee_name_history WHERE employee_id = v_employee_id AND effective_from <= CURRENT_DATE ORDER BY effective_from DESC LIMIT 1),
-            last_name_he = (SELECT last_name_he FROM employee_name_history WHERE employee_id = v_employee_id AND effective_from <= CURRENT_DATE ORDER BY effective_from DESC LIMIT 1)
+            last_name_he = (SELECT last_name_he FROM employee_name_history WHERE employee_id = v_employee_id AND effective_from <= CURRENT_DATE ORDER BY effective_from DESC LIMIT 1),
+            -- Also update father_name_he directly as it's not currently history-tracked
+            father_name_he = COALESCE(p_event_data->>'fatherName', father_name_he)
         WHERE id = v_employee_id;
         
     END IF;

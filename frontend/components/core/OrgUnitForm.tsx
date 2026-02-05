@@ -46,10 +46,24 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
     const [loading, setLoading] = useState(false)
     const [unitNumber, setUnitNumber] = useState<string>(initialData?.unit_number || '')
 
+    // Enforce Structure Lock on Schema (Prevent changing Levels - handled by SetupWizard)
+    // Here we just need to ensure we strictly follow the levels.
+
+    // Determine the type we are creating
     const getNextLevel = () => {
         if (initialData) return initialData.type
         if (forcedType) return forcedType
-        if (!parentType) return levels[0] || 'Wing'
+        if (!parentType) return levels[0] || 'Wing' // Fallback
+
+        // Find next level based on hierarchy structure (if available in context) or index
+        // Prioritize currentOrg.hierarchy_structure if available
+        if (currentOrg?.hierarchy_structure && parentType) {
+            const structure = currentOrg.hierarchy_structure as Record<string, string | null>;
+            // Find the key where value === parentType
+            const childType = Object.keys(structure).find(key => structure[key] === parentType);
+            if (childType) return childType;
+        }
+
         const index = levels.indexOf(parentType)
         if (index === -1 || index >= levels.length - 1) return levels[levels.length - 1]
         return levels[index + 1]
@@ -150,21 +164,22 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
     const titleLabel = forcedType === 'Wing' ? 'אגף' : forcedType === 'Department' ? 'מחלקה' : forcedType === 'Division' ? 'חטיבה' : forcedType === 'Team' ? 'צוות' : 'יחידה'
 
     return (
-        <div className="bg-[#f3f4f6] min-h-[400px] flex flex-col border border-gray-400 font-sans" dir="rtl">
-            {/* Header Bar */}
-            <div className="bg-white border-b border-gray-300 p-2 flex justify-between items-center shadow-sm">
-                <div className="flex items-center gap-4">
-                    <span className="font-bold text-lg text-gray-800">{unitNumber} - {initialData?.name || `חדש (${titleLabel})`}</span>
-                </div>
-                <div className="flex gap-2">
-                    <button type="submit" form="org-unit-form" className="p-1 hover:bg-gray-100 rounded text-[#00A896]" title="שמור"><Save className="w-5 h-5" /></button>
-                    <button type="button" onClick={onCancel} className="p-1 hover:bg-gray-100 rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
-                </div>
-            </div>
-
-            {/* Form Body - Record View Layout */}
-            <form id="org-unit-form" onSubmit={handleSubmit(onSubmit, onError)} className="p-8 pt-10 space-y-12 flex-1 overflow-y-auto relative">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 max-w-4xl">
+        <PriorityRecordLayout
+            title={initialData?.name || `יצירת ${titleLabel} חדש`}
+            subtitle={initialData ? `${titleLabel} (${unitNumber})` : undefined}
+            id={unitNumber}
+            status="active"
+            onSave={handleSubmit(onSubmit, onError)}
+            onCancel={onCancel}
+            onPrint={() => window.print()}
+            onDelete={() => {
+                if (confirm('האם אתה בטוח שברצונך למחוק יחידה זו?')) {
+                    toast.error('מחיקה תתאפשר בקרוב')
+                }
+            }}
+        >
+            <form id="org-unit-form" onSubmit={handleSubmit(onSubmit, onError)} className="flex-1 overflow-y-auto p-8 relative" dir="rtl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 max-w-4xl mx-auto">
 
                     {/* Right Column (Labels on the right because RTL) */}
                     <div className="space-y-4">
@@ -264,7 +279,7 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
                 </div>
 
                 {/* Status Bar - Branded Teal */}
-                <div className="mt-8 border-[1.5px] border-[#00A896] bg-white p-3 flex items-start gap-3 shadow-inner">
+                <div className="mt-8 border-[1.5px] border-[#00A896] bg-white p-3 flex items-start gap-3 shadow-inner max-w-4xl mx-auto">
                     <div className="w-8 h-8 shrink-0 bg-[#E0F5F3] border border-[#00A896]/30 flex items-center justify-center text-[#00A896]">📖</div>
                     <div className="flex-1">
                         <p className="text-[12px] leading-tight text-gray-700 font-medium">
@@ -276,27 +291,9 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
                     </div>
                 </div>
             </form>
-
-            {/* Bottom Action Bar */}
-            <div className="bg-[#d1d5db] border-t border-gray-400 p-2 flex gap-3 mt-auto">
-                <button
-                    type="submit"
-                    form="org-unit-form"
-                    disabled={loading}
-                    className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-8 text-xs font-bold shadow-sm active:shadow-inner"
-                >
-                    {loading ? 'מבצע...' : 'עדכון (Save)'}
-                </button>
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-8 text-xs font-bold shadow-sm"
-                >
-                    יציאה (Exit)
-                </button>
-            </div>
-        </div>
+        </PriorityRecordLayout>
     )
 }
 
 import { UnitSelect } from './UnitSelect'
+import { PriorityRecordLayout } from './PriorityRecordLayout'

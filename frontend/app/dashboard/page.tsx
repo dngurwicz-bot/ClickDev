@@ -1,148 +1,57 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import React from 'react'
 import {
-    Users,
-    FileText,
+    Building2,
     Workflow,
+    FileText,
     Eye,
     Package,
     Heart,
     TrendingUp,
-    BarChart3,
-    Building2,
-    Settings,
-    MoreHorizontal,
-    Plus,
-    BarChart,
-    ChevronDown,
-    List,
-    Lock
+    BarChart3
 } from 'lucide-react'
-import { useOrganization } from '@/lib/contexts/OrganizationContext'
+import { PriorityDashboardTile } from '@/components/dashboard/PriorityDashboardTile'
 
-interface ModuleTile {
-    id: string
-    name: string
-    nameEn: string
-    icon: any
-    color: string
-    href: string
-    description: string
-}
-
-const ALL_MODULES: ModuleTile[] = [
-    {
-        id: 'core',
-        name: 'ליבה',
-        nameEn: 'Core',
-        icon: Building2,
-        color: 'text-blue-600',
-        href: '/dashboard/core',
-        description: 'ניהול עובדים ומשאבי אנוש'
-    },
-    {
-        id: 'flow',
-        name: 'Flow',
-        nameEn: 'Flow',
-        icon: Workflow,
-        color: 'text-purple-600',
-        href: '/dashboard/flow',
-        description: 'ניהול תהליכים ואוטומציה'
-    },
-    {
-        id: 'docs',
-        name: 'מסמכים',
-        nameEn: 'Documents',
-        icon: FileText,
-        color: 'text-cyan-600',
-        href: '/dashboard/documents',
-        description: 'ניהול מסמכים וקבצים'
-    },
-    {
-        id: 'vision',
-        name: 'Vision',
-        nameEn: 'Vision',
-        icon: Eye,
-        color: 'text-indigo-600',
-        href: '/dashboard/vision',
-        description: 'תרשים ארגוני אינטראקטיבי'
-    },
-    {
-        id: 'assets',
-        name: 'נכסים',
-        nameEn: 'Assets',
-        icon: Package,
-        color: 'text-green-600',
-        href: '/dashboard/assets',
-        description: 'ניהול נכסים וציוד'
-    },
-    {
-        id: 'vibe',
-        name: 'Vibe',
-        nameEn: 'Vibe',
-        icon: Heart,
-        color: 'text-pink-600',
-        href: '/dashboard/vibe',
-        description: 'מדידת שביעות רצון ומעורבות'
-    },
-    {
-        id: 'grow',
-        name: 'Grow',
-        nameEn: 'Grow',
-        icon: TrendingUp,
-        color: 'text-orange-600',
-        href: '/dashboard/grow',
-        description: 'פיתוח והדרכת עובדים'
-    },
-    {
-        id: 'insights',
-        name: 'Insights',
-        nameEn: 'Insights',
-        icon: BarChart3,
-        color: 'text-teal-600',
-        href: '/dashboard/insights',
-        description: 'דוחות וניתוחים מתקדמים'
-    },
+const DASHBOARD_TILES = [
+    { label: 'Click Core', href: '/dashboard/core', icon: Building2 },
+    { label: 'Click Flow', href: '/dashboard/flow', icon: Workflow },
+    { label: 'Click Docs', href: '/dashboard/documents', icon: FileText },
+    { label: 'Click Vision', href: '/dashboard/vision', icon: Eye },
+    { label: 'Click Assets', href: '/dashboard/assets', icon: Package },
+    { label: 'Click Vibe', href: '/dashboard/vibe', icon: Heart },
+    { label: 'Click Grow', href: '/dashboard/grow', icon: TrendingUp },
+    { label: 'Click Insights', href: '/dashboard/insights', icon: BarChart3 },
 ]
 
 export default function DashboardPage() {
-    const [user, setUser] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
-    const { currentOrg } = useOrganization()
-    const router = useRouter()
-
-    useEffect(() => {
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            setUser(user)
-            setLoading(false)
-        }
-        getUser()
-    }, [router])
-
-    if (loading) {
-        return <div className="p-8 text-center text-slate-500">טוען...</div>
-    }
-
-    // Check if module is active
-    const isModuleActive = (moduleId: string) => {
-        return moduleId === 'core' || currentOrg?.active_modules?.includes(moduleId)
-    }
-
     return (
-        <div className="max-w-[1600px] mx-auto space-y-8">
-            {/* Header Greeting */}
-            <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-light text-slate-800">
-                    ערב טוב, {user?.user_metadata?.first_name || 'משתמש'}
-                </h1>
+        <div className="p-6 max-w-7xl mx-auto">
+            {/* Welcome / Context Strip */}
+            <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-secondary">תפריט ראשי</h1>
+                    <p className="text-sm text-gray-500 mt-1">שלום, דיאגו ג</p>
+                </div>
             </div>
 
-            <div className="text-slate-500 text-sm">
-                בחר מודול מהתפריט העליון כדי להתחיל לעבוד.
+            {/* Dense Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {DASHBOARD_TILES.map((tile) => (
+                    <PriorityDashboardTile
+                        key={tile.href}
+                        {...tile}
+                    />
+                ))}
+            </div>
+
+            {/* "Recently Used" or widget area mimicking Priority's bottom area if any */}
+            <div className="mt-12 text-center text-sm text-gray-400">
+                {/* Visual filler for "System Notifications" or similar usually found in ERP dashboards */}
+                <div className="border bg-white p-4 rounded-sm shadow-sm inline-block">
+                    <span className="font-bold block text-secondary mb-1">הודעות מערכת</span>
+                    אין הודעות חדשות
+                </div>
             </div>
         </div>
     )

@@ -49,15 +49,15 @@ export default function EmployeeSidebar({ onAction }: EmployeeSidebarProps) {
     }
 
     return (
-        <div className="w-72 border-r bg-white flex flex-col h-full font-sans" dir="rtl">
-            <div className="p-4 border-b bg-gray-50/80">
-                <h3 className="font-bold text-secondary flex items-center gap-2 uppercase tracking-wide">
+        <div className="flex flex-col h-full bg-surface font-sans" dir="rtl">
+            <div className="p-4 border-b border-border">
+                <h3 className="font-bold text-secondary text-sm flex items-center gap-2 uppercase tracking-wide">
                     <Settings className="h-4 w-4 text-primary" />
                     תפריט פעולות
                 </h3>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto p-3">
                 <div className="space-y-1">
                     {actions.map((action) => {
                         const Icon = action.icon
@@ -66,14 +66,14 @@ export default function EmployeeSidebar({ onAction }: EmployeeSidebarProps) {
                                 key={action.id}
                                 onClick={() => handleClick(action)}
                                 className={cn(
-                                    "group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all",
+                                    "group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all",
                                     selectedId === action.id
-                                        ? "bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20"
-                                        : "hover:bg-primary/5 text-text-secondary hover:text-primary"
+                                        ? "bg-primary/10 text-primary font-medium"
+                                        : "hover:bg-gray-50 text-text-secondary hover:text-primary"
                                 )}
                             >
                                 <span className={cn(
-                                    "text-[10px] px-1.5 py-0.5 rounded font-black min-w-[32px] text-center",
+                                    "text-[10px] px-1.5 py-0.5 rounded-md font-bold min-w-[32px] text-center transition-colors",
                                     selectedId === action.id
                                         ? "bg-primary text-white"
                                         : "bg-gray-100 text-text-muted group-hover:bg-primary/20 group-hover:text-primary"
@@ -81,10 +81,10 @@ export default function EmployeeSidebar({ onAction }: EmployeeSidebarProps) {
                                     {action.code}
                                 </span>
                                 <Icon className={cn(
-                                    "h-4 w-4 transition-transform group-hover:scale-110",
+                                    "h-4 w-4 transition-transform group-hover:scale-105",
                                     selectedId === action.id ? "text-primary" : "text-text-muted group-hover:text-primary"
                                 )} />
-                                <span className="text-sm font-semibold">
+                                <span className="text-sm">
                                     {action.label}
                                 </span>
                             </div>
@@ -93,7 +93,7 @@ export default function EmployeeSidebar({ onAction }: EmployeeSidebarProps) {
                 </div>
             </div>
 
-            <div className="p-4 border-t bg-gray-50 text-[10px] font-bold text-text-muted uppercase tracking-widest text-center">
+            <div className="p-4 border-t border-border bg-gray-50/50 text-[10px] font-bold text-text-muted uppercase tracking-widest text-center">
                 CLICK CORE • Employee Module
             </div>
         </div>

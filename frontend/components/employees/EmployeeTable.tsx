@@ -22,40 +22,38 @@ export default function EmployeeTable({ employees, selectedId, onSelectEmployee 
     }
 
     return (
-        <div className="flex flex-col h-full bg-white font-sans" dir="rtl">
+        <div className="flex flex-col h-full bg-surface font-sans" dir="rtl">
             {/* Table Header Row - CLICK Branded */}
-            {/* Table Header Row - CLICK Branded */}
-            <div className="grid grid-cols-[1fr_1fr_1fr_1fr] bg-secondary text-white text-[12px] font-black uppercase tracking-wider shadow-md z-10">
-                <div className="px-4 py-3 border-l border-white/10 opacity-70">מספר עובד</div>
-                <div className="px-4 py-3 border-l border-white/10">שם משפחה</div>
-                <div className="px-4 py-3 border-l border-white/10">שם פרטי</div>
-                <div className="px-4 py-3 opacity-70">תפקיד</div>
+            <div className="grid grid-cols-[1fr_1fr_1fr_1fr] bg-secondary text-white text-xs font-medium uppercase tracking-wider shadow-sm z-10">
+                <div className="px-6 py-4">מספר עובד</div>
+                <div className="px-6 py-4">שם משפחה</div>
+                <div className="px-6 py-4">שם פרטי</div>
+                <div className="px-6 py-4">תפקיד</div>
             </div>
 
             {/* Table Body */}
             <div className="flex-1 overflow-auto">
-                <Table variant="hilan">
+                <Table>
                     <TableBody>
                         {employees.map((emp, index) => (
                             <TableRow
                                 key={emp.id}
-                                variant="hilan"
                                 onClick={() => handleClick(emp)}
                                 className={cn(
-                                    "grid grid-cols-[1fr_1fr_1fr_1fr] border-b border-gray-100 cursor-pointer transition-all h-12 items-center",
+                                    "grid grid-cols-[1fr_1fr_1fr_1fr] border-b border-gray-100 cursor-pointer transition-all h-14 items-center hover:bg-gray-50",
                                     selectedId === emp.id
-                                        ? "bg-primary/10 border-r-4 border-r-primary shadow-inner"
-                                        : "hover:bg-primary/5 group"
+                                        ? "bg-primary/5 border-r-4 border-r-primary"
+                                        : "border-r-4 border-r-transparent"
                                 )}
                             >
-                                <TableCell variant="hilan" className="font-bold tracking-wider text-black text-sm">
+                                <TableCell className="px-6 font-medium text-gray-900 text-sm">
                                     {emp.employeeNumber || emp.id}
                                 </TableCell>
-                                <TableCell variant="hilan" className="font-bold text-black text-sm">
+                                <TableCell className="px-6 text-gray-700 text-sm">
                                     {emp.lastName}
                                 </TableCell>
-                                <TableCell variant="hilan" className="font-bold text-black text-sm">{emp.firstName}</TableCell>
-                                <TableCell variant="hilan" className="font-bold text-black text-sm">{emp.position}</TableCell>
+                                <TableCell className="px-6 text-gray-700 text-sm">{emp.firstName}</TableCell>
+                                <TableCell className="px-6 text-gray-500 text-sm">{emp.position}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -63,21 +61,21 @@ export default function EmployeeTable({ employees, selectedId, onSelectEmployee 
             </div>
 
             {/* Footer Stats - CLICK Style */}
-            <div className="p-3 px-6 border-t bg-gray-50 flex items-center justify-between text-[11px] font-black text-secondary uppercase tracking-widest">
+            <div className="p-4 border-t border-border bg-gray-50/50 flex items-center justify-between text-xs font-medium text-text-secondary uppercase tracking-wider">
                 <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
-                        <span className="opacity-40">מספר עובדים:</span>
-                        <span className="text-primary">{employees.length}</span>
+                        <span className="opacity-60">מספר עובדים:</span>
+                        <span className="text-primary font-bold">{employees.length}</span>
                     </div>
                     {selectedId && (
                         <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                            <span className="opacity-40">נבחר:</span>
-                            <span className="text-primary">{employees.find(e => e.id === selectedId)?.employeeNumber || selectedId}</span>
+                            <span className="opacity-60">נבחר:</span>
+                            <span className="text-primary font-bold">{employees.find(e => e.id === selectedId)?.employeeNumber || selectedId}</span>
                         </div>
                     )}
                 </div>
-                <div className="text-[10px] opacity-30">
+                <div className="text-[10px] opacity-40">
                     CLICK CORE • HR DATABASE
                 </div>
             </div>

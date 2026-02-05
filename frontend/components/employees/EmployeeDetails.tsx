@@ -3,45 +3,30 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { PriorityRecordLayout } from '@/components/core/PriorityRecordLayout'
+import { PriorityTabs } from '@/components/core/PriorityTabs'
+import { PriorityFormField } from '@/components/core/PriorityFormField'
+import { PriorityDataGrid } from '@/components/core/PriorityDataGrid'
 import {
     User,
-    Briefcase,
-    Users,
     FileText,
-    Star,
-    ChevronRight,
-    ChevronLeft,
-    Edit,
-    Phone,
-    Mail,
     MapPin,
-    Calendar,
-    Building2,
     ShieldCheck,
-    Plus,
-    ArrowRight,
-    ArrowLeft,
-    X,
-    AlertCircle,
     CheckCircle2,
-    Search,
-    Filter,
-    MoreHorizontal,
-    Printer
+    Network,
+    Building2,
+    Loader2
 } from 'lucide-react'
-import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs' // If using shadcn tabs
-
+import { FamilyTab } from './tabs/FamilyTab'
+import { BankDetailsTab } from './tabs/BankDetailsTab'
+import { RoleHistoryTab } from './tabs/RoleHistoryTab'
+import { AssetsTab } from './tabs/AssetsTab'
+import { ClickSearchPopover } from '@/components/core/ClickSearchPopover'
 
 import DateRangeSelector, { DateRangeType } from './DateRangeSelector'
-import { EmployeeTablesManager, EmployeeTableViewer } from './EmployeeTablesManager'
+import { cn } from '@/lib/utils'
 
 export interface Employee {
     id: string
@@ -64,6 +49,11 @@ export interface Employee {
     first_name_he?: string
     last_name_he?: string
     effective_from?: string
+
+    // Org Hierarchy
+    org_unit_id?: string
+    organization_id: string // REQUIRED for child tables
+    org_path?: { id: string, name: string, type: string }[]
 }
 
 export interface NameHistoryRecord {
@@ -100,20 +90,38 @@ interface EmployeeDetailsProps {
     onEdit?: () => void
     onBack?: () => void
     isNew?: boolean
-    onSaveNew?: (data: any) => void
+    onSaveNew?: (data: any) => Promise<void> | void
     lastCreatedId?: string
     existingIds?: string[]
     existingNationalIds?: string[]
     onUpdate?: (eventCode: string, data: any, operationCode?: string) => Promise<void> | void
+    onCancel?: () => void
+    onDelete?: () => void
+    searchMode?: boolean
+    onSearch?: (criteria: any) => void
+    onNewSearch?: () => void
+    initialEmployees?: Employee[]
 }
 
-type TabType = 'general' | 'personal' | 'employment' | 'salary' | 'attendance' | 'hr' | 'documents' | 'process'
-
-const tabs: { id: TabType; label: string }[] = [
+const MASTER_TABS = [
     { id: 'general', label: 'פרטים כלליים' },
-    { id: 'employment', label: 'תפקיד וצוות' },
-    { id: 'salary', label: 'כתובת וטלפון' }, // Reusing 'salary' ID for Address/Phone based on user request mapping? Or just renaming label.
-    { id: 'hr', label: 'הגדרות' },
+    { id: 'address', label: 'כתובת וטלפון' },
+    { id: 'role', label: 'תפקיד וצוות' },
+    { id: 'settings', label: 'הגדרות' },
+]
+
+const DETAIL_TABS = [
+    { id: 'personal', label: 'פרטים אישיים' }, // Legacy/Placeholder?
+    { id: 'kids', label: 'פרטי ילדים' },
+    { id: 'current_company', label: 'נתונים לחברה נוכחת' },
+    { id: 'bank', label: 'בנק' },
+    { id: 'assets', label: 'ציוד ורכוש' },
+    { id: 'dept_transfer', label: 'העברות מחלקתיות' },
+    { id: 'jobs', label: 'משרות לעובד/מועמד' }, // This was the default active
+    { id: 'projects', label: 'פרויקטים שמנהל העובד' },
+    { id: 'team', label: 'אנשים בצוות' },
+    { id: 'sys_groups', label: 'קבוצות מערכת' },
+    { id: 'role_history', label: 'היסטוריה של תפקידים' },
 ]
 
 export default function EmployeeDetails({
@@ -123,179 +131,60 @@ export default function EmployeeDetails({
     onEdit,
     onBack,
     isNew = false,
+    searchMode = false,
+    onSearch,
+    initialEmployees = [],
     onSaveNew,
     lastCreatedId,
     existingIds = [],
     existingNationalIds = [],
-    onUpdate
+    onUpdate,
+    onCancel,
+    onDelete,
+    onNewSearch
 }: EmployeeDetailsProps) {
-    const [activeTab, setActiveTab] = useState<TabType>('general')
-    const [activeTable, setActiveTable] = useState<string>('001')
-    const AVAILABLE_TABLES = ['001', '100', '101']
-    const [table100Mode, setTable100Mode] = useState<'form' | 'table'>('table') // New state for Table 100 view mode
-    const [dateRange, setDateRange] = useState<DateRangeType>('all')
-    const [isEditing, setIsEditing] = useState(isNew)
-    const [error, setError] = useState<string | null>(null)
+    // --- State ---
+    const [activeMasterTab, setActiveMasterTab] = useState<string>('general')
+    const [activeDetailTab, setActiveDetailTab] = useState<string>('jobs')
+    const [isSelectionVisible, setIsSelectionVisible] = useState(false)
+    const [isSearching, setIsSearching] = useState(false)
+
+    const [orgPath, setOrgPath] = useState<{ id: string, name: string, type: string }[]>([])
+
+    // Hierarchy Path Fetching
+    useEffect(() => {
+        if (employee?.org_unit_id) {
+            const fetchPath = async () => {
+                const { data, error } = await supabase.rpc('get_unit_hierarchy_path', { p_unit_id: employee.org_unit_id })
+                if (!error && data) setOrgPath(data)
+            }
+            fetchPath()
+        }
+    }, [employee?.org_unit_id])
+
+    // State for Filter / Tables
+    const [activeTable, setActiveTable] = useState<string>('001') // Keeping for backward compat if needed
     const [filteredNameHistory, setFilteredNameHistory] = useState<NameHistoryRecord[]>([])
     const [addressHistory, setAddressHistory] = useState<AddressHistoryRecord[]>([])
-    const [table101Mode, setTable101Mode] = useState<'table' | 'form'>('table')
-    const [selectedAddressRecord, setSelectedAddressRecord] = useState<AddressHistoryRecord | null>(null)
-    const [filterMode, setFilterMode] = useState<'all' | 'dates' | 'current_month'>('current_month')
-    const [filterFromDate, setFilterFromDate] = useState('01/2020')
-    const [filterToDate, setFilterToDate] = useState('12/2024')
-    const [tableInputValue, setTableInputValue] = useState('001')
-    const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<any | null>(null)
-    const [addressFormData, setAddressFormData] = useState({
-        city_name: '',
-        city_code: '',
-        street: '',
-        house_number: '',
-        apartment: '',
-        entrance: '',
-        postal_code: '',
-        phone: '',
-        phone_additional: '',
-        effectiveDate: (() => {
-            const d = new Date()
-            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
-        })(),
-        endDate: ''
-    })
-    const [operationCode, setOperationCode] = useState<string>('2') // Default to '2' (Update) for existing, ' ' for new
 
-    // Auto-format date input: 122020 -> 12/2020
-    const formatDateInput = (value: string): string => {
-        const digits = value.replace(/\D/g, '')
-        if (digits.length === 6) {
-            return `${digits.slice(0, 2)}/${digits.slice(2)}`
-        }
-        return value
-    }
-
-    // Filter name history by date range
-    const filterNameHistoryByDate = (history: NameHistoryRecord[]) => {
-        return history.filter(record => {
-            if (filterMode === 'all') return true
-            if (!record.effective_from) return true
-
-            const recordStart = new Date(record.effective_from)
-            const recordEnd = record.effective_to ? new Date(record.effective_to) : null
-
-            if (filterMode === 'current_month') {
-                const now = new Date()
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-
-                // Check overlap: (Start <= EndMonth) AND (End >= StartMonth OR End is NULL)
-                return recordStart <= endOfMonth && (recordEnd === null || recordEnd >= startOfMonth)
-            }
-
-            // Custom Dates
-            const [fromMonth, fromYear] = filterFromDate.split('/').map(Number)
-            const [toMonth, toYear] = filterToDate.split('/').map(Number)
-            if (!fromMonth || !fromYear || !toMonth || !toYear) return true
-            const fromDate = new Date(fromYear, fromMonth - 1, 1)
-            const toDate = new Date(toYear, toMonth, 0) // Last day of month
-
-            return recordStart <= toDate && (recordEnd === null || recordEnd >= fromDate)
-        })
-    }
-
-    // Filter address history by date range
-    const filterAddressHistoryByDate = (history: AddressHistoryRecord[]) => {
-        return history.filter(record => {
-            if (filterMode === 'all') return true
-            if (!record.effective_from) return true
-
-            const recordStart = new Date(record.effective_from)
-            const recordEnd = record.effective_to ? new Date(record.effective_to) : null
-
-            if (filterMode === 'current_month') {
-                const now = new Date()
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-                return recordStart <= endOfMonth && (recordEnd === null || recordEnd >= startOfMonth)
-            }
-
-            const [fromMonth, fromYear] = filterFromDate.split('/').map(Number)
-            const [toMonth, toYear] = filterToDate.split('/').map(Number)
-            if (!fromMonth || !fromYear || !toMonth || !toYear) return true
-            const fromDate = new Date(fromYear, fromMonth - 1, 1)
-            const toDate = new Date(toYear, toMonth, 0)
-
-            return recordStart <= toDate && (recordEnd === null || recordEnd >= fromDate)
-        })
-    }
-
-    const fetchNameHistory = async () => {
-        if (!employee?.id) return
-        try {
-            const { data, error } = await supabase
-                .from('employee_name_history')
-                .select('*')
-                .eq('employee_id', employee.id)
-                .order('effective_from', { ascending: true })
-
-            if (error) throw error
-            setFilteredNameHistory(filterNameHistoryByDate(data || []))
-        } catch (err) {
-            console.error('Error fetching name history:', err)
-        }
-    }
-
-    const fetchAddressHistory = async () => {
-        if (!employee?.id) return
-        try {
-            const { data, error } = await supabase
-                .from('employee_address')
-                .select('*')
-                .eq('employee_id', employee.id)
-                .order('valid_from', { ascending: true })
-
-            if (error) throw error
-            // Map valid_from/to to effective_from/to for consistency
-            const mapped = (data || []).map(r => ({
-                ...r,
-                effective_from: r.valid_from,
-                effective_to: r.valid_to
-            }))
-            setAddressHistory(filterAddressHistoryByDate(mapped))
-        } catch (err) {
-            console.error('Error fetching address history:', err)
-        }
-    }
-
-    useEffect(() => {
-        if (activeTable === '100') fetchNameHistory()
-        if (activeTable === '101') fetchAddressHistory()
-    }, [activeTable, employee?.id, employee, filterMode, filterFromDate, filterToDate]) // Refresh history when employee data changes (prop update)
-
-
-    const idInputRef = useRef<HTMLInputElement>(null)
-
-    useEffect(() => {
-        if (isNew && idInputRef.current) {
-            idInputRef.current.focus()
-        }
-    }, [isNew])
-
-    // Initialize form data with all potential fields
+    // Form Data
     const [formData, setFormData] = useState({
-        employeeId: isNew ? '' : (employee?.employeeNumber || ''),
-        idNumber: employee?.idNumber || '',
-        lastName: employee?.lastName || '',
-        firstName: employee?.firstName || '',
-        fatherName: employee?.fatherName || '',
-        birthDate: employee?.birthDate ? (employee.birthDate.match(/^\d{4}-\d{2}-\d{2}$/) ? `${employee.birthDate.split('-')[2]}/${employee.birthDate.split('-')[1]}/${employee.birthDate.split('-')[0]}` : employee.birthDate) : '',
-        passport: employee?.passport || '',
-
-        effectiveDate: (() => {
-            const d = new Date()
-            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
-        })()
+        employeeId: '',
+        idNumber: '',
+        lastName: '',
+        firstName: '',
+        fatherName: '',
+        birthDate: '',
+        passport: '',
+        status: 'active',
+        // Address specific fields can be added here
+        city: '',
+        street: '',
+        houseNum: '',
+        phone: ''
     })
 
-    // Sync form data when employee prop changes (e.g., after onUpdate refresh)
+    // Init Data
     useEffect(() => {
         if (employee) {
             setFormData(prev => ({
@@ -305,566 +194,422 @@ export default function EmployeeDetails({
                 employeeId: employee.employeeNumber || '',
                 idNumber: employee.idNumber || '',
                 fatherName: employee.fatherName || '',
-                birthDate: employee.birthDate ? (employee.birthDate.match(/^\d{4}-\d{2}-\d{2}$/) ? `${employee.birthDate.split('-')[2]}/${employee.birthDate.split('-')[1]}/${employee.birthDate.split('-')[0]}` : employee.birthDate) : '',
+                birthDate: formatDisplayDate(employee.birthDate || ''),
                 passport: employee.passport || '',
-
+                status: employee.status || 'active',
+                phone: employee.phone || '',
+                city: '', // Fetch from address history or employee record if available
             }))
+            setIsSelectionVisible(false)
+            setIsSearching(false)
+        } else if (searchMode) {
+            // Reset form for search
+            setFormData({
+                employeeId: '',
+                idNumber: '',
+                lastName: '',
+                firstName: '',
+                fatherName: '',
+                birthDate: '',
+                passport: '',
+                status: 'active',
+                city: '',
+                street: '',
+                houseNum: '',
+                phone: ''
+            })
+            // Default show selection if Landing and no employee
+            if (!employee && initialEmployees.length > 0) {
+                setIsSelectionVisible(true)
+            }
+            setIsSearching(false)
         }
-        // Reset operation code when switching employee or table
-        setOperationCode(isNew ? ' ' : (activeTable === '001' ? '2' : ' '))
-    }, [employee, activeTable, isNew])
+    }, [employee, searchMode])
 
     const handleInputChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
-    }
-
-    const handleAddressInputChange = (field: string, value: string) => {
-        setAddressFormData(prev => ({ ...prev, [field]: value }))
-    }
-
-    const handleSave = async () => {
-        setError(null)
-
-        if (isNew) {
-            if (!formData.idNumber) {
-                setError('יש להזין מספר זהות')
-                return
-            }
-            if (!formData.employeeId) {
-                setError('יש להזין מספר עובד')
-                return
-            }
-            if (!formData.firstName) {
-                setError('יש להזין שם פרטי')
-                return
-            }
-            if (!formData.lastName) {
-                setError('יש להזין שם משפחה')
-                return
-            }
-            if (!formData.birthDate) {
-                setError('יש להזין תאריך לידה')
-                return
-            }
-
-            // Duplication checks
-            if (existingIds.includes(formData.employeeId)) {
-                setError(`מספר עובד ${formData.employeeId} כבר קיים במערכת`)
-                return
-            }
-            if (existingNationalIds.includes(formData.idNumber)) {
-                setError(`מספר זהות ${formData.idNumber} כבר קיים במערכת`)
-                return
-            }
-
-            if (onSaveNew) {
-                try {
-                    await onSaveNew({
-                        employeeNumber: formData.employeeId,
-                        ...formData
-                    })
-                    toast.success('האירוע נקלט')
-                } catch (err: any) {
-                    toast.error(err.message || 'האירוע לא נקלט')
-                }
-            }
-        } else if (activeTable === '100') {
-            // Handle Table 100 Save (Name Update - Event 552)
-            console.log('Saving Table 100:', formData)
-
-            let effectiveFrom = new Date().toISOString().split('T')[0]
-            if (formData.effectiveDate && formData.effectiveDate.includes('/')) {
-                const [d, m, y] = formData.effectiveDate.split('/')
-                effectiveFrom = `${y}-${m}-${d}`
-            } else if (formData.effectiveDate) {
-                effectiveFrom = formData.effectiveDate
-            }
-
-            if (onUpdate) {
-                try {
-                    // Determine Op Code: For now default to ' ' (Change Name)
-                    await onUpdate('100', {
-                        firstName: formData.firstName || employee?.firstName || '',
-                        lastName: formData.lastName || employee?.lastName || '',
-                        effectiveFrom: effectiveFrom
-                    }, operationCode) // Use selected Operation Code
-
-                    toast.success('האירוע נקלט')
-
-                    // Switch to table view after update
-                    setTable100Mode('table')
-                    setSelectedHistoryRecord(null)
-                } catch (err: any) {
-                    toast.error(err.message || 'האירוע לא נקלט')
-                }
-            }
-        } else if (activeTable === '001') {
-            // Handle Table 001 Save (Personal Details - Event 200)
-            if (onUpdate) {
-                try {
-                    await onUpdate('200', {
-                        firstName: employee?.firstName || '',
-                        lastName: employee?.lastName || '',
-                        fatherName: formData.fatherName,
-                        birthDate: employee?.birthDate || ''
-                    }, operationCode) // Use selected Operation Code
-
-                    toast.success('האירוע נקלט')
-                    setIsEditing(false)
-                } catch (err: any) {
-                    toast.error(err.message || 'האירוע לא נקלט')
-                }
-            }
-        } else if (activeTable === '101') {
-            handleAddressSave()
+        if (field === 'birthDate') {
+            const formatted = autoFormatDate(value)
+            setFormData(prev => ({ ...prev, [field]: formatted }))
+        } else {
+            setFormData(prev => ({ ...prev, [field]: value }))
         }
     }
 
-    const handleAddressSave = async () => {
-        if (!onUpdate) return
+    // --- Date Formatting Helpers ---
 
-        let effectiveFrom = new Date().toISOString().split('T')[0]
-        let validTo: string | undefined = undefined
+    // Converts YYYY-MM-DD to DD/MM/YY
+    const formatDisplayDate = (isoDate: string): string => {
+        if (!isoDate) return ''
+        const parts = isoDate.split('-')
+        if (parts.length !== 3) return isoDate
+        const year = parts[0].slice(-2)
+        const month = parts[1]
+        const day = parts[2]
+        return `${day}/${month}/${year}`
+    }
 
-        if (addressFormData.effectiveDate && addressFormData.effectiveDate.includes('/')) {
-            const [d, m, y] = addressFormData.effectiveDate.split('/')
-            effectiveFrom = `${y}-${m}-${d}`
+    // Converts DD/MM/YY or DD/MM/YYYY to YYYY-MM-DD
+    const parseDisplayDate = (displayDate: string): string => {
+        if (!displayDate) return ''
+        const parts = displayDate.split('/')
+        if (parts.length !== 3) return displayDate
+
+        let day = parts[0].padStart(2, '0')
+        let month = parts[1].padStart(2, '0')
+        let yearPart = parts[2]
+
+        let year = yearPart
+        if (yearPart.length === 2) {
+            const currentYear = new Date().getFullYear() % 100
+            const century = parseInt(yearPart) <= currentYear + 10 ? '20' : '19'
+            year = century + yearPart
+        } else if (yearPart.length === 4) {
+            year = yearPart
         }
 
-        if (addressFormData.endDate && addressFormData.endDate.includes('/')) {
-            const [d, m, y] = addressFormData.endDate.split('/')
-            validTo = `${y}-${m}-${d}`
+        return `${year}-${month}-${day}`
+    }
+
+    // Handles 010161 -> 01/01/61
+    const autoFormatDate = (value: string): string => {
+        // Remove non-digits
+        const digits = value.replace(/\D/g, '')
+
+        if (digits.length === 6 && !value.includes('/')) {
+            return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 6)}`
         }
 
-        const payload = {
-            cityName: addressFormData.city_name,
-            cityCode: addressFormData.city_code,
-            street: addressFormData.street,
-            houseNumber: addressFormData.house_number,
-            apartment: addressFormData.apartment,
-            entrance: addressFormData.entrance,
-            postalCode: addressFormData.postal_code,
-            phone: addressFormData.phone,
-            phoneAdditional: addressFormData.phone_additional,
-            effectiveFrom: effectiveFrom,
-            validTo: validTo
+        if (digits.length === 8 && !value.includes('/')) {
+            return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`
         }
 
-        try {
-            await onUpdate('101', payload, operationCode)
-            toast.success('האירוע נקלט')
+        return value
+    }
 
-            // Refresh history immediately for feedback
-            fetchAddressHistory()
+    // Age Calculation Helper
+    const calculateAge = (dateStr: string): string => {
+        if (!dateStr) return ''
 
-            setTable101Mode('table')
-            setSelectedAddressRecord(null)
-        } catch (err: any) {
-            toast.error(err.message || 'האירוע לא נקלט')
+        let birth: Date
+        if (dateStr.includes('/')) {
+            const iso = parseDisplayDate(dateStr)
+            birth = new Date(iso)
+        } else {
+            birth = new Date(dateStr)
+        }
+
+        if (isNaN(birth.getTime())) return ''
+
+        const today = new Date()
+        let years = today.getFullYear() - birth.getFullYear()
+        let months = today.getMonth() - birth.getMonth()
+
+        if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
+            years--
+            months += 12
+        }
+
+        // Adjust for partial months (if not reached the day of birth yet)
+        if (today.getDate() < birth.getDate()) {
+            months--
+        }
+
+        // Ensure month is non-negative after day adjustment
+        if (months < 0) {
+            months += 12
+        }
+
+        return `${years}.${months >= 0 ? months : 0}`
+    }
+
+    // Search Handler
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && searchMode && onSearch) {
+            console.log('[EmployeeDetails] Enter pressed. Triggering search with data:', formData)
+            setIsSearching(true)
+            onSearch(formData)
+            setIsSelectionVisible(false)
         }
     }
 
-    const ActionCodeSelector = () => (
-        <div className="flex items-center w-full py-1 border-b border-gray-50 last:border-0 group min-h-[48px] mb-2">
-            <span className="text-sm font-bold text-black min-w-[140px] text-right">
-                קוד פעולה:
-            </span>
-            <div className="flex items-center gap-4 pr-6 flex-1 max-w-md">
-                {[
-                    { code: ' ', label: 'רישום', color: 'text-success' },
-                    { code: '2', label: 'טיוב', color: 'text-warning' },
-                    { code: '3', label: 'גריעה', color: 'text-danger' },
-                    { code: '4', label: 'אכיפה', color: 'text-info' }
-                ].map((op) => (
-                    <label
-                        key={op.code}
-                        className={cn(
-                            "flex items-center gap-1.5 cursor-pointer transition-all px-2 py-1 rounded-md",
-                            operationCode === op.code ? "bg-gray-100 shadow-sm outline outline-1 outline-gray-200" : "hover:bg-gray-50"
-                        )}
-                    >
-                        <input
-                            type="radio"
-                            name="operationCode"
-                            value={op.code}
-                            checked={operationCode === op.code}
-                            onChange={(e) => setOperationCode(e.target.value)}
-                            className="hidden"
-                        />
-                        <div className={cn(
-                            "w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all",
-                            operationCode === op.code ? "bg-primary border-primary" : "border-gray-400 bg-white"
-                        )}>
-                            {operationCode === op.code && <div className="w-1 h-1 bg-white rounded-full" />}
-                        </div>
-                        <span className={cn(
-                            "text-xs font-black whitespace-nowrap",
-                            operationCode === op.code ? "text-primary" : "text-gray-500"
-                        )}>
-                            {op.label}
-                            <span className="mr-0.5 opacity-40 text-[9px] font-mono">({op.code === ' ' ? 'ריק' : op.code})</span>
-                        </span>
-                    </label>
-                ))}
-            </div>
-        </div>
-    )
-
-    const handleDeleteRecord = async () => {
-        if (!selectedHistoryRecord || !onUpdate) return
-
-        if (confirm('האם אתה בטוח שברצונך לבטל רשומה זו?')) {
-            try {
-                await onUpdate('100', {
-                    firstName: selectedHistoryRecord.first_name_he,
-                    lastName: selectedHistoryRecord.last_name_he,
-                    effectiveFrom: selectedHistoryRecord.effective_from
-                }, '3') // Operation Code '3' = Delete
-
-                toast.success('האירוע נקלט')
-
-                // On success, reset state
-                setTable100Mode('table')
-                setSelectedHistoryRecord(null)
-            } catch (err) {
-                console.error('Error deleting record:', err)
-                toast.error('האירוע לא נקלט')
-            }
+    const handleEmployeeSelect = (emp: Employee) => {
+        console.log('[EmployeeDetails] Employee selected from popover:', emp.employeeNumber)
+        setIsSearching(true)
+        if (onSearch) {
+            onSearch({ employeeId: emp.employeeNumber })
         }
+        setIsSelectionVisible(false)
     }
 
-    if (!employee && !isNew) {
-        return (
-            <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400 font-sans">
-                <div className="text-center">
-                    <User className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                    <p className="text-lg font-bold">בחר עובד מהרשימה</p>
-                    <p className="text-sm mt-2">לחץ על שורה בטבלה לצפייה בפרטים</p>
-                </div>
-            </div>
-        )
+    if (!employee && !isNew && !searchMode) {
+        return <div className="p-8 text-center text-gray-500">בחר עובד מהרשימה</div>
     }
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 font-sans text-right" dir="rtl">
-            {/* MODERN HEADER CARD */}
-            <div className="bg-white px-8 py-6 border-b border-gray-200 shadow-sm flex items-start justify-between">
-                <div className="flex items-center gap-6">
-                    <Avatar className="h-20 w-20 border-4 border-white shadow-lg">
-                        <AvatarImage src="" />
-                        <AvatarFallback className="bg-blue-600 text-white text-2xl font-bold">
-                            {formData.firstName?.[0]}{formData.lastName?.[0]}
-                        </AvatarFallback>
-                    </Avatar>
-                    
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                                {formData.firstName} {formData.lastName}
-                            </h1>
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 px-3 py-1">
-                                פעיל
-                            </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-gray-500 mt-2 text-sm font-medium">
-                            <div className="flex items-center gap-1">
-                                <Briefcase className="w-4 h-4" />
-                                <span>{employee?.position || 'מפתח פול סטאק'}</span>
+        <PriorityRecordLayout
+            title={isNew ? 'יצירת עובד חדש' : searchMode ? 'חיפוש עובד' : 'כרטיס ליבה - עובד'}
+            subtitle={!isNew && !searchMode ? `${formData.lastName} ${formData.firstName}` : undefined}
+            id={formData.employeeId}
+            status={formData.status}
+            onSave={async () => {
+                const preparedData = {
+                    ...formData,
+                    birthDate: parseDisplayDate(formData.birthDate)
+                }
+
+                if (isNew && onSaveNew) {
+                    try {
+                        await onSaveNew({
+                            ...preparedData,
+                            employeeNumber: formData.employeeId
+                        });
+                    } catch (err: any) {
+                        toast.error(err.message || 'שגיאה בשמירת העובד');
+                    }
+                } else if (onUpdate && employee) {
+                    try {
+                        await onUpdate('100', preparedData, '2');
+                        toast.success('העובד עודכן בהצלחה');
+                    } catch (err: any) {
+                        toast.error(err.message || 'שגיאה בעדכון העובד');
+                    }
+                }
+            }}
+            onPrint={() => window.print()}
+            onCancel={onCancel}
+            onDelete={onDelete}
+            onSearch={onNewSearch}
+        >
+            {/* SEARCHING OVERLAY */}
+            {isSearching && (
+                <div className="absolute inset-0 z-[200] bg-white/50 flex items-center justify-center backdrop-blur-[1px]">
+                    <div className="flex flex-col items-center gap-4 p-8 bg-white border border-gray-300 shadow-xl rounded-sm">
+                        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                        <span className="font-bold text-lg text-primary">מחפש עובד...</span>
+                    </div>
+                </div>
+            )}
+
+            {/* MASTER SECTION (TOP) */}
+            <div className="bg-white border-b border-gray-300 p-6 shadow-sm pb-6 relative" dir="rtl">
+                <div className="flex gap-8">
+
+                    {/* Right Panel: Static Identity Fields */}
+                    <div className="w-1/3 min-w-[300px] border-l border-gray-200 pl-8">
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <PriorityFormField
+                                    label="מס עובד"
+                                    value={formData.employeeId}
+                                    color="red"
+                                    required
+                                    disabled={!isNew && !searchMode}
+                                    onChange={(e) => handleInputChange('employeeId', e.target.value)}
+                                    onClick={() => searchMode && setIsSelectionVisible(true)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder={searchMode ? "חפש לפי מספר..." : ""}
+                                />
+                                {isSelectionVisible && searchMode && initialEmployees.length > 0 && (
+                                    <ClickSearchPopover
+                                        initialEmployees={initialEmployees}
+                                        onSelect={handleEmployeeSelect}
+                                        onAddNew={() => {
+                                            setIsSelectionVisible(false)
+                                        }}
+                                        onAdvancedSearch={() => setIsSelectionVisible(false)}
+                                        onClose={() => setIsSelectionVisible(false)}
+                                    />
+                                )}
                             </div>
-                            <div className="flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
-                                <span>{employee?.address || 'תל אביב-יפו'}</span>
+                            <PriorityFormField
+                                label="ת. זהות"
+                                value={formData.idNumber}
+                                color="red"
+                                required
+                                disabled={!isNew && !searchMode}
+                                onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={searchMode ? "חפש לפי ת.ז..." : ""}
+                            />
+                            <PriorityFormField
+                                label="שם משפחה"
+                                value={formData.lastName}
+                                color="red"
+                                required
+                                disabled={!isNew && !searchMode && false} // UNLOCKED for edit
+                                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={searchMode ? "חפש לפי משפחה..." : ""}
+                            />
+                            <PriorityFormField
+                                label="שם פרטי"
+                                value={formData.firstName}
+                                color="red"
+                                required
+                                disabled={!isNew && !searchMode && false} // UNLOCKED for edit
+                                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={searchMode ? "חפש לפי פרטי..." : ""}
+                            />
+
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">סטטוס</label>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-sm text-gray-800">{formData.status === 'active' ? 'פעיל' : 'לא פעיל'}</span>
+                                    <div className={cn("w-2 h-2 rounded-full", formData.status === 'active' ? "bg-green-500" : "bg-gray-300")}></div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                                <Building2 className="w-4 h-4" />
-                                <span>{employee?.department || 'פיתוח'}</span>
+
+                            <div className="mt-8 flex justify-end">
+                                <div className="w-24 h-32 border border-blue-200 bg-blue-50 flex items-center justify-center text-blue-300 relative">
+                                    <User className="w-12 h-12" />
+                                    <span className="absolute bottom-1 right-1 text-[10px] text-blue-500">הפעלה</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex gap-2">
-                    <Button 
-                         variant="outline" 
-                         className="border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900 hidden md:flex"
-                         onClick={() => onEdit?.()}
-                    >
-                        <Printer className="w-4 h-4 ml-2" />
-                        הדפס כרטיס
-                    </Button>
-                    <Button 
-                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all hover:shadow-lg"
-                        onClick={handleSave}
-                    >
-                        <CheckCircle2 className="w-4 h-4 ml-2" />
-                        שמור שינויים
-                    </Button>
+                    {/* Left Panel: Tabs + Form Content */}
+                    <div className="flex-1">
+                        <PriorityTabs
+                            tabs={MASTER_TABS}
+                            activeTab={activeMasterTab}
+                            onTabChange={setActiveMasterTab}
+                            variant="folder"
+                        />
+
+                        <div className="pt-2 px-1">
+                            {activeMasterTab === 'general' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                    <PriorityFormField
+                                        label="תואר לפני שם"
+                                        value=""
+                                        onChange={() => { }}
+                                        width="w-24"
+                                        disabled={!isNew && !searchMode && false} // UNLOCKED
+                                    />
+                                    <PriorityFormField
+                                        label="מין"
+                                        value=""
+                                        onChange={() => { }}
+                                        disabled={!isNew && !searchMode && false} // UNLOCKED
+                                        width="w-32"
+                                    />
+                                    <PriorityFormField
+                                        label="שם האב"
+                                        value={formData.fatherName}
+                                        onChange={(e) => handleInputChange('fatherName', e.target.value)}
+                                        disabled={!isNew && !searchMode && false} // UNLOCKED
+                                    />
+                                    <PriorityFormField
+                                        label="תאריך לידה"
+                                        value={formData.birthDate || ''}
+                                        onChange={(e) => handleInputChange('birthDate', e.target.value)}
+                                        disabled={!isNew && !searchMode && !!employee?.birthDate}
+                                        placeholder="DD/MM/YY"
+                                    />
+                                    <PriorityFormField
+                                        label="גיל"
+                                        labelWidth="w-12"
+                                        value={calculateAge(formData.birthDate)}
+                                        disabled
+                                        className="bg-blue-50/50 text-blue-700 font-black text-xl border-blue-200"
+                                    />
+                                    <PriorityFormField
+                                        label="שם משתמש"
+                                        value={employee?.email?.split('@')[0] || ''}
+                                        disabled
+                                    />
+                                </div>
+                            )}
+
+                            {activeMasterTab === 'address' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                    <PriorityFormField
+                                        label="עיר"
+                                        value={formData.city}
+                                        onChange={(e) => handleInputChange('city', e.target.value)}
+                                    />
+                                    <PriorityFormField
+                                        label="רחוב"
+                                        value={formData.street}
+                                        onChange={(e) => handleInputChange('street', e.target.value)}
+                                    />
+                                    <PriorityFormField
+                                        label="טלפון נייד"
+                                        value={formData.phone}
+                                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                                    />
+                                </div>
+                            )}
+
+                            {activeMasterTab === 'role' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                    <PriorityFormField
+                                        label="תפקיד נוכחי"
+                                        value={employee?.position || ''}
+                                        disabled
+                                    />
+                                    <PriorityFormField
+                                        label="יחידה ארגונית"
+                                        value={employee?.department || ''}
+                                        disabled
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* MAIN CONTENT - TABS & CARDS */}
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
-                
-                {/* NAVIGATION TABS */}
-                <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-gray-200 w-fit shadow-sm mx-auto md:mx-0">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => {
-                                setActiveTab(tab.id)
-                                if (tab.id === 'general') setActiveTable('001')
-                                if (tab.id === 'salary') setActiveTable('101') // Keeping mapping logic
-                            }}
-                            className={cn(
-                                "flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 gap-2",
-                                activeTab === tab.id
-                                    ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100"
-                                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                            )}
-                        >
-                            {tab.id === 'general' && <User className="w-4 h-4" />}
-                            {tab.id === 'employment' && <Briefcase className="w-4 h-4" />}
-                            {tab.id === 'salary' && <MapPin className="w-4 h-4" />} {/* Mapped to Address */}
-                            {tab.id === 'hr' && <ShieldCheck className="w-4 h-4" />}
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+            {/* DETAIL SECTION (BOTTOM) */}
+            <div className="flex-1 bg-[#ECF0F1] p-2 overflow-hidden flex flex-col">
+                <PriorityTabs
+                    tabs={DETAIL_TABS}
+                    activeTab={activeDetailTab}
+                    onTabChange={setActiveDetailTab}
+                    variant="strip"
+                />
 
-                {/* CONTENT AREA */}
-                <div className="max-w-5xl animate-in fade-in slide-in-from-bottom-3 duration-500">
-                    
-                    {/* CONDITIONAL CONTENT BASED ON TABS */}
-                    
-                    {(activeTab === 'general' && activeTable === '001') && (
-                        <div className="grid grid-cols-12 gap-8">
-                            {/* LEFT COLUMN (Details) */}
-                            <div className="col-span-12 md:col-span-8 space-y-6">
-                                
-                                {/* CARD: BASIC INFO */}
-                                <Card className="p-6 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
-                                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                                            <User className="w-5 h-5" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900">פרטים אישיים</h3>
-                                    </div>
-
-                                    {(isEditing || isNew) && (
-                                        <div className="mb-6">
-                                             <ActionCodeSelector />
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                                        <div className="space-y-2">
-                                            <Label className="text-gray-500 text-xs font-bold uppercase tracking-wider">שם פרטי</Label>
-                                            <input 
-                                                value={formData.firstName}
-                                                onChange={(e) => handleInputChange('firstName', e.target.value)}
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-medium text-gray-900"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-gray-500 text-xs font-bold uppercase tracking-wider">שם משפחה</Label>
-                                            <input 
-                                                value={formData.lastName}
-                                                onChange={(e) => handleInputChange('lastName', e.target.value)}
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-medium text-gray-900"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-gray-500 text-xs font-bold uppercase tracking-wider">מספר עובד</Label>
-                                            <input 
-                                                value={formData.employeeId}
-                                                onChange={(e) => handleInputChange('employeeId', e.target.value)}
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-medium text-gray-900"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-gray-500 text-xs font-bold uppercase tracking-wider">תעודת זהות</Label>
-                                            <input 
-                                                value={formData.idNumber}
-                                                onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-medium text-gray-900"
-                                            />
-                                        </div>
-                                    </div>
-                                </Card>
-
-                                {/* CARD: ADDITIONAL INFO */}
-                                <Card className="p-6 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
-                                        <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-                                            <Calendar className="w-5 h-5" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-900">תאריכים וסטטוס</h3>
-                                    </div>
-                                    
-                                     <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                                        <div className="space-y-2">
-                                            <Label className="text-gray-500 text-xs font-bold uppercase tracking-wider">תאריך לידה</Label>
-                                            <input 
-                                                value={formData.birthDate}
-                                                onChange={(e) => handleInputChange('birthDate', formatDate(e.target.value))}
-                                                placeholder="DD/MM/YYYY"
-                                                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-medium text-gray-900"
-                                            />
-                                        </div>
-                                     </div>
-                                </Card>
-                            </div>
-
-                            {/* RIGHT COLUMN (Stats / Quick Actions) */}
-                            <div className="col-span-12 md:col-span-4 space-y-6">
-                                <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white border-0 shadow-lg p-6">
-                                    <div className="flex justify-between items-start mb-8">
-                                        <div>
-                                            <p className="text-blue-100 font-medium mb-1">יתרת חופשה</p>
-                                            <h2 className="text-3xl font-black">12.5 <span className="text-sm font-normal opacity-80">ימים</span></h2>
-                                        </div>
-                                        <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-                                            <Star className="w-6 h-6 text-yellow-300" />
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between items-center pt-4 border-t border-white/20">
-                                        <p className="text-blue-100 font-medium">ימי מחלה</p>
-                                        <p className="text-xl font-bold">5.0</p>
-                                    </div>
-                                </Card>
-                            </div>
+                <div className="flex-1 bg-white border border-gray-300 shadow-sm p-4 overflow-y-auto">
+                    {activeDetailTab === 'kids' && employee?.id && (
+                        <FamilyTab employeeId={employee.id} organizationId={employee.organization_id} />
+                    )}
+                    {activeDetailTab === 'jobs' && employee?.id && (
+                        <div className="h-full">
+                            <PriorityDataGrid
+                                columns={[
+                                    { key: 'role_name', header: 'תאור משרה' },
+                                    { key: 'branch', header: 'סניף' },
+                                    { key: 'role_desc', header: 'תאור פסוק' },
+                                    { key: 'percentage', header: 'אחוז משרה' },
+                                    { key: 'start_date', header: 'תאריך אישור' },
+                                    { key: 'role_code', header: 'קוד תפקיד' },
+                                    { key: 'role_desc_full', header: 'תאור תפקיד' },
+                                ]}
+                                data={[
+                                    { id: '1', role_name: 'מפתח פול סטאק', branch: 'תל אביב', role_desc: 'בכיר', percentage: '100.00', start_date: '01/01/2023', role_code: 'DEV01', role_desc_full: 'מפתח תוכנה' }
+                                ]}
+                            />
                         </div>
                     )}
-
-                    {/* HISTORY TABLE & ADDRESS LOGIC */}
-                    {(activeTab === 'general' && activeTable === '100') && (
-                        <Card className="border-gray-200 shadow-sm overflow-hidden">
-                             <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                                 <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                                     <FileText className="w-4 h-4 text-gray-500" />
-                                     היסטוריית שינוי שם
-                                 </h3>
-                                 <div className="flex gap-2">
-                                    <Button size="sm" variant={table100Mode === 'table' ? 'secondary' : 'ghost'} onClick={() => { setTable100Mode('table'); setSelectedHistoryRecord(null); }}>
-                                        טבלה
-                                    </Button>
-                                    <Button size="sm" variant={table100Mode === 'form' ? 'secondary' : 'ghost'} onClick={() => { setTable100Mode('form'); setSelectedHistoryRecord(null); }}>
-                                        טופס
-                                    </Button>
-                                 </div>
-                             </div>
-                             <div className="p-6">
-                                 {/* Reuse existing Table 100 Logic but stripped of 'Priority' styling */}
-                                 {table100Mode === 'form' ? (
-                                     <div className="space-y-4 max-w-lg">
-                                        <ActionCodeSelector />
-                                        <div className="space-y-2">
-                                            <Label>שם משפחה</Label>
-                                            <input value={formData.lastName} onChange={(e) => handleInputChange('lastName', e.target.value)} className="w-full p-2 border rounded" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>שם פרטי</Label>
-                                            <input value={formData.firstName} onChange={(e) => handleInputChange('firstName', e.target.value)} className="w-full p-2 border rounded" />
-                                        </div>
-                                     </div>
-                                 ) : (
-                                     <div className="overflow-x-auto">
-                                         <table className="w-full text-sm text-right">
-                                             <thead className="bg-gray-100 text-gray-600 font-semibold uppercase text-xs">
-                                                 <tr>
-                                                     <th className="p-3">שם משפחה</th>
-                                                     <th className="p-3">שם פרטי</th>
-                                                     <th className="p-3">תאריך שינוי</th>
-                                                 </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-gray-100">
-                                                 {filteredNameHistory.map((rec) => (
-                                                     <tr key={rec.id} className="hover:bg-blue-50 transition-colors cursor-pointer" onClick={() => { setSelectedHistoryRecord(rec); setFormData(prev => ({...prev, firstName: rec.first_name_he, lastName: rec.last_name_he})); setTable100Mode('form'); }}>
-                                                         <td className="p-3 font-medium text-gray-900">{rec.last_name_he}</td>
-                                                         <td className="p-3 text-gray-600">{rec.first_name_he}</td>
-                                                         <td className="p-3 text-gray-500">
-                                                             {rec.effective_from ? new Date(rec.effective_from).toLocaleDateString('he-IL') : '-'}
-                                                         </td>
-                                                     </tr>
-                                                 ))}
-                                             </tbody>
-                                         </table>
-                                     </div>
-                                 )}
-                             </div>
-                        </Card>
+                    {activeDetailTab === 'bank' && employee?.id && (
+                        <BankDetailsTab employeeId={employee.id} organizationId={employee.organization_id} />
+                    )}
+                    {activeDetailTab === 'role_history' && employee?.id && (
+                        <RoleHistoryTab employeeId={employee.id} organizationId={employee.organization_id} />
+                    )}
+                    {activeDetailTab === 'assets' && employee?.id && (
+                        <AssetsTab employeeId={employee.id} organizationId={employee.organization_id} />
                     )}
 
-                    {(activeTab === 'salary' && activeTable === '101') && ( // Address
-                         <Card className="border-gray-200 shadow-sm overflow-hidden">
-                             <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                                 <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                                     <MapPin className="w-4 h-4 text-gray-500" />
-                                     כתובות ופרטי קשר
-                                 </h3>
-                                  <div className="flex gap-2">
-                                    <Button size="sm" variant={table101Mode === 'table' ? 'secondary' : 'ghost'} onClick={() => { setTable101Mode('table'); setSelectedAddressRecord(null); }}>
-                                        טבלה
-                                    </Button>
-                                    <Button size="sm" variant={table101Mode === 'form' ? 'secondary' : 'ghost'} onClick={() => { setTable101Mode('form'); setSelectedAddressRecord(null); }}>
-                                        טופס
-                                    </Button>
-                                 </div>
-                             </div>
-                             <div className="p-6">
-                                 {table101Mode === 'form' ? (
-                                     <div className="grid grid-cols-2 gap-6">
-                                        <div className="col-span-2"><ActionCodeSelector /></div>
-                                        <div className="space-y-2">
-                                            <Label>עיר</Label>
-                                            <input value={addressFormData.city_name} onChange={(e) => handleAddressInputChange('city_name', e.target.value)} className="w-full p-2 border rounded" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>רחוב</Label>
-                                            <input value={addressFormData.street} onChange={(e) => handleAddressInputChange('street', e.target.value)} className="w-full p-2 border rounded" />
-                                        </div>
-                                         <div className="space-y-2">
-                                            <Label>מספר בית</Label>
-                                            <input value={addressFormData.house_number} onChange={(e) => handleAddressInputChange('house_number', e.target.value)} className="w-full p-2 border rounded" />
-                                        </div>
-                                         <div className="space-y-2">
-                                            <Label>מיקוד</Label>
-                                            <input value={addressFormData.postal_code} onChange={(e) => handleAddressInputChange('postal_code', e.target.value)} className="w-full p-2 border rounded" />
-                                        </div>
-                                     </div>
-                                 ) : (
-                                      <div className="overflow-x-auto">
-                                         <table className="w-full text-sm text-right">
-                                             <thead className="bg-gray-100 text-gray-600 font-semibold uppercase text-xs">
-                                                 <tr>
-                                                     <th className="p-3">עיר</th>
-                                                     <th className="p-3">רחוב</th>
-                                                     <th className="p-3">מספר</th>
-                                                     <th className="p-3">תאריך</th>
-                                                 </tr>
-                                             </thead>
-                                             <tbody className="divide-y divide-gray-100">
-                                                 {addressHistory.map((rec, idx) => (
-                                                     <tr key={rec.id || idx} className="hover:bg-blue-50 transition-colors">
-                                                         <td className="p-3 font-medium text-gray-900">{rec.city_name}</td>
-                                                         <td className="p-3 text-gray-600">{rec.street}</td>
-                                                         <td className="p-3 text-gray-500">{rec.house_number}</td>
-                                                          <td className="p-3 text-gray-500">
-                                                             {rec.effective_from ? new Date(rec.effective_from).toLocaleDateString('he-IL') : '-'}
-                                                         </td>
-                                                     </tr>
-                                                 ))}
-                                             </tbody>
-                                         </table>
-                                     </div>
-                                 )}
-                             </div>
-                         </Card>
+                    {['personal', 'current_company', 'dept_transfer', 'projects', 'team', 'sys_groups'].includes(activeDetailTab) && (
+                        <div className="text-center text-gray-400 py-10">
+                            תוכן לשונית {DETAIL_TABS.find(t => t.id === activeDetailTab)?.label} בבנייה
+                        </div>
                     )}
-
                 </div>
             </div>
-        </div>
+        </PriorityRecordLayout>
     )
-
 }
