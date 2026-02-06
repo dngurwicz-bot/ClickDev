@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import EmployeeToolbar from '@/components/employees/EmployeeToolbar'
 import EmployeeSidebar from '@/components/employees/EmployeeSidebar'
@@ -11,7 +11,7 @@ import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import { useSidebarActions } from '@/lib/contexts/SidebarContext'
 import { mockEmployees } from './mockData'
 import { Button } from '@/components/ui/button'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Table as TableIcon, Layout as LayoutIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type ViewMode = 'list' | 'details' | 'add' | 'created'
@@ -50,10 +50,31 @@ function EmployeeFilePage() {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        if (searchParams.get('new') === 'true') {
+        const isNew = searchParams.get('new') === 'true'
+        const empId = searchParams.get('employeeId')
+
+        if (isNew) {
             setViewMode('add')
+        } else if (empId) {
+            if (employees.length > 0) {
+                // If employees are already loaded, just select it
+                const found = employees.find(e => e.employeeNumber === empId || e.id === empId)
+                if (found) {
+                    setSelectedEmployee(found)
+                    setViewMode('details')
+                } else {
+                    // If not found in current list (maybe pagination limits?), trigger search
+                    handleSearch({ employeeId: empId })
+                }
+            } else if (currentOrg?.id) {
+                // Wait for employees to load or trigger search directly?
+                // The main fetchEmployees runs on mount. 
+                // We can just rely on handleSearch to find it.
+                // But handleSearch depends on currentOrg.
+                handleSearch({ employeeId: empId })
+            }
         }
-    }, [searchParams])
+    }, [searchParams, employees, currentOrg?.id])
 
 
     // Search Logic
@@ -74,6 +95,8 @@ function EmployeeFilePage() {
                 ...emp,
                 firstName: emp.first_name_he || emp.firstName || '',
                 lastName: emp.last_name_he || emp.lastName || '',
+                fatherName: emp.father_name_he || emp.fatherName || '',
+                birthDate: emp.birth_date || emp.birthDate || '',
                 employeeNumber: emp.employee_number || emp.employeeNumber || '',
                 idNumber: emp.id_number || emp.idNumber || '',
             }))
@@ -91,6 +114,31 @@ function EmployeeFilePage() {
             fetchEmployees()
         }
     }, [currentOrg?.id])
+
+    // Toggle View Handler
+    const toggleView = useCallback(() => {
+        console.log('[EmployeeFilePage] toggleView called. ViewMode:', viewMode, 'Selected:', selectedEmployee?.id)
+        setViewMode(prev => {
+            console.log('[EmployeeFilePage] Current view mode:', prev)
+            if (prev === 'details' || prev === 'add') return 'list'
+            if (prev === 'list') return selectedEmployee ? 'details' : 'list'
+            if (prev === 'list' && !selectedEmployee) return 'details'
+            return prev
+        })
+    }, [selectedEmployee, viewMode])
+
+    // F2 Hotkey
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F2') {
+                console.log('[EmployeeFilePage] F2 Pressed')
+                e.preventDefault()
+                toggleView()
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [toggleView])
 
     // Derived state for validation
     const existingIds = employees.map(e => e.employeeNumber || '').filter(Boolean)
@@ -137,6 +185,8 @@ function EmployeeFilePage() {
                 ...emp,
                 firstName: emp.first_name_he || emp.firstName || '',
                 lastName: emp.last_name_he || emp.lastName || '',
+                fatherName: emp.father_name_he || emp.fatherName || '',
+                birthDate: emp.birth_date || emp.birthDate || '',
                 employeeNumber: emp.employee_number || emp.employeeNumber || '',
                 idNumber: emp.id_number || emp.idNumber || '',
             }))
@@ -322,8 +372,8 @@ function EmployeeFilePage() {
                     ...payloadData,
                     firstName: operationCode === '3' ? data.firstName : (data.firstName || selectedEmployee.firstName),
                     lastName: operationCode === '3' ? data.lastName : (data.lastName || selectedEmployee.lastName),
-                    fatherName: selectedEmployee.fatherName || '---',
-                    birthDate: formatDateForBackend(selectedEmployee.birthDate || '2000-01-01'),
+                    fatherName: data.fatherName || selectedEmployee.fatherName || '',
+                    birthDate: formatDateForBackend(data.birthDate || selectedEmployee.birthDate || '2000-01-01'),
                     effectiveFrom: data.effectiveFrom || new Date().toISOString().split('T')[0]
                 }
             } else {
@@ -411,6 +461,7 @@ function EmployeeFilePage() {
                     employee={selectedEmployee}
                     initialEmployees={employees}
                     searchMode={!selectedEmployee}
+                    onToggleView={toggleView}
                     onSearch={handleSearch}
                     onNext={handleNextEmployee}
                     onPrevious={handlePreviousEmployee}
@@ -444,13 +495,17 @@ function EmployeeFilePage() {
             <div className="flex flex-col h-full w-full bg-bg-main" dir="rtl">
                 {/* Header / Title Area */}
                 <div className="bg-surface border-b border-border p-4 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                            <span className="font-bold text-secondary text-lg border-l border-border pl-4 ml-4">תוצאות חיפוש</span>
-                            <span className="text-text-secondary">{employees.length} עובדים נמצאו</span>
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <span className="font-bold text-secondary text-lg border-l border-border pl-4 ml-4">תוצאות חיפוש</span>
+                        <span className="text-text-secondary">{employees.length} עובדים נמצאו</span>
                     </div>
-                    <Button variant="ghost" onClick={() => setViewMode('details')}>חזרה לחיפוש</Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" onClick={toggleView} title="F2">
+                            <LayoutIcon className="w-4 h-4 ml-2" />
+                            תצוגת טופס
+                        </Button>
+                        <Button variant="ghost" onClick={() => setViewMode('details')}>חזרה לחיפוש</Button>
+                    </div>
                 </div>
 
                 {/* Main Content Area */}
@@ -464,7 +519,7 @@ function EmployeeFilePage() {
                         />
                     </div>
                 </div>
-            </div>
+            </div >
         )
     }
 

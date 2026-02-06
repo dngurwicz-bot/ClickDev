@@ -6,6 +6,7 @@ import { OrganizationSelector } from './OrganizationSelector'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useOrganization } from '@/lib/contexts/OrganizationContext'
 
 const MODULES = [
     {
@@ -156,6 +157,7 @@ function ModuleNavItem({ module, pathname }: { module: any, pathname: string | n
 
 export function PriorityHeader() {
     const pathname = usePathname()
+    const { currentOrg } = useOrganization()
 
     return (
         <div className="flex flex-col z-50 shadow-md">
@@ -213,7 +215,19 @@ export function PriorityHeader() {
             {/* Second Strip: Modules Navigation */}
             <div className="h-10 bg-secondary flex items-center px-4 shadow-sm border-t border-white/5 overflow-x-auto no-scrollbar">
                 <nav className="flex items-center h-full">
-                    {MODULES.map((module) => (
+                    {MODULES.filter(module => {
+                        // Always show Super Admin
+                        if (module.href.includes('/admin')) return true
+
+                        const moduleKey = module.href.split('/').pop() // e.g. "core" from "/dashboard/core"
+                        const actualKey = moduleKey === 'documents' ? 'docs' : moduleKey
+
+                        // If no currentOrg or no active_modules defined, show all (fallback) or none?
+                        // Safest is to show all if data missing, but here we want restriction.
+                        if (!currentOrg?.active_modules) return true
+
+                        return currentOrg.active_modules.includes(actualKey!)
+                    }).map((module) => (
                         <ModuleNavItem key={module.label} module={module} pathname={pathname} />
                     ))}
                 </nav>

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { PriorityRecordLayout } from '@/components/core/PriorityRecordLayout'
@@ -9,6 +10,7 @@ import { PriorityFormField } from '@/components/core/PriorityFormField'
 import { PriorityDataGrid } from '@/components/core/PriorityDataGrid'
 import {
     User,
+    Users,
     FileText,
     MapPin,
     ShieldCheck,
@@ -19,10 +21,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-import { FamilyTab } from './tabs/FamilyTab'
-import { BankDetailsTab } from './tabs/BankDetailsTab'
-import { RoleHistoryTab } from './tabs/RoleHistoryTab'
-import { AssetsTab } from './tabs/AssetsTab'
+
 import { ClickSearchPopover } from '@/components/core/ClickSearchPopover'
 
 import DateRangeSelector, { DateRangeType } from './DateRangeSelector'
@@ -100,6 +99,7 @@ interface EmployeeDetailsProps {
     searchMode?: boolean
     onSearch?: (criteria: any) => void
     onNewSearch?: () => void
+    onToggleView?: () => void
     initialEmployees?: Employee[]
 }
 
@@ -111,17 +111,7 @@ const MASTER_TABS = [
 ]
 
 const DETAIL_TABS = [
-    { id: 'personal', label: 'פרטים אישיים' }, // Legacy/Placeholder?
-    { id: 'kids', label: 'פרטי ילדים' },
-    { id: 'current_company', label: 'נתונים לחברה נוכחת' },
-    { id: 'bank', label: 'בנק' },
-    { id: 'assets', label: 'ציוד ורכוש' },
-    { id: 'dept_transfer', label: 'העברות מחלקתיות' },
-    { id: 'jobs', label: 'משרות לעובד/מועמד' }, // This was the default active
-    { id: 'projects', label: 'פרויקטים שמנהל העובד' },
-    { id: 'team', label: 'אנשים בצוות' },
-    { id: 'sys_groups', label: 'קבוצות מערכת' },
-    { id: 'role_history', label: 'היסטוריה של תפקידים' },
+    { id: 'personal', label: 'פרטים אישיים' },
 ]
 
 export default function EmployeeDetails({
@@ -141,11 +131,13 @@ export default function EmployeeDetails({
     onUpdate,
     onCancel,
     onDelete,
-    onNewSearch
+    onNewSearch,
+    onToggleView
 }: EmployeeDetailsProps) {
+    const router = useRouter()
     // --- State ---
     const [activeMasterTab, setActiveMasterTab] = useState<string>('general')
-    const [activeDetailTab, setActiveDetailTab] = useState<string>('jobs')
+    const [activeDetailTab, setActiveDetailTab] = useState<string>('personal')
     const [isSelectionVisible, setIsSelectionVisible] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
 
@@ -379,6 +371,16 @@ export default function EmployeeDetails({
             onCancel={onCancel}
             onDelete={onDelete}
             onSearch={onNewSearch}
+            actions={
+                <button
+                    onClick={() => router.push('/dashboard/core/employees/all')}
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group"
+                    title="כל העובדים"
+                >
+                    <Users className="w-4 h-4 text-gray-300 group-hover:text-white" />
+                    <span className="text-xs font-medium text-gray-300 group-hover:text-white hidden xl:block">כל העובדים</span>
+                </button>
+            }
         >
             {/* SEARCHING OVERLAY */}
             {isSearching && (
@@ -396,74 +398,78 @@ export default function EmployeeDetails({
 
                     {/* Right Panel: Static Identity Fields */}
                     <div className="w-1/3 min-w-[300px] border-l border-gray-200 pl-8">
-                        <div className="space-y-4">
-                            <div className="relative">
-                                <PriorityFormField
-                                    label="מס עובד"
-                                    value={formData.employeeId}
-                                    color="red"
-                                    required
-                                    disabled={!isNew && !searchMode}
-                                    onChange={(e) => handleInputChange('employeeId', e.target.value)}
-                                    onClick={() => searchMode && setIsSelectionVisible(true)}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder={searchMode ? "חפש לפי מספר..." : ""}
-                                />
-                                {isSelectionVisible && searchMode && initialEmployees.length > 0 && (
-                                    <ClickSearchPopover
-                                        initialEmployees={initialEmployees}
-                                        onSelect={handleEmployeeSelect}
-                                        onAddNew={() => {
-                                            setIsSelectionVisible(false)
-                                        }}
-                                        onAdvancedSearch={() => setIsSelectionVisible(false)}
-                                        onClose={() => setIsSelectionVisible(false)}
-                                    />
-                                )}
-                            </div>
-                            <PriorityFormField
-                                label="ת. זהות"
-                                value={formData.idNumber}
-                                color="red"
-                                required
-                                disabled={!isNew && !searchMode}
-                                onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder={searchMode ? "חפש לפי ת.ז..." : ""}
-                            />
-                            <PriorityFormField
-                                label="שם משפחה"
-                                value={formData.lastName}
-                                color="red"
-                                required
-                                disabled={!isNew && !searchMode && false} // UNLOCKED for edit
-                                onChange={(e) => handleInputChange('lastName', e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder={searchMode ? "חפש לפי משפחה..." : ""}
-                            />
-                            <PriorityFormField
-                                label="שם פרטי"
-                                value={formData.firstName}
-                                color="red"
-                                required
-                                disabled={!isNew && !searchMode && false} // UNLOCKED for edit
-                                onChange={(e) => handleInputChange('firstName', e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder={searchMode ? "חפש לפי פרטי..." : ""}
-                            />
-
-                            <div className="space-y-1">
-                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">סטטוס</label>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-sm text-gray-800">{formData.status === 'active' ? 'פעיל' : 'לא פעיל'}</span>
-                                    <div className={cn("w-2 h-2 rounded-full", formData.status === 'active' ? "bg-green-500" : "bg-gray-300")}></div>
+                        <div className="flex gap-6">
+                            {/* Image Section */}
+                            <div className="flex-none pt-1">
+                                <div className="w-24 h-32 border border-blue-200 bg-blue-50 flex items-center justify-center text-blue-300 relative shadow-sm">
+                                    <User className="w-12 h-12" />
+                                    <span className="absolute bottom-1 right-1 text-[10px] text-blue-500">הפעלה</span>
                                 </div>
                             </div>
 
-                            <div className="mt-8 flex justify-end">
-                                <div className="w-24 h-32 border border-blue-200 bg-blue-50 flex items-center justify-center text-blue-300 relative">
-                                    <User className="w-12 h-12" />
-                                    <span className="absolute bottom-1 right-1 text-[10px] text-blue-500">הפעלה</span>
+                            {/* Fields Section */}
+                            <div className="flex-1 space-y-4">
+                                <div className="relative">
+                                    <PriorityFormField
+                                        label="מס עובד"
+                                        value={formData.employeeId}
+                                        color="red"
+                                        required
+                                        disabled={!isNew && !searchMode}
+                                        onChange={(e) => handleInputChange('employeeId', e.target.value)}
+                                        onClick={() => searchMode && setIsSelectionVisible(true)}
+                                        onKeyDown={handleKeyDown}
+                                        placeholder={searchMode ? "חפש לפי מספר..." : ""}
+                                    />
+                                    {isSelectionVisible && searchMode && initialEmployees.length > 0 && (
+                                        <ClickSearchPopover
+                                            initialEmployees={initialEmployees}
+                                            onSelect={handleEmployeeSelect}
+                                            onAddNew={() => {
+                                                setIsSelectionVisible(false)
+                                            }}
+                                            onAdvancedSearch={() => setIsSelectionVisible(false)}
+                                            onClose={() => setIsSelectionVisible(false)}
+                                        />
+                                    )}
+                                </div>
+                                <PriorityFormField
+                                    label="ת. זהות"
+                                    value={formData.idNumber}
+                                    color="red"
+                                    required
+                                    disabled={!isNew && !searchMode}
+                                    onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder={searchMode ? "חפש לפי ת.ז..." : ""}
+                                />
+                                <PriorityFormField
+                                    label="שם משפחה"
+                                    value={formData.lastName}
+                                    color="red"
+                                    required
+                                    disabled={!isNew && !searchMode && false} // UNLOCKED for edit
+                                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder={searchMode ? "חפש לפי משפחה..." : ""}
+                                />
+                                <PriorityFormField
+                                    label="שם פרטי"
+                                    value={formData.firstName}
+                                    color="red"
+                                    required
+                                    disabled={!isNew && !searchMode && false} // UNLOCKED for edit
+                                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder={searchMode ? "חפש לפי פרטי..." : ""}
+                                />
+
+                                <div className="space-y-1">
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide">סטטוס</label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-sm text-gray-800">{formData.status === 'active' ? 'פעיל' : 'לא פעיל'}</span>
+                                        <div className={cn("w-2 h-2 rounded-full", formData.status === 'active' ? "bg-green-500" : "bg-gray-300")}></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -572,38 +578,9 @@ export default function EmployeeDetails({
                 />
 
                 <div className="flex-1 bg-white border border-gray-300 shadow-sm p-4 overflow-y-auto">
-                    {activeDetailTab === 'kids' && employee?.id && (
-                        <FamilyTab employeeId={employee.id} organizationId={employee.organization_id} />
-                    )}
-                    {activeDetailTab === 'jobs' && employee?.id && (
-                        <div className="h-full">
-                            <PriorityDataGrid
-                                columns={[
-                                    { key: 'role_name', header: 'תאור משרה' },
-                                    { key: 'branch', header: 'סניף' },
-                                    { key: 'role_desc', header: 'תאור פסוק' },
-                                    { key: 'percentage', header: 'אחוז משרה' },
-                                    { key: 'start_date', header: 'תאריך אישור' },
-                                    { key: 'role_code', header: 'קוד תפקיד' },
-                                    { key: 'role_desc_full', header: 'תאור תפקיד' },
-                                ]}
-                                data={[
-                                    { id: '1', role_name: 'מפתח פול סטאק', branch: 'תל אביב', role_desc: 'בכיר', percentage: '100.00', start_date: '01/01/2023', role_code: 'DEV01', role_desc_full: 'מפתח תוכנה' }
-                                ]}
-                            />
-                        </div>
-                    )}
-                    {activeDetailTab === 'bank' && employee?.id && (
-                        <BankDetailsTab employeeId={employee.id} organizationId={employee.organization_id} />
-                    )}
-                    {activeDetailTab === 'role_history' && employee?.id && (
-                        <RoleHistoryTab employeeId={employee.id} organizationId={employee.organization_id} />
-                    )}
-                    {activeDetailTab === 'assets' && employee?.id && (
-                        <AssetsTab employeeId={employee.id} organizationId={employee.organization_id} />
-                    )}
 
-                    {['personal', 'current_company', 'dept_transfer', 'projects', 'team', 'sys_groups'].includes(activeDetailTab) && (
+
+                    {['personal'].includes(activeDetailTab) && (
                         <div className="text-center text-gray-400 py-10">
                             תוכן לשונית {DETAIL_TABS.find(t => t.id === activeDetailTab)?.label} בבנייה
                         </div>

@@ -12,6 +12,7 @@ import {
     BarChart3
 } from 'lucide-react'
 import { PriorityDashboardTile } from '@/components/dashboard/PriorityDashboardTile'
+import { useOrganization } from '@/lib/contexts/OrganizationContext'
 
 const DASHBOARD_TILES = [
     { label: 'Click Core', href: '/dashboard/core', icon: Building2 },
@@ -25,6 +26,15 @@ const DASHBOARD_TILES = [
 ]
 
 export default function DashboardPage() {
+    const { currentOrg } = useOrganization()
+
+    const visibleTiles = DASHBOARD_TILES.filter(tile => {
+        const moduleKey = tile.href.split('/').pop()
+        const actualKey = moduleKey === 'documents' ? 'docs' : moduleKey
+        if (!currentOrg?.active_modules) return true
+        return currentOrg.active_modules.includes(actualKey!)
+    })
+
     return (
         <div className="p-6 max-w-7xl mx-auto">
             {/* Welcome / Context Strip */}
@@ -37,7 +47,7 @@ export default function DashboardPage() {
 
             {/* Dense Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {DASHBOARD_TILES.map((tile) => (
+                {visibleTiles.map((tile) => (
                     <PriorityDashboardTile
                         key={tile.href}
                         {...tile}

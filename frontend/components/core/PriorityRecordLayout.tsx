@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Save, Printer, Paperclip, MoreHorizontal, ChevronDown, Check, X, Trash2, Search } from 'lucide-react'
+import { Save, Printer, Paperclip, MoreHorizontal, ChevronDown, Check, X, Trash2, Search, LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface PriorityRecordLayoutProps {
@@ -14,10 +14,12 @@ interface PriorityRecordLayoutProps {
     onCancel?: () => void
     onDelete?: () => void
     onSearch?: () => void
+    onToggleView?: () => void
+    actions?: React.ReactNode // Slot for extra actions
     children: React.ReactNode
 }
 
-export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPrint, onCancel, onDelete, onSearch, children }: PriorityRecordLayoutProps) {
+export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPrint, onCancel, onDelete, onSearch, onToggleView, actions, children }: PriorityRecordLayoutProps) {
     return (
         <div className="bg-bg-main min-h-full flex flex-col font-sans" dir="rtl">
             {/* Unified Header Bar */}
@@ -72,9 +74,16 @@ export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPr
                         <span className="text-xs font-medium text-gray-300 group-hover:text-white hidden xl:block">חיפוש</span>
                     </button>
 
+                    {actions}
+
                     <button onClick={onSave} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group" title="שמור">
                         <Save className="w-4 h-4 text-gray-300 group-hover:text-white" />
                         <span className="text-xs font-medium text-gray-300 group-hover:text-white hidden xl:block">שמור</span>
+                    </button>
+
+                    <button onClick={onToggleView} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group" title="תצוגת טבלה (F2)">
+                        <LayoutGrid className="w-4 h-4 text-gray-300 group-hover:text-white" />
+                        <span className="text-xs font-medium text-gray-300 group-hover:text-white hidden xl:block">תצוגה</span>
                     </button>
 
                     <button onClick={onPrint} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group" title="הדפס">
