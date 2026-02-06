@@ -9,7 +9,7 @@ interface TabOption {
 }
 
 interface PriorityTabsProps {
-    tabs: Tab[]
+    tabs: TabOption[]
     activeTab: string
     onTabChange: (id: string) => void
     variant?: 'folder' | 'strip'
