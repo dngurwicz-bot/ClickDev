@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SECRET_API_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    // Handle both Next.js 15 (Promise) and older versions
     const resolvedParams = params instanceof Promise ? await params : params
     const orgId = resolvedParams.id
 
@@ -29,8 +24,7 @@ export async function GET(
       )
     }
 
-    // Get organization using service role (bypasses RLS)
-    const { data: org, error: orgError } = await supabase
+    const { data: org, error: orgError } = await getSupabase()
       .from('organizations')
       .select('*')
       .eq('id', orgId)

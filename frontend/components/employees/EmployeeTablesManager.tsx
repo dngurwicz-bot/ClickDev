@@ -168,7 +168,7 @@ export function EmployeeTablesManager({ category, employeeId }: EmployeeTablesMa
     const handleSave = async (tableId: TableId, data: any) => {
         console.log('Saving table data:', tableId, data)
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/organizations/${orgId}/employees`, {
+            const response = await fetch(`/api/organizations/${orgId}/employees`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

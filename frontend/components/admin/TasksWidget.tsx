@@ -34,7 +34,7 @@ export default function TasksWidget() {
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) return
 
-            const response = await fetch('http://localhost:8000/api/tasks', {
+            const response = await fetch('/api/tasks', {
                 headers: { Authorization: `Bearer ${session.access_token}` }
             })
             if (response.ok) {
@@ -54,7 +54,7 @@ export default function TasksWidget() {
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) return
 
-            const response = await fetch('http://localhost:8000/api/tasks', {
+            const response = await fetch('/api/tasks', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ export default function TasksWidget() {
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) return
 
-            await fetch(`http://localhost:8000/api/tasks/${taskId}`, {
+            await fetch(`/api/tasks/${taskId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ export default function TasksWidget() {
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) return
 
-            await fetch(`http://localhost:8000/api/tasks/${taskId}`, {
+            await fetch(`/api/tasks/${taskId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${session.access_token}` }
             })

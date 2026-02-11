@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-})
+function getSupabase() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+}
 
 // PUT - Update announcement
 export async function PUT(
@@ -21,7 +19,7 @@ export async function PUT(
         const id = resolvedParams.id
         const body = await request.json()
 
-        const { data, error } = await supabase
+        const { data, error } = await getSupabase()
             .from('announcements')
             .update(body)
             .eq('id', id)
@@ -55,7 +53,7 @@ export async function DELETE(
         const resolvedParams = params instanceof Promise ? await params : params
         const id = resolvedParams.id
 
-        const { error } = await supabase
+        const { error } = await getSupabase()
             .from('announcements')
             .delete()
             .eq('id', id)

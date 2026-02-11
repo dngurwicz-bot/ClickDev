@@ -4,23 +4,13 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { logActivity } from '@/lib/activity-logger'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-if (!supabaseServiceKey) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
 
 export async function GET(
   request: NextRequest,
@@ -30,7 +20,7 @@ export async function GET(
     const { id } = await params
     const userId = id
 
-    const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId)
+    const { data: { user }, error: userError } = await getSupabase().auth.admin.getUserById(userId)
 
     if (userError || !user) {
       return NextResponse.json(
@@ -40,7 +30,7 @@ export async function GET(
     }
 
     // Get user role and organization
-    const { data: userRoles } = await supabase
+    const { data: userRoles } = await getSupabase()
       .from('user_roles')
       .select('role, organization_id, organizations(name)')
       .eq('user_id', userId)
@@ -91,7 +81,7 @@ export async function PUT(
 
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '')
-      const { data: { user: u }, error: e } = await supabase.auth.getUser(token)
+      const { data: { user: u }, error: e } = await getSupabase().auth.getUser(token)
       if (u) actorId = u.id
     } else {
       // Fallback to cookies
@@ -116,7 +106,7 @@ export async function PUT(
     }
 
     // 1. Update Auth Metadata (Name)
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
+    const { error: updateError } = await getSupabase().auth.admin.updateUserById(
       userId,
       { user_metadata: { first_name: firstName, last_name: lastName } }
     )
@@ -138,7 +128,7 @@ export async function PUT(
       }
 
       // Use upsert to handle cases where user_role might be missing
-      const { error: roleError } = await supabase
+      const { error: roleError } = await getSupabase()
         .from('user_roles')
         .upsert(updates, { onConflict: 'user_id' })
 

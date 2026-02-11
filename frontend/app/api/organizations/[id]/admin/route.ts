@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SECRET_API_KEY!
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
-
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn('WARNING: Using Anon Key for Admin route due to missing Service Role Key.')
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
 }
 
 export async function GET(
@@ -25,7 +19,7 @@ export async function GET(
     const orgId = resolvedParams.id
 
     // Find admin user role
-    const { data: userRole, error: roleError } = await supabaseAdmin
+    const { data: userRole, error: roleError } = await getSupabase()
       .from('user_roles')
       .select('user_id')
       .eq('organization_id', orgId)
@@ -40,7 +34,7 @@ export async function GET(
     }
 
     // Get user details
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userRole.user_id)
+    const { data: { user }, error: userError } = await getSupabase().auth.admin.getUserById(userRole.user_id)
 
     if (userError || !user) {
       return NextResponse.json(

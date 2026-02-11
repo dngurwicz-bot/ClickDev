@@ -185,7 +185,7 @@ export default function NewOrganizationPage() {
       }
 
       // Step 2: Create organization via Backend API (Bypasses RLS)
-      const apiResponse = await fetch('http://127.0.0.1:8000/api/organizations', {
+      const apiResponse = await fetch('/api/organizations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

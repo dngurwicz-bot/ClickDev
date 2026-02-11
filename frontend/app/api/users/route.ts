@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-})
+function getSupabase() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+}
 
 export async function GET(request: NextRequest) {
     try {
         // Get all auth users
-        const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers()
+        const { data: { users }, error: usersError } = await getSupabase().auth.admin.listUsers()
 
         if (usersError) {
             console.error('Error fetching users:', usersError)
@@ -25,7 +23,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Get all user roles
-        const { data: userRoles, error: rolesError } = await supabase
+        const { data: userRoles, error: rolesError } = await getSupabase()
             .from('user_roles')
             .select('user_id, role, organization_id, organizations(name)')
 

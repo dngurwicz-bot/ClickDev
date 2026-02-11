@@ -5,6 +5,8 @@ import './globals.css'
 import { OrganizationProvider } from '@/lib/contexts/OrganizationContext'
 import { SidebarProvider } from '@/lib/contexts/SidebarContext'
 import { InactivityProvider } from '@/lib/contexts/InactivityContext'
+import { ViewModeProvider } from '@/context/ViewModeContext'
+import { FocusProvider } from '@/context/FocusContext'
 
 const rubik = Rubik({
   subsets: ['latin', 'hebrew'],
@@ -29,9 +31,13 @@ export default function RootLayout({
       <body>
         <OrganizationProvider>
           <SidebarProvider>
-            <InactivityProvider>
-              {children}
-            </InactivityProvider>
+            <ViewModeProvider>
+              <FocusProvider>
+                <InactivityProvider>
+                  {children}
+                </InactivityProvider>
+              </FocusProvider>
+            </ViewModeProvider>
           </SidebarProvider>
           <Toaster
             position="top-center"

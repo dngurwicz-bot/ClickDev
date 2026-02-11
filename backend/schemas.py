@@ -151,34 +151,6 @@ class EmployeeBase(BaseModel):
     created_at: datetime
 
 
-class EmployeeCreate(BaseModel):
-    """DEPRECATED: Model for creating an employee.
-    Use Table001Request instead.
-    """
-    organization_id: str
-    id_number: str
-    first_name: str
-    last_name: str
-    first_name_en: Optional[str] = None
-    last_name_en: Optional[str] = None
-    birth_date: Optional[str] = None
-    gender: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    mobile: Optional[str] = None
-    address: Optional[str] = None
-    city: Optional[str] = None
-    employee_number: Optional[str] = None
-    hire_date: str
-    employment_type: Optional[str] = None
-    job_title: Optional[str] = None
-    department: Optional[str] = None
-    manager_id: Optional[str] = None
-    bank_name: Optional[str] = None
-    bank_branch: Optional[str] = None
-    bank_account: Optional[str] = None
-
-
 class UserInvite(BaseModel):
     """Model for inviting a user."""
     email: str

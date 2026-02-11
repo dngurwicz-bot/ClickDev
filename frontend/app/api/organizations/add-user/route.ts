@@ -4,20 +4,13 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { logActivity } from '@/lib/activity-logger'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-if (!supabaseServiceKey) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
 }
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +32,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('Authorization')
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '')
-      const { data: { user: u }, error: e } = await supabaseAdmin.auth.getUser(token)
+      const { data: { user: u }, error: e } = await getSupabaseAdmin().auth.getUser(token)
       user = u
       authError = e
     } else {
@@ -69,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is the creator of the organization (for initial setup)
-    const { data: org, error: orgError } = await supabaseAdmin
+    const { data: org, error: orgError } = await getSupabaseAdmin()
       .from('organizations')
       .select('created_by')
       .eq('id', organizationId)
@@ -81,7 +74,7 @@ export async function POST(request: NextRequest) {
       isAuthorized = true
     } else {
       // Check if user is an admin of the organization
-      const { data: userRole } = await supabaseAdmin
+      const { data: userRole } = await getSupabaseAdmin()
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
@@ -106,7 +99,7 @@ export async function POST(request: NextRequest) {
     console.log('Inviting user via Supabase Auth:', userData.email)
 
     // Note: inviteUserByEmail automatically creates the user if they don't exist
-    const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.inviteUserByEmail(userData.email, {
+    const { data: authUser, error: userError } = await getSupabaseAdmin().auth.admin.inviteUserByEmail(userData.email, {
       data: {
         first_name: userData.firstName,
         last_name: userData.lastName,
@@ -140,7 +133,7 @@ export async function POST(request: NextRequest) {
     // Step 2: Create user_role in our database
     // This links the Supabase Auth user to the organization
     // Note: We check if role exists first to avoid duplicates if re-inviting
-    const { data: existingRole } = await supabaseAdmin
+    const { data: existingRole } = await getSupabaseAdmin()
       .from('user_roles')
       .select('id')
       .eq('user_id', authUser.user.id)
@@ -149,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     if (!existingRole) {
       console.log('Creating user_role in database for user:', authUser.user.id)
-      const { error: roleError } = await supabaseAdmin
+      const { error: roleError } = await getSupabaseAdmin()
         .from('user_roles')
         .insert({
           user_id: authUser.user.id,

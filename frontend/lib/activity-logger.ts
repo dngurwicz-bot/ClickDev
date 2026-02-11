@@ -1,14 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-})
+function getSupabaseAdmin() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+}
 
 export async function logActivity(
     userId: string,
@@ -19,7 +17,7 @@ export async function logActivity(
     organizationId?: string
 ) {
     try {
-        const { error } = await supabaseAdmin
+        const { error } = await getSupabaseAdmin()
             .from('user_activity_logs')
             .insert({
                 user_id: userId,

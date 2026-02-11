@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-})
+function getSupabase() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+}
 
 // GET - List all announcements (for admin)
 export async function GET(request: NextRequest) {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await getSupabase()
             .from('announcements')
             .select('*')
             .order('created_at', { ascending: false })
@@ -42,7 +40,7 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
 
-        const { data, error } = await supabase
+        const { data, error } = await getSupabase()
             .from('announcements')
             .insert(body)
             .select()

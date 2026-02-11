@@ -23,7 +23,7 @@ export default function ReportsModal({ onClose }: ReportsModalProps) {
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) return
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stats/reports/generate`, {
+            const res = await fetch(`/api/stats/reports/generate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -105,13 +105,19 @@ export function Event200Form() {
 
             const { data: { session } } = await supabase.auth.getSession()
 
-            const res = await fetch('/api/employees', {
+            const requestBody = {
+                operation_code: 'ADD',
+                event_code: '200',
+                data: payload
+            }
+
+            const res = await fetch(`/api/organizations/${currentOrg.id}/employees`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session?.access_token}`
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(requestBody)
             })
 
             if (!res.ok) {

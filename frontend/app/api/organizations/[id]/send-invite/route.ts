@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SECRET_API_KEY!
-
-const supabase = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function POST(
   request: NextRequest,
@@ -29,7 +27,7 @@ export async function POST(
     }
 
     // 1. Get user by email to find their ID
-    const { data: { users }, error: userError } = await supabase.auth.admin.listUsers()
+    const { data: { users }, error: userError } = await getSupabase().auth.admin.listUsers()
     const user = users.find(u => u.email === email)
 
     if (userError || !user) {
@@ -40,7 +38,7 @@ export async function POST(
     }
 
     // 2. Verify they belong to this organization
-    const { data: userRole, error: roleError } = await supabase
+    const { data: userRole, error: roleError } = await getSupabase()
       .from('user_roles')
       .select('user_id, organization_id, role')
       .eq('organization_id', orgId)
@@ -55,7 +53,7 @@ export async function POST(
     }
 
     // Generate password reset link
-    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    const { data: linkData, error: linkError } = await getSupabase().auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {

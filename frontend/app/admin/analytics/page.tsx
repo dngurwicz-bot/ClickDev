@@ -23,7 +23,7 @@ export default function AnalyticsPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stats/analytics`, {
+      const res = await fetch(`/api/stats/analytics`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }

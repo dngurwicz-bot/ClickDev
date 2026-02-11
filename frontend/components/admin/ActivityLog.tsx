@@ -21,7 +21,7 @@ export default function ActivityLog({ userId }: { userId: string }) {
                 const { data: { session } } = await supabase.auth.getSession()
                 if (!session) return
 
-                const response = await fetch(`http://localhost:8000/api/activity-logs/${userId}`, {
+                const response = await fetch(`/api/activity-logs/${userId}`, {
                     headers: { Authorization: `Bearer ${session.access_token}` }
                 })
 
