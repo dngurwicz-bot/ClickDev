@@ -1,8 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Save, Printer, Paperclip, MoreHorizontal, ChevronDown, Check, X, Trash2, Search, LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface PriorityRecordLayoutProps {
     title: string
@@ -17,9 +18,71 @@ interface PriorityRecordLayoutProps {
     onToggleView?: () => void
     actions?: React.ReactNode // Slot for extra actions
     children: React.ReactNode
+    isDirty?: boolean
+    suppressEnterSave?: boolean
 }
 
-export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPrint, onCancel, onDelete, onSearch, onToggleView, actions, children }: PriorityRecordLayoutProps) {
+export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPrint, onCancel, onDelete, onSearch, onToggleView, actions, children, isDirty, suppressEnterSave }: PriorityRecordLayoutProps) {
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't handle if ConfirmDialog is open (it handles its own keys)
+            if (showConfirmDialog) return
+
+            // Don't handle if a modal is open (modal handles its own ESC)
+            if (document.querySelector('.fixed.inset-0.z-50')) return
+
+            // --- ENTER: trigger save ---
+            if (e.key === 'Enter') {
+                if (suppressEnterSave) return
+
+                const target = e.target as HTMLElement
+                const tagName = target.tagName.toLowerCase()
+
+                // Skip if inside textarea, contenteditable, select, or listbox
+                if (tagName === 'textarea' ||
+                    target.isContentEditable ||
+                    tagName === 'select' ||
+                    target.closest('[role="listbox"]') ||
+                    target.closest('[role="dialog"]') ||
+                    target.closest('.tiptap')) {
+                    return
+                }
+
+                e.preventDefault()
+                onSave?.()
+            }
+
+            // --- ESC: close/cancel ---
+            if (e.key === 'Escape') {
+                e.preventDefault()
+                if (isDirty) {
+                    setShowConfirmDialog(true)
+                } else {
+                    onCancel?.()
+                }
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [onSave, onCancel, isDirty, suppressEnterSave, showConfirmDialog])
+
+    const handleConfirmSave = useCallback(() => {
+        setShowConfirmDialog(false)
+        onSave?.()
+    }, [onSave])
+
+    const handleConfirmDiscard = useCallback(() => {
+        setShowConfirmDialog(false)
+        onCancel?.()
+    }, [onCancel])
+
+    const handleConfirmCancel = useCallback(() => {
+        setShowConfirmDialog(false)
+    }, [])
+
     return (
         <div className="bg-bg-main min-h-full flex flex-col font-sans" dir="rtl">
             {/* Unified Header Bar */}
@@ -76,7 +139,7 @@ export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPr
 
                     {actions}
 
-                    <button onClick={onSave} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group" title="שמור">
+                    <button onClick={onSave} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group" title="שמור (Enter)">
                         <Save className="w-4 h-4 text-gray-300 group-hover:text-white" />
                         <span className="text-xs font-medium text-gray-300 group-hover:text-white hidden xl:block">שמור</span>
                     </button>
@@ -98,7 +161,7 @@ export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPr
 
                     <div className="w-px h-5 bg-white/10 mx-1"></div>
 
-                    <button onClick={onCancel} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 hover:bg-red-500/10 rounded transition-colors group" title="בטל">
+                    <button onClick={onCancel} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 hover:bg-red-500/10 rounded transition-colors group" title="בטל (ESC)">
                         <X className="w-4 h-4 text-gray-300 group-hover:text-red-400" />
                         <span className="text-xs font-medium text-gray-300 group-hover:text-red-400 hidden xl:block">בטל</span>
                     </button>
@@ -114,6 +177,14 @@ export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPr
             <div className="flex-1 overflow-hidden flex flex-col relative">
                 {children}
             </div>
+
+            {/* Unsaved Changes Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={showConfirmDialog}
+                onConfirm={handleConfirmSave}
+                onDiscard={handleConfirmDiscard}
+                onCancel={handleConfirmCancel}
+            />
         </div>
     )
 }

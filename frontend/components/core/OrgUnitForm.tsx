@@ -98,7 +98,7 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
         register,
         handleSubmit,
         control,
-        formState: { errors },
+        formState: { errors, isDirty },
     } = useForm<OrgUnitFormValues>({
         resolver: zodResolver(orgUnitSchema),
         defaultValues: {
@@ -169,6 +169,7 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
             subtitle={initialData ? `${titleLabel} (${unitNumber})` : undefined}
             id={unitNumber}
             status="active"
+            isDirty={isDirty}
             onSave={handleSubmit(onSubmit, onError)}
             onCancel={onCancel}
             onPrint={() => window.print()}

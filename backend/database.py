@@ -10,7 +10,7 @@ load_dotenv(env_path)
 # Supabase clients
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_api_key = os.getenv("SUPABASE_API_KEY")
-supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 if not supabase_url or not supabase_api_key:
     raise ValueError("Missing Supabase environment variables")

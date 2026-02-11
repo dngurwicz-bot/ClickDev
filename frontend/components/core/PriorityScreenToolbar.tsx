@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
     X,
     HelpCircle,
@@ -50,6 +50,23 @@ export function PriorityScreenToolbar({
     showViewToggle = true,
 }: PriorityScreenToolbarProps) {
     const { viewMode, toggleViewMode } = useViewMode()
+
+    // ESC key closes the screen
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                // Don't intercept if a modal or dialog is open
+                if (document.querySelector('.fixed.inset-0.z-50') ||
+                    document.querySelector('.fixed.inset-0.z-\\[60\\]')) return
+
+                e.preventDefault()
+                onClose?.()
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [onClose])
 
     return (
         <div className="flex flex-col bg-white border-b border-[#BDC3C7] shrink-0" dir="rtl">

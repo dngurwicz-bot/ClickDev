@@ -11,9 +11,9 @@
   --text-primary: #2C3E50;
   --text-secondary: #7F8C8D;
   --text-muted: #95A5A6;
-  --bg-main: #ECF0F1;
+  --bg-main: #F8F9FA;
   --surface: #ffffff;
-  --border: #BDC3C7;
+  --border: #E5E7EB;
   --success: #27AE60;
   --warning: #F39C12;
   --danger: #C0392B;
@@ -39,20 +39,21 @@ body {
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+  background: #D1D5DB;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #9CA3AF;
 }
 
 /* TipTap Editor Styles */

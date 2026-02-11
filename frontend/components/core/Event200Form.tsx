@@ -26,9 +26,24 @@ export function Event200Form() {
             }
             if (e.key === 'F10') {
                 e.preventDefault()
-                // Trigger form submission programmatically
                 const form = document.getElementById('event-200-form') as HTMLFormElement
                 if (form) form.requestSubmit()
+            }
+            // Enter: trigger save (skip textarea/contenteditable)
+            if (e.key === 'Enter') {
+                const target = e.target as HTMLElement
+                const tagName = target.tagName.toLowerCase()
+                if (tagName === 'textarea' || target.isContentEditable || tagName === 'select') return
+                e.preventDefault()
+                const form = document.getElementById('event-200-form') as HTMLFormElement
+                if (form) form.requestSubmit()
+            }
+            // ESC: go back
+            if (e.key === 'Escape') {
+                // Don't intercept if a modal is open
+                if (document.querySelector('.fixed.inset-0.z-50')) return
+                e.preventDefault()
+                router.back()
             }
         }
 

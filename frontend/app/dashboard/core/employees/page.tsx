@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import EmployeeDetails, { Employee } from '@/components/employees/EmployeeDetails'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import { useViewMode } from '@/context/ViewModeContext'
@@ -57,6 +57,7 @@ export default function EmployeeFilePageWrapper() {
 
 function EmployeeFilePage() {
     const searchParams = useSearchParams()
+    const router = useRouter()
     const { currentOrg } = useOrganization()
     const { viewMode, setViewMode: setGlobalViewMode } = useViewMode()
     const [employees, setEmployees] = useState<Employee[]>([])
@@ -370,6 +371,7 @@ function EmployeeFilePage() {
             <PriorityScreenToolbar
                 title="כרטיס עובד"
                 tabs={SCREEN_TABS}
+                onClose={() => router.push('/dashboard/core')}
                 onAddNew={handleAddEmployee}
                 onRefresh={() => fetchEmployees()}
                 showViewToggle={true}

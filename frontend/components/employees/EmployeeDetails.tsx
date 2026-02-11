@@ -10,7 +10,6 @@ import { PriorityFormField } from '@/components/core/PriorityFormField'
 import { PriorityDataGrid } from '@/components/core/PriorityDataGrid'
 import {
     User,
-    Users,
     FileText,
     MapPin,
     ShieldCheck,
@@ -176,27 +175,33 @@ export default function EmployeeDetails({
         phone: ''
     })
 
+    // Track initial form data for dirty detection
+    const initialFormDataRef = useRef(formData)
+
     // Init Data
     useEffect(() => {
         if (employee) {
-            setFormData(prev => ({
-                ...prev,
-                firstName: employee.firstName || '',
-                lastName: employee.lastName || '',
+            const newData = {
                 employeeId: employee.employeeNumber || '',
                 idNumber: employee.idNumber || '',
+                lastName: employee.lastName || '',
+                firstName: employee.firstName || '',
                 fatherName: employee.fatherName || '',
                 birthDate: formatDisplayDate(employee.birthDate || ''),
                 passport: employee.passport || '',
                 status: employee.status || 'active',
+                city: '',
+                street: '',
+                houseNum: '',
                 phone: employee.phone || '',
-                city: '', // Fetch from address history or employee record if available
-            }))
+            }
+            setFormData(newData)
+            initialFormDataRef.current = newData
             setIsSelectionVisible(false)
             setIsSearching(false)
         } else if (searchMode) {
             // Reset form for search
-            setFormData({
+            const emptyData = {
                 employeeId: '',
                 idNumber: '',
                 lastName: '',
@@ -209,7 +214,9 @@ export default function EmployeeDetails({
                 street: '',
                 houseNum: '',
                 phone: ''
-            })
+            }
+            setFormData(emptyData)
+            initialFormDataRef.current = emptyData
             // Default show selection if Landing and no employee
             if (!employee && initialEmployees.length > 0) {
                 setIsSelectionVisible(true)
@@ -333,6 +340,9 @@ export default function EmployeeDetails({
         setIsSelectionVisible(false)
     }
 
+    // Dirty detection: compare current form data with initial snapshot
+    const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current)
+
     if (!employee && !isNew && !searchMode) {
         return <div className="p-8 text-center text-gray-500">בחר עובד מהרשימה</div>
     }
@@ -343,6 +353,8 @@ export default function EmployeeDetails({
             subtitle={!isNew && !searchMode ? `${formData.lastName} ${formData.firstName}` : undefined}
             id={formData.employeeId}
             status={formData.status}
+            isDirty={isDirty}
+            suppressEnterSave={searchMode}
             onSave={async () => {
                 const preparedData = {
                     ...formData,
@@ -371,16 +383,6 @@ export default function EmployeeDetails({
             onCancel={onCancel}
             onDelete={onDelete}
             onSearch={onNewSearch}
-            actions={
-                <button
-                    onClick={() => router.push('/dashboard/core/employees/all')}
-                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group"
-                    title="כל העובדים"
-                >
-                    <Users className="w-4 h-4 text-gray-300 group-hover:text-white" />
-                    <span className="text-xs font-medium text-gray-300 group-hover:text-white hidden xl:block">כל העובדים</span>
-                </button>
-            }
         >
             {/* SEARCHING OVERLAY */}
             {isSearching && (
