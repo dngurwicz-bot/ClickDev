@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, Suspense, useCallback } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import EmployeeDetails, { Employee } from '@/components/employees/EmployeeDetails'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import { useViewMode } from '@/context/ViewModeContext'
+import { useStatusBar } from '@/context/StatusBarContext'
 import { PriorityScreenToolbar } from '@/components/core/PriorityScreenToolbar'
 import { PriorityTableView, TableColumn } from '@/components/core/PriorityTableView'
 import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
@@ -60,6 +61,7 @@ function EmployeeFilePage() {
     const searchParams = useSearchParams()
     const { currentOrg } = useOrganization()
     const { viewMode, setViewMode: setGlobalViewMode } = useViewMode()
+    const { setRecordStatus } = useStatusBar()
     const { goBackOrFallback } = useNavigationStack()
     const [employees, setEmployees] = useState<Employee[]>([])
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
@@ -374,6 +376,26 @@ function EmployeeFilePage() {
         setIsNew(false)
         setGlobalViewMode('table')
     }
+
+    useEffect(() => {
+        const total = viewMode === 'table' ? filteredEmployees.length : employees.length
+        const source = viewMode === 'table' ? filteredEmployees : employees
+        const selectedIndex = selectedEmployee
+            ? source.findIndex((emp) => emp.id === selectedEmployee.id)
+            : -1
+
+        setRecordStatus({
+            label: 'תוצאות',
+            current: total === 0 ? 0 : selectedIndex >= 0 ? selectedIndex + 1 : 1,
+            total,
+        })
+    }, [employees, filteredEmployees, selectedEmployee, setRecordStatus, viewMode])
+
+    useEffect(() => {
+        return () => {
+            setRecordStatus(null)
+        }
+    }, [setRecordStatus])
 
     return (
         <div className="flex flex-col h-full w-full bg-[#ECF0F1]" dir="rtl">

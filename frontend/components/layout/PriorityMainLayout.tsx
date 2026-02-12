@@ -2,8 +2,9 @@
 
 import React from 'react'
 import { PriorityHeader } from './PriorityHeader'
-import { FocusProvider, useFocusContext } from '@/context/FocusContext'
+import { FocusProvider } from '@/context/FocusContext'
 import { ViewModeProvider } from '@/context/ViewModeContext'
+import { StatusBarProvider } from '@/context/StatusBarContext'
 import { PriorityStatusBar } from './PriorityStatusBar'
 
 function PriorityLayoutContent({ children }: { children: React.ReactNode }) {
@@ -31,9 +32,11 @@ export default function PriorityMainLayout({ children }: { children: React.React
     return (
         <FocusProvider>
             <ViewModeProvider>
-                <PriorityLayoutContent>
-                    {children}
-                </PriorityLayoutContent>
+                <StatusBarProvider>
+                    <PriorityLayoutContent>
+                        {children}
+                    </PriorityLayoutContent>
+                </StatusBarProvider>
             </ViewModeProvider>
         </FocusProvider>
     )
