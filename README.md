@@ -89,3 +89,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 - ✅ מעקב היסטוריה אוטומטי
 - ✅ RLS Security
 - ✅ תמיכה בעברית RTL
+
+## 🧭 מסמך Blueprint מקצועי
+
+נוסף עמוד ייעודי להצגת מימוש מלא של המערכת:
+
+- Frontend: `http://localhost:3000/system-blueprint`
+- Backend API: `GET /api/system-blueprint`
+- Documentation: `docs/IMPLEMENTATION_BLUEPRINT.md`

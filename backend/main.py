@@ -29,7 +29,8 @@ from routers import (  # noqa: E402
     core,
     analytics,
     admin,
-    employees
+    employees,
+    system_blueprint
 )
 
 load_dotenv()
@@ -56,6 +57,7 @@ app.include_router(core.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
 app.include_router(employees.router)
+app.include_router(system_blueprint.router)
 
 
 # Health check
