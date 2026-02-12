@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { JobGradeForm } from '@/components/core/JobGradeForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function EditGradePage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
     const { id } = useParams()
     const [initialData, setInitialData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -36,9 +37,9 @@ export default function EditGradePage() {
                 initialData={initialData}
                 onSuccess={() => {
                     toast.success('הדירוג עודכן בהצלחה')
-                    router.push('/dashboard/core/grades')
+                    goBackOrFallback('/dashboard/core/grades')
                 }}
-                onCancel={() => router.push('/dashboard/core/grades')}
+                onCancel={() => goBackOrFallback('/dashboard/core/grades')}
             />
         </div>
     )

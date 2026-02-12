@@ -11,11 +11,10 @@ function getSupabase() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = params instanceof Promise ? await params : params
-    const orgId = resolvedParams.id
+    const { id: orgId } = await params
 
     if (!orgId) {
       return NextResponse.json(

@@ -3,37 +3,50 @@
 import React from 'react'
 import {
     Building2,
-    Workflow,
-    FileText,
-    Eye,
-    Package,
-    Heart,
-    TrendingUp,
-    BarChart3
+    User,
+    Bell,
+    ShieldAlert,
 } from 'lucide-react'
 import { PriorityDashboardTile } from '@/components/dashboard/PriorityDashboardTile'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
+import { supabase } from '@/lib/supabase'
+import { isSuperAdmin } from '@/lib/auth'
 
-const DASHBOARD_TILES = [
+const BASE_TILES = [
     { label: 'Click Core', href: '/dashboard/core', icon: Building2 },
-    { label: 'Click Flow', href: '/dashboard/flow', icon: Workflow },
-    { label: 'Click Docs', href: '/dashboard/documents', icon: FileText },
-    { label: 'Click Vision', href: '/dashboard/vision', icon: Eye },
-    { label: 'Click Assets', href: '/dashboard/assets', icon: Package },
-    { label: 'Click Vibe', href: '/dashboard/vibe', icon: Heart },
-    { label: 'Click Grow', href: '/dashboard/grow', icon: TrendingUp },
-    { label: 'Click Insights', href: '/dashboard/insights', icon: BarChart3 },
+    { label: 'פרופיל משתמש', href: '/dashboard/profile', icon: User },
+    { label: 'הודעות מערכת', href: '/announcements', icon: Bell },
 ]
 
 export default function DashboardPage() {
     const { currentOrg } = useOrganization()
+    const [isAdmin, setIsAdmin] = React.useState(false)
+    const [displayName, setDisplayName] = React.useState('משתמש')
 
-    const visibleTiles = DASHBOARD_TILES.filter(tile => {
-        const moduleKey = tile.href.split('/').pop()
-        const actualKey = moduleKey === 'documents' ? 'docs' : moduleKey
+    React.useEffect(() => {
+        const loadUserContext = async () => {
+            const [{ data: { user } }, admin] = await Promise.all([
+                supabase.auth.getUser(),
+                isSuperAdmin()
+            ])
+
+            setIsAdmin(admin)
+            const name = user?.user_metadata?.first_name || user?.email?.split('@')[0]
+            if (name) setDisplayName(name)
+        }
+
+        loadUserContext()
+    }, [])
+
+    const visibleTiles = BASE_TILES.filter(tile => {
+        if (tile.href !== '/dashboard/core') return true
         if (!currentOrg?.active_modules) return true
-        return currentOrg.active_modules.includes(actualKey!)
+        return currentOrg.active_modules.includes('core')
     })
+
+    if (isAdmin) {
+        visibleTiles.push({ label: 'ניהול מערכת', href: '/admin/dashboard', icon: ShieldAlert })
+    }
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
@@ -41,7 +54,7 @@ export default function DashboardPage() {
             <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-4">
                 <div>
                     <h1 className="text-2xl font-bold text-secondary">תפריט ראשי</h1>
-                    <p className="text-sm text-gray-500 mt-1">שלום, דיאגו ג</p>
+                    <p className="text-sm text-gray-500 mt-1">שלום, {displayName}</p>
                 </div>
             </div>
 

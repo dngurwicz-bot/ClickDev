@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function EditWingPage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
     const { id } = useParams()
     const [initialData, setInitialData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -38,9 +39,9 @@ export default function EditWingPage() {
                 forcedType="Wing"
                 onSuccess={() => {
                     toast.success('האגף עודכן בהצלחה')
-                    router.push('/dashboard/core/wings')
+                    goBackOrFallback('/dashboard/core/wings')
                 }}
-                onCancel={() => router.push('/dashboard/core/wings')}
+                onCancel={() => goBackOrFallback('/dashboard/core/wings')}
             />
         </div>
     )

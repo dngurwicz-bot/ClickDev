@@ -1,28 +1,77 @@
 import { fallbackBlueprintData } from '@/lib/system-blueprint-data'
 import { BlueprintPayload } from '@/lib/types/system-blueprint'
 
-async function getBlueprintData(): Promise<BlueprintPayload> {
+type BlueprintPageData = {
+  data: BlueprintPayload | null
+  usedFallback: boolean
+  errorMessage: string | null
+}
+
+async function getBlueprintData(): Promise<BlueprintPageData> {
+  const backendBaseUrl =
+    process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+    process.env.BACKEND_API_URL ||
+    'http://127.0.0.1:8000'
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/system-blueprint', {
+    const response = await fetch(`${backendBaseUrl}/api/system-blueprint`, {
       cache: 'no-store',
     })
 
     if (!response.ok) {
-      return fallbackBlueprintData
+      if (process.env.NODE_ENV !== 'production') {
+        return {
+          data: fallbackBlueprintData,
+          usedFallback: true,
+          errorMessage: `API returned ${response.status}`,
+        }
+      }
+      return {
+        data: null,
+        usedFallback: false,
+        errorMessage: `API returned ${response.status}`,
+      }
     }
 
-    return (await response.json()) as BlueprintPayload
-  } catch {
-    return fallbackBlueprintData
+    return {
+      data: (await response.json()) as BlueprintPayload,
+      usedFallback: false,
+      errorMessage: null,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    if (process.env.NODE_ENV !== 'production') {
+      return {
+        data: fallbackBlueprintData,
+        usedFallback: true,
+        errorMessage: message,
+      }
+    }
+    return {
+      data: null,
+      usedFallback: false,
+      errorMessage: message,
+    }
   }
 }
 
 export default async function SystemBlueprintPage() {
-  const data = await getBlueprintData()
+  const { data, usedFallback, errorMessage } = await getBlueprintData()
 
   return (
     <main className="min-h-screen bg-[#f4f6f8] px-4 py-10" dir="rtl">
       <div className="mx-auto max-w-5xl rounded-2xl bg-white p-8 shadow-sm md:p-12">
+        {errorMessage && (
+          <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {usedFallback ? `שגיאה בטעינת API. מוצגים נתוני fallback (פיתוח בלבד): ${errorMessage}` : `שגיאה בטעינת ה-Blueprint: ${errorMessage}`}
+          </div>
+        )}
+        {!data && (
+          <section className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-800">
+            לא ניתן לטעון את נתוני ה-Blueprint כרגע. אנא נסה שוב מאוחר יותר.
+          </section>
+        )}
+        {data && (
+          <>
         <header className="border-b border-[#dbe2e8] pb-8">
           <p className="text-sm font-semibold text-[#00a896]">מסמך: קטלוג מודולים</p>
           <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -106,6 +155,8 @@ export default async function SystemBlueprintPage() {
             </ul>
           </div>
         </section>
+          </>
+        )}
       </div>
     </main>
   )

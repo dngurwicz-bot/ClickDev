@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Building2, Users, TrendingUp, Activity } from 'lucide-react'
+import { Building2, TrendingUp, Activity } from 'lucide-react'
 import StatsCard from '@/components/admin/StatsCard'
 import TasksWidget from '@/components/admin/TasksWidget'
 import GlobalLoader from '@/components/ui/GlobalLoader'
@@ -14,6 +14,7 @@ export default function DashboardPage() {
     recentActivity: []
   })
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchStats()
@@ -28,14 +29,15 @@ export default function DashboardPage() {
         throw new Error('No session')
       }
 
-      const response = await fetch('/api/stats/dashboard', {
+      const response = await fetch('/api/admin/stats/dashboard', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch stats: ${response.status}`)
+        setLoadError(`לא ניתן לטעון נתונים (שגיאה ${response.status}). ודא הרשאות סופר אדמין.`)
+        return
       }
 
       const data = await response.json()
@@ -45,8 +47,10 @@ export default function DashboardPage() {
         mrr: data.mrr || 0,
         recentActivity: data.recent_activity || []
       })
+      setLoadError(null)
     } catch (error) {
       console.error('[Dashboard] Error fetching stats:', error)
+      setLoadError('לא ניתן לטעון את נתוני הדשבורד כרגע. אפשר לרענן ולנסות שוב.')
     } finally {
       setLoading(false)
     }
@@ -61,7 +65,7 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold text-text-primary mb-8">דשבורד</h1>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatsCard
           title="סה״כ ארגונים"
           value={stats.totalOrganizations}
@@ -81,6 +85,12 @@ export default function DashboardPage() {
           color="warning"
         />
       </div>
+
+      {loadError && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </div>
+      )}
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

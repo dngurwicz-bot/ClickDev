@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function EditDivisionPage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
     const { id } = useParams()
     const [initialData, setInitialData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -38,9 +39,9 @@ export default function EditDivisionPage() {
                 forcedType="Division"
                 onSuccess={() => {
                     toast.success('החטיבה עודכנה בהצלחה')
-                    router.push('/dashboard/core/divisions')
+                    goBackOrFallback('/dashboard/core/divisions')
                 }}
-                onCancel={() => router.push('/dashboard/core/divisions')}
+                onCancel={() => goBackOrFallback('/dashboard/core/divisions')}
             />
         </div>
     )

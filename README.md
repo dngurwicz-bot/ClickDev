@@ -70,8 +70,9 @@ VALUES ('YOUR_USER_ID', 'super_admin');
 ### Backend (.env)
 ```
 SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_API_KEY=your_anon_or_api_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+DATABASE_URL=postgres://user:pass@host:port/postgres
 API_PORT=8000
 ```
 
@@ -79,6 +80,8 @@ API_PORT=8000
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_BACKEND_API_URL=http://127.0.0.1:8000
+BACKEND_API_URL=http://127.0.0.1:8000
 ```
 
 ## 🎯 Features
@@ -96,4 +99,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 
 - Frontend: `http://localhost:3000/system-blueprint`
 - Backend API: `GET /api/system-blueprint`
+- Public versions: `GET /api/system-blueprint/versions`
+- Admin UI: `http://localhost:3000/admin/system-blueprint`
 - Documentation: `docs/IMPLEMENTATION_BLUEPRINT.md`
+
+### טעינת נתוני Blueprint ראשונית
+
+1. החל את המיגרציה: `supabase/migrations/037_system_blueprint.sql`
+2. הרץ seed:
+```bash
+cd backend
+python scripts/seed_system_blueprint.py
+```

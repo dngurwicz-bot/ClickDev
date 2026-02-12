@@ -1,12 +1,14 @@
 'use client'
 
 import React from 'react'
-import { Menu, Search, Bell, User, Clock, Star, Settings, ChevronDown } from 'lucide-react'
+import { Menu, Search, Bell, ChevronDown } from 'lucide-react'
 import { OrganizationSelector } from './OrganizationSelector'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
+import { supabase } from '@/lib/supabase'
+import { isSuperAdmin } from '@/lib/auth'
 
 const MODULES = [
     {
@@ -40,14 +42,9 @@ const MODULES = [
             }
         ]
     },
-    { label: 'תהליכים', href: '/dashboard/flow' },
-    { label: 'מסמכים', href: '/dashboard/documents' },
-    { label: 'חזון', href: '/dashboard/vision' },
-    { label: 'נכסים', href: '/dashboard/assets' },
-    { label: 'הווי', href: '/dashboard/vibe' },
-    { label: 'צמיחה', href: '/dashboard/grow' },
-    { label: 'תובנות', href: '/dashboard/insights' },
-    { label: 'סופר אדמין', href: '/admin/dashboard' },
+    { label: 'הודעות', href: '/announcements' },
+    { label: 'פרופיל', href: '/dashboard/profile' },
+    { label: 'ניהול מערכת', href: '/admin/dashboard', requiresSuperAdmin: true },
 ]
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -158,6 +155,21 @@ function ModuleNavItem({ module, pathname }: { module: any, pathname: string | n
 export function PriorityHeader() {
     const pathname = usePathname()
     const { currentOrg } = useOrganization()
+    const [displayName, setDisplayName] = React.useState('משתמש')
+    const [isAdmin, setIsAdmin] = React.useState(false)
+
+    React.useEffect(() => {
+        const loadUserContext = async () => {
+            const [{ data: { user } }, admin] = await Promise.all([
+                supabase.auth.getUser(),
+                isSuperAdmin()
+            ])
+            setIsAdmin(admin)
+            const name = user?.user_metadata?.first_name || user?.email?.split('@')[0]
+            if (name) setDisplayName(name)
+        }
+        loadUserContext()
+    }, [])
 
     return (
         <div className="flex flex-col z-50 shadow-md">
@@ -187,7 +199,7 @@ export function PriorityHeader() {
                     <div className="relative h-8">
                         <input
                             type="text"
-                            placeholder="חיפוש בתפריט..."
+                            placeholder="חיפוש מסכים ופעולות..."
                             className="w-full h-full bg-secondary-light/60 text-white placeholder-gray-400 text-sm rounded px-3 pl-9 focus:outline-none focus:bg-secondary-light border border-transparent focus:border-primary transition-all"
                         />
                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -202,9 +214,9 @@ export function PriorityHeader() {
                     <div className="h-5 w-px bg-white/10 mx-1"></div>
                     <div className="flex items-center gap-2 cursor-pointer hover:bg-white/10 px-2 py-1 rounded transition-colors">
                         <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-xs font-bold ring-1 ring-white/20">
-                            DG
+                            {displayName.slice(0, 2).toUpperCase()}
                         </div>
-                        <span className="text-sm text-gray-200 hidden sm:block">Diego G</span>
+                        <span className="text-sm text-gray-200 hidden sm:block">{displayName}</span>
                     </div>
                     <div className="h-5 w-px bg-white/10 mx-1"></div>
                     <OrganizationSelector />
@@ -216,14 +228,15 @@ export function PriorityHeader() {
             <div className="h-10 bg-secondary flex items-center px-4 shadow-sm border-t border-white/5 overflow-x-auto no-scrollbar">
                 <nav className="flex items-center h-full">
                     {MODULES.filter(module => {
-                        // Always show Super Admin
-                        if (module.href.includes('/admin')) return true
+                        if (module.requiresSuperAdmin && !isAdmin) return false
 
                         const moduleKey = module.href.split('/').pop() // e.g. "core" from "/dashboard/core"
                         const actualKey = moduleKey === 'documents' ? 'docs' : moduleKey
 
-                        // If no currentOrg or no active_modules defined, show all (fallback) or none?
-                        // Safest is to show all if data missing, but here we want restriction.
+                        if (module.href === '/announcements' || module.href === '/dashboard/profile' || module.href === '/admin/dashboard') {
+                            return true
+                        }
+
                         if (!currentOrg?.active_modules) return true
 
                         return currentOrg.active_modules.includes(actualKey!)
@@ -235,3 +248,4 @@ export function PriorityHeader() {
         </div >
     )
 }
+

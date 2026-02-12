@@ -38,6 +38,8 @@ export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד
                     .from('employees')
                     .select('id, first_name, last_name, employee_number')
                     .eq('organization_id', currentOrg.id)
+                    .eq('is_active', true)
+                    .is('deleted_at', null)
                     .order('first_name')
 
                 if (error) throw error
@@ -62,7 +64,13 @@ export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד
             return
         }
         if (value && currentOrg) {
-            supabase.from('employees').select('id, first_name, last_name, employee_number').eq('id', value).single()
+            supabase
+                .from('employees')
+                .select('id, first_name, last_name, employee_number')
+                .eq('id', value)
+                .eq('is_active', true)
+                .is('deleted_at', null)
+                .single()
                 .then(({ data }) => { if (data) setDisplayEmployee(data) })
         } else {
             setDisplayEmployee(null)

@@ -7,8 +7,10 @@ import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
-import { X, Save } from 'lucide-react'
+import { X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useScreenExit } from '@/lib/screen-lifecycle/useScreenExit'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 const jobGradeSchema = z.object({
     name: z.string().min(2, 'שם הדירוג חייב להכיל לפחות 2 תווים'),
@@ -38,7 +40,7 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
     const {
         register,
         handleSubmit,
-        formState: { errors },
+        formState: { errors, isDirty },
         setValue,
         watch,
     } = useForm<JobGradeFormValues>({
@@ -121,6 +123,7 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
         } catch (error: any) {
             console.error('Error saving job grade:', error)
             toast.error(`שגיאה בשמירה: ${error.message || 'שגיאה כללית'}`)
+            throw error
         } finally {
             setLoading(false)
         }
@@ -129,8 +132,24 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
     const onError = (errors: any) => {
         console.error('Validation Errors:', errors)
         toast.error('יש למלא את כל שדות החובה המסומנים')
+        throw new Error('Validation failed')
     }
 
+    const {
+        isConfirmOpen,
+        requestExit,
+        handleConfirmSave,
+        handleConfirmDiscard,
+        handleConfirmCancel,
+    } = useScreenExit({
+        isDirty,
+        save: async () => {
+            await handleSubmit(onSubmit, onError)()
+        },
+        onExit: onCancel,
+        fallbackRoute: '/dashboard/core/grades',
+        exitAfterSave: false,
+    })
 
     return (
         <div className="bg-[#f3f4f6] min-h-[350px] flex flex-col border border-gray-400 font-sans" dir="rtl">
@@ -140,8 +159,7 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
                     <span className="font-bold text-lg text-gray-800">{initialData?.level || '---'} - {initialData?.name || 'דירוג חדש (New Grade)'}</span>
                 </div>
                 <div className="flex gap-2">
-                    <button type="submit" form="job-grade-form" className="p-1 hover:bg-gray-100 rounded text-[#00A896]" title="שמור"><Save className="w-5 h-5" /></button>
-                    <button type="button" onClick={onCancel} className="p-1 hover:bg-gray-100 rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
+                    <button type="button" onClick={requestExit} className="p-1 hover:bg-gray-100 rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
                 </div>
             </div>
 
@@ -218,21 +236,20 @@ export function JobGradeForm({ initialData, onSuccess, onCancel }: JobGradeFormP
             {/* Bottom Action Bar */}
             <div className="bg-[#d1d5db] border-t border-gray-400 p-2 flex gap-3 mt-auto">
                 <button
-                    type="submit"
-                    form="job-grade-form"
-                    disabled={loading}
-                    className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-8 text-xs font-bold shadow-sm"
-                >
-                    {loading ? 'מבצע...' : 'עדכון (Save)'}
-                </button>
-                <button
                     type="button"
-                    onClick={onCancel}
+                    onClick={requestExit}
                     className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-8 text-xs font-bold shadow-sm"
                 >
                     יציאה (Exit)
                 </button>
             </div>
+
+            <ConfirmDialog
+                isOpen={isConfirmOpen}
+                onConfirm={handleConfirmSave}
+                onDiscard={handleConfirmDiscard}
+                onCancel={handleConfirmCancel}
+            />
         </div>
     )
 }

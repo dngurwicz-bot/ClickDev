@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -39,9 +39,7 @@ export async function DELETE(
         }
       }
     )
-    // Handle both Next.js 15 (Promise) and older versions
-    const resolvedParams = params instanceof Promise ? await params : params
-    const orgId = resolvedParams.id
+    const { id: orgId } = await params
     console.log('Attempting to delete organization:', orgId)
 
     if (!orgId) {

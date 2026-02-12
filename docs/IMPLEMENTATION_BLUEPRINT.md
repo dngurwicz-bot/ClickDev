@@ -1,76 +1,91 @@
-# CLICK Implementation Blueprint (מא׳ ועד ת׳)
+# CLICK System Blueprint - Implementation Guide
 
-מסמך זה מגדיר מימוש מקצועי מקצה לקצה עבור מערכת CLICK לפי קטלוג המודולים (Core → Insights).
+מסמך זה מתאר את מימוש ה-System Blueprint כמערכת דינמית מלאה (DB-first) על בסיס Supabase + FastAPI + Next.js.
 
-## 1) מטרת העל
+## מה מומש
 
-בניית פלטפורמת SaaS רב-ארגונית לניהול מחזור חיי עובד:
-- תפעול HR יומיומי
-- אוטומציות תהליכים
-- מסמכים דינמיים
-- מעקב ציוד ו-IT
-- חוויית עובד ורווחה
-- ביצועים ופיתוח
-- BI והתראות חכמות
+### Backend
+- API ציבורי:
+  - `GET /api/system-blueprint` מחזיר גרסה מפורסמת מתוך DB.
+  - `GET /api/system-blueprint/versions` מחזיר רשימת גרסאות.
+- API ניהולי מאובטח (`super_admin` בלבד):
+  - `POST/PUT /api/admin/system-blueprint/versions`
+  - `POST /api/admin/system-blueprint/versions/{version_id}/publish`
+  - CRUD ל:
+    - `modules`
+    - `phases`
+    - `phase-deliverables`
+    - `notification-channels`
+    - `alert-engines`
+    - `alert-examples`
+    - `core-entities`
+    - `integration-targets`
+    - `target-companies`
+    - `module-capabilities`
+    - `module-kpis`
+    - `escalation-policies`
+  - `GET /api/admin/system-blueprint/versions/{version_id}/full` לעריכה מרוכזת.
+- ולידציות publish:
+  - אין publish בלי meta תקין.
+  - אין publish בלי modules.
+  - `display_order` מודולים חייב להיות רציף `1..N`.
+  - אין publish בלי phases.
+  - אין publish בלי channels + engines + escalation policy.
 
-## 2) מה מומש בקוד כבסיס
+### Database (Supabase)
+- Migration חדש: `supabase/migrations/037_system_blueprint.sql`
+- נוספו 13 טבלאות Blueprint מנורמלות עם:
+  - FK + cascade
+  - unique constraints לסדרים
+  - RLS enabled לכל הטבלאות
+  - מדיניות קריאה ציבורית רק לגרסאות `is_published=true`
+  - ניהול כתיבה רק ל-`super_admin`
+  - טריגרים לעדכון `updated_at` בטבלאות הראשיות
 
-### Backend API
-- Endpoint חדש: `GET /api/system-blueprint`
-- מחזיר:
-  - Metadata של המוצר
-  - שלבי הטמעה (Foundation, Operational Excellence, Scale)
-  - קטלוג 8 מודולים מלא
-  - Smart Notifications (מנועים, ערוצים, escalation)
-  - Core Entities
-  - Integration Targets
+### Seed Data
+- סקריפט: `backend/scripts/seed_system_blueprint.py`
+- מזין את כל התוכן המקצועי:
+  - 8 מודולים
+  - שלבי הטמעה + deliverables
+  - Smart Notifications (channels, engines, examples, escalation)
+  - Core entities
+  - Integration targets
+- מפרסם אוטומטית את גרסת `3.0` בסיום ה-seed.
 
-### Frontend Page
-- עמוד חדש: `/system-blueprint`
-- רינדור RTL מלא של:
-  - כותרת מוצר וגרסה
-  - כל המודולים בפורמט כרטיסים
-  - מקטע התראות חכמות
-  - ישויות נתונים ואינטגרציות
+### Frontend
+- עמוד ציבורי: `frontend/app/system-blueprint/page.tsx`
+  - טעינה מ-API בלבד כמקור ראשי.
+  - fallback רק בסביבת פיתוח.
+  - הודעת שגיאה ברורה במקרה כשל.
+- עמוד ניהול: `frontend/app/admin/system-blueprint/page.tsx`
+  - יצירת גרסה, עדכון גרסה, פרסום גרסה.
+  - הוספה/מחיקה של מודולים, שלבים, ערוצים, ישויות, אינטגרציות.
+  - טעינת payload מלא של גרסה לעריכה.
+- ניווט:
+  - קישור ציבורי ל-`/system-blueprint`
+  - קישור Admin ל-`/admin/system-blueprint`
 
-## 3) תכולת נתונים מקצועית
+## איך להריץ
 
-### מודולים
-1. CLICK Core
-2. CLICK Flow
-3. CLICK Docs
-4. CLICK Vision
-5. CLICK Assets
-6. CLICK Vibe
-7. CLICK Grow
-8. CLICK Insights
+1. Apply migration `037_system_blueprint.sql` ב-Supabase.
+   - להרצה אוטומטית מהפרויקט: נדרש `DATABASE_URL` ב-`backend/.env`.
+   - פקודה: `python scripts/apply_db.py`
+2. להריץ seed:
+   - `cd backend`
+   - `python scripts/seed_system_blueprint.py`
+3. להריץ backend:
+   - `python main.py`
+4. להריץ frontend:
+   - `cd ../frontend`
+   - `npm install`
+   - `npm run dev`
+5. בדיקה:
+   - ציבורי: `http://localhost:3000/system-blueprint`
+   - API: `http://localhost:8000/api/system-blueprint`
+   - Admin: `http://localhost:3000/admin/system-blueprint`
 
-לכל מודול הוגדרו:
-- קהל יעד
-- תיאור מקצועי
-- יכולות מפורטות
-- KPI למדידה
-
-### Smart Notifications
-- ערוצים: In-app, Email, Push, Slack, Teams
-- שלושה מנועים:
-  - Personal Alerts
-  - Operational Alerts
-  - Executive Alerts
-- מדיניות הסלמה (24h / 48h / 72h)
-
-## 4) הרחבות מומלצות לשלב הבא
-
-1. שמירת Blueprint ב-Postgres (טבלאות קונפיגורציה)
-2. מסך Admin לעריכת מודולים ודפוסי התראות
-3. מנוע Rules אמיתי להתראות (cron + queues)
-4. חיבור BI למחסן נתונים (Snowflake/BigQuery)
-5. שכבת הרשאות למודול-level access per subscription tier
-
-## 5) מדדי הצלחה
-
-- זמן קליטת עובד ראשון < 24 שעות
-- ירידה בטעויות מסמכים > 60%
-- שיפור השלמת משימות קליטה > 90%
-- ירידה בחריגות SLA בתהליכים חוצי יחידות
-- שיפור מדד שביעות רצון עובדים לאורך רבעון
+## קריטריוני הצלחה ממומשים
+- אין hardcoded business payload ב-endpoint הציבורי.
+- תוכן Blueprint מנוהל מתוך DB.
+- קיימת יכולת ניהול תוכן דרך Admin.
+- payload ציבורי נשאר תואם מבנה `BlueprintPayload`.

@@ -1,231 +1,229 @@
-"""System blueprint API for CLICK product modules and implementation data."""
+"""System blueprint public API backed by Supabase tables."""
 
-from fastapi import APIRouter
+from collections import defaultdict
+from fastapi import APIRouter, HTTPException
+
+from database import supabase_admin
 
 router = APIRouter(prefix="/api/system-blueprint", tags=["System Blueprint"])
 
 
-@router.get("")
-async def get_system_blueprint():
-    """Return an end-to-end professional blueprint for the CLICK platform."""
+def _fetch_single(table: str, query: str, field: str, value):
+    """Execute a select query and filter by a single field."""
+    return supabase_admin.table(table).select(query).eq(field, value).execute().data
+
+
+def build_blueprint_payload(version_id: str):
+    """Build full blueprint payload for one version."""
+    versions = _fetch_single("system_blueprint_versions", "*", "id", version_id)
+    if not versions:
+        raise HTTPException(status_code=404, detail="Blueprint version not found")
+
+    version = versions[0]
+
+    target_companies = _fetch_single(
+        "system_blueprint_target_companies",
+        "company_type, sort_order",
+        "version_id",
+        version_id
+    )
+    target_companies = [x["company_type"] for x in sorted(target_companies, key=lambda x: x["sort_order"])]
+
+    phases = _fetch_single(
+        "system_blueprint_phases",
+        "id, phase_number, name, duration_weeks",
+        "version_id",
+        version_id
+    )
+    phases = sorted(phases, key=lambda x: x["phase_number"])
+    phase_ids = [phase["id"] for phase in phases]
+    phase_deliverables = []
+    if phase_ids:
+        phase_deliverables = supabase_admin.table("system_blueprint_phase_deliverables") \
+            .select("phase_id, deliverable, sort_order") \
+            .in_("phase_id", phase_ids).execute().data
+    deliverables_by_phase = defaultdict(list)
+    for row in phase_deliverables:
+        deliverables_by_phase[row["phase_id"]].append(row)
+    for phase_id in deliverables_by_phase:
+        deliverables_by_phase[phase_id] = [
+            item["deliverable"] for item in sorted(
+                deliverables_by_phase[phase_id], key=lambda x: x["sort_order"]
+            )
+        ]
+
+    modules = _fetch_single(
+        "system_blueprint_modules",
+        "id, module_key, display_order, name, category, for_who, description",
+        "version_id",
+        version_id
+    )
+    modules = sorted(modules, key=lambda x: x["display_order"])
+    module_ids = [module["id"] for module in modules]
+    capabilities = []
+    kpis = []
+    if module_ids:
+        capabilities = supabase_admin.table("system_blueprint_module_capabilities") \
+            .select("module_id, capability, sort_order") \
+            .in_("module_id", module_ids).execute().data
+        kpis = supabase_admin.table("system_blueprint_module_kpis") \
+            .select("module_id, kpi_key, sort_order") \
+            .in_("module_id", module_ids).execute().data
+
+    capabilities_by_module = defaultdict(list)
+    for row in capabilities:
+        capabilities_by_module[row["module_id"]].append(row)
+    for module_id in capabilities_by_module:
+        capabilities_by_module[module_id] = [
+            item["capability"] for item in sorted(
+                capabilities_by_module[module_id], key=lambda x: x["sort_order"]
+            )
+        ]
+
+    kpis_by_module = defaultdict(list)
+    for row in kpis:
+        kpis_by_module[row["module_id"]].append(row)
+    for module_id in kpis_by_module:
+        kpis_by_module[module_id] = [
+            item["kpi_key"] for item in sorted(
+                kpis_by_module[module_id], key=lambda x: x["sort_order"]
+            )
+        ]
+
+    channels = _fetch_single(
+        "system_blueprint_notification_channels",
+        "channel_key, sort_order",
+        "version_id",
+        version_id
+    )
+    channels = [x["channel_key"] for x in sorted(channels, key=lambda x: x["sort_order"])]
+
+    engines = _fetch_single(
+        "system_blueprint_alert_engines",
+        "id, name, sort_order",
+        "version_id",
+        version_id
+    )
+    engines = sorted(engines, key=lambda x: x["sort_order"])
+    engine_ids = [engine["id"] for engine in engines]
+    examples = []
+    if engine_ids:
+        examples = supabase_admin.table("system_blueprint_alert_examples") \
+            .select("engine_id, example_text, sort_order") \
+            .in_("engine_id", engine_ids).execute().data
+    examples_by_engine = defaultdict(list)
+    for row in examples:
+        examples_by_engine[row["engine_id"]].append(row)
+    for engine_id in examples_by_engine:
+        examples_by_engine[engine_id] = [
+            item["example_text"] for item in sorted(
+                examples_by_engine[engine_id], key=lambda x: x["sort_order"]
+            )
+        ]
+
+    escalation = _fetch_single(
+        "system_blueprint_escalation_policy",
+        "policy_key, policy_value, sort_order",
+        "version_id",
+        version_id
+    )
+    escalation_policy = {
+        row["policy_key"]: row["policy_value"]
+        for row in sorted(escalation, key=lambda x: x["sort_order"])
+    }
+
+    core_entities = _fetch_single(
+        "system_blueprint_core_entities",
+        "entity_name, sort_order",
+        "version_id",
+        version_id
+    )
+    core_entities = [x["entity_name"] for x in sorted(core_entities, key=lambda x: x["sort_order"])]
+
+    integration_targets = _fetch_single(
+        "system_blueprint_integration_targets",
+        "target_name, sort_order",
+        "version_id",
+        version_id
+    )
+    integration_targets = [
+        x["target_name"] for x in sorted(integration_targets, key=lambda x: x["sort_order"])
+    ]
+
     return {
         "meta": {
-            "product_name": "CLICK",
-            "version": "3.0",
-            "language": "he-IL",
-            "direction": "rtl",
-            "last_updated": "2026-02-11",
-            "positioning": "ניהול מחזור חיי עובד - המפרט המלא",
-            "target_companies": [
-                "SMB",
-                "Mid-Market",
-                "Enterprise",
-                "Public Sector"
-            ]
+            "id": version["id"],
+            "version_key": version["version_key"],
+            "product_name": version["product_name"],
+            "version": version["version_key"],
+            "language": version["language"],
+            "direction": version["direction"],
+            "last_updated": str(version["last_updated"]),
+            "positioning": version["positioning"],
+            "target_companies": target_companies,
+            "is_published": version["is_published"],
+            "published_at": version["published_at"],
+            "created_at": version["created_at"],
+            "updated_at": version["updated_at"],
         },
         "implementation_phases": [
             {
-                "phase": 1,
-                "name": "Foundation",
-                "duration_weeks": 8,
-                "deliverables": [
-                    "Multi-tenant core",
-                    "RBAC + Audit",
-                    "HR Core entities",
-                    "SSO and security baseline"
-                ]
-            },
-            {
-                "phase": 2,
-                "name": "Operational Excellence",
-                "duration_weeks": 10,
-                "deliverables": [
-                    "Workflow automation",
-                    "Document generation",
-                    "Org chart visualization",
-                    "Task and reminder center"
-                ]
-            },
-            {
-                "phase": 3,
-                "name": "Scale and Intelligence",
-                "duration_weeks": 12,
-                "deliverables": [
-                    "BI dashboards",
-                    "Predictive alerts",
-                    "Executive cockpit",
-                    "Integrations hub"
-                ]
+                "id": phase["id"],
+                "phase": phase["phase_number"],
+                "name": phase["name"],
+                "duration_weeks": phase["duration_weeks"],
+                "deliverables": deliverables_by_phase.get(phase["id"], [])
             }
+            for phase in phases
         ],
         "modules": [
             {
-                "id": "core",
-                "order": 1,
-                "name": "CLICK Core",
-                "category": "חובה (Base)",
-                "for_who": "לכל ארגון, כתשתית בסיסית.",
-                "description": "מנוע הנתונים המרכזי לניהול עובדים, מבנה ארגוני ותיעוד היסטורי מלא.",
-                "capabilities": [
-                    "תיק עובד חכם: פרופיל 360, מסמכים, אירועים ובקרות איכות",
-                    "ציר זמן היסטורי: מעקב שינויים ברמת שדה עם who/when/why",
-                    "ניהול מבנה ארגוני: אגפים, מחלקות, יחידות ותפקידי ניהול",
-                    "אימות והרשאות: RBAC מלא + הפרדה בין ארגונים"
-                ],
-                "kpis": ["profile_completion_rate", "employee_data_accuracy", "org_structure_coverage"]
-            },
-            {
-                "id": "flow",
-                "order": 2,
-                "name": "CLICK Flow",
-                "category": "הכי נמכר",
-                "for_who": "ארגונים שמגייסים וקולטים עובדים.",
-                "description": "מנוע אוטומציות מקצה לקצה לכל מחזור חיי העובד.",
-                "capabilities": [
-                    "Onboarding אוטומטי: מפת משימות לפי תפקיד/מחלקה",
-                    "טפסים דיגיטליים: טופס 101, קליטה וטפסי חברה",
-                    "Workflows מותנים: אישורים חוצי יחידות (HR, IT, שכר)",
-                    "חוזה העסקה: תבנית חכמה + שילוב חתימה דיגיטלית"
-                ],
-                "kpis": ["onboarding_cycle_time", "task_sla", "first_day_readiness"]
-            },
-            {
-                "id": "docs",
-                "order": 3,
-                "name": "CLICK Docs",
-                "category": "מסמכים בקליק",
-                "for_who": "מנהלות משאבי אנוש שרוצות דיוק ומהירות.",
-                "description": "מערכת מסמכים חכמה עם תבניות דינמיות והפקת PDF אוטומטית.",
-                "capabilities": [
-                    "מכתבים נפוצים: אישור העסקה, הצלחה לנבחר/ת, כתב מינוי",
-                    "מכתבי סטטוס: שכר, קידום, סיום העסקה והודעה על שינוי",
-                    "אוטומציה: מילוי שדות מתוך נתוני עובד וארגון",
-                    "ניהול גרסאות: שמירה, השוואה ואישור משפטי"
-                ],
-                "kpis": ["document_generation_time", "template_reuse_rate", "document_error_rate"]
-            },
-            {
-                "id": "vision",
-                "order": 4,
-                "name": "CLICK Vision",
-                "category": "ויזואליזציה",
-                "for_who": "למנהלים, הנהלה ומשקיעים.",
-                "description": "שכבת תצוגה ויזואלית למבנה הארגון, עומסים ותלויות.",
-                "capabilities": [
-                    "עץ ארגוני חי (Org Chart) עם drill-down לרמות עומק",
-                    "זיהוי חורים: איתור עומס או חוסר מנהל/ת ביחידה",
-                    "zoom-in על מחלקות: פירוט מבנה ותפקידי מפתח",
-                    "מצב WOW להצגת ישיבות הנהלה ודירקטוריון"
-                ],
-                "kpis": ["manager_span_of_control", "vacancy_visibility", "org_design_latency"]
-            },
-            {
-                "id": "assets",
-                "order": 5,
-                "name": "CLICK Assets",
-                "category": "תפעול",
-                "for_who": "חברות עם ציוד רכב ו-IT.",
-                "description": "מעקב הקצאות ציוד, תחזוקה והחזרות לפי עובד ותפקיד.",
-                "capabilities": [
-                    "ניהול צי רכב: הקצאות, ביטוחים, טיפולים ודוחות חריגה",
-                    "מלאי IT: מחשבים, טלפונים, ציוד היקפי ורישוי תוכנה",
-                    "שרשרת אחריות: מי קיבל, ממי, ומתי הוחזר",
-                    "התראות סף: אחריות, רענון ציוד ותקלות חוזרות"
-                ],
-                "kpis": ["asset_utilization", "asset_loss_rate", "maintenance_sla"]
-            },
-            {
-                "id": "vibe",
-                "order": 6,
-                "name": "CLICK Vibe",
-                "category": "רווחה",
-                "for_who": "לשימור עובדים ותרבות ארגונית.",
-                "description": "מרכז חוויית עובד: אירועים, הודעות, סקרים וקהילה.",
-                "capabilities": [
-                    "פורטל עובד אישי: חדשות, קהילה, ידע ושירותים",
-                    "אירועים: ימי הולדת, חגים, נוכחות ואישורי השתתפות",
-                    "Pulse שבועי: סקרי שביעות רצון מהירים",
-                    "Employee Voice: רעיונות ושאלות אנונימיות"
-                ],
-                "kpis": ["engagement_score", "event_participation", "eNPS"]
-            },
-            {
-                "id": "grow",
-                "order": 7,
-                "name": "CLICK Grow",
-                "category": "מתקדם",
-                "for_who": "ניהול ביצועים ופיתוח קריירה.",
-                "description": "מחזור ביצועים שנתי/חצי שנתי עם תוכניות פיתוח אישיות.",
-                "capabilities": [
-                    "תהליכי משוב: יעדים, הערכות תקופתיות ו-360",
-                    "תיעוד שיחות: 1:1, סיכומי מנהל ונקודות פעולה",
-                    "מפת כישורים: Skill matrix לפי תפקיד",
-                    "מסלולי קריירה: תוכניות יורשים ותחלופה פנימית"
-                ],
-                "kpis": ["goal_completion", "review_completion_rate", "internal_mobility_rate"]
-            },
-            {
-                "id": "insights",
-                "order": 8,
-                "name": "CLICK Insights",
-                "category": "BI & Analytics",
-                "for_who": "לקבלת החלטות הנהלה.",
-                "description": "דוחות מתקדמים, חיזוי וניתוחים בזמן אמת על בסיס כלל המודולים.",
-                "capabilities": [
-                    "דשבורדים: עזיבה, גיוס, עלויות, absenteeism ותפוקות",
-                    "חיבור נתונים: שכבת ETL למקורות ארגוניים נוספים",
-                    "חיזוי נטישה: סימון עובדים בסיכון",
-                    "ניתוח שכר: פערי שכר ותאימות רגולציה"
-                ],
-                "kpis": ["attrition_rate", "time_to_fill", "people_cost_ratio", "pay_equity_index"]
+                "id": module["module_key"],
+                "row_id": module["id"],
+                "order": module["display_order"],
+                "name": module["name"],
+                "category": module["category"],
+                "for_who": module["for_who"],
+                "description": module["description"],
+                "capabilities": capabilities_by_module.get(module["id"], []),
+                "kpis": kpis_by_module.get(module["id"], [])
             }
+            for module in modules
         ],
         "smart_notifications": {
-            "channels": ["in_app", "email", "push", "slack", "teams"],
+            "channels": channels,
             "engines": [
                 {
-                    "name": "Personal Alerts",
-                    "examples": [
-                        "לדן יש יום הולדת מחר",
-                        "חתימת חוזה ממתינה לאישור",
-                        "עובד חדש לא סיים טופס 101"
-                    ]
-                },
-                {
-                    "name": "Operational Alerts",
-                    "examples": [
-                        "ביטוח רכב מסתיים בעוד 7 ימים",
-                        "חוזה זמני עומד לפוג",
-                        "SLA משימת קליטה חרג מהיעד"
-                    ]
-                },
-                {
-                    "name": "Executive Alerts",
-                    "examples": [
-                        "עלייה חריגה בשיעור עזיבה במחלקת פיתוח",
-                        "פער מגדרי בשכר מעל סף מדיניות",
-                        "ירידה במדד שביעות רצון שבועי"
-                    ]
+                    "id": engine["id"],
+                    "name": engine["name"],
+                    "examples": examples_by_engine.get(engine["id"], [])
                 }
+                for engine in engines
             ],
-            "escalation_policy": {
-                "t_plus_24h": "תזכורת לבעל המשימה",
-                "t_plus_48h": "הסלמה למנהל ישיר",
-                "t_plus_72h": "הסלמה ל-HRBP/הנהלה"
-            }
+            "escalation_policy": escalation_policy
         },
-        "core_entities": [
-            "organizations", "user_roles", "employees", "employee_events",
-            "org_units", "positions", "job_titles", "job_grades",
-            "documents", "document_templates", "workflow_instances",
-            "tasks", "asset_items", "asset_assignments", "pulse_surveys",
-            "performance_reviews", "goals", "alerts", "audit_logs"
-        ],
-        "integration_targets": [
-            "Payroll (Hashavshevet, Michpal, Hilan)",
-            "Identity (Azure AD/Okta)",
-            "Communication (Slack/Teams)",
-            "Signature providers",
-            "BI warehouses (BigQuery/Snowflake)"
-        ]
+        "core_entities": core_entities,
+        "integration_targets": integration_targets
     }
+
+
+@router.get("")
+async def get_system_blueprint():
+    """Return the currently published blueprint payload."""
+    published = supabase_admin.table("system_blueprint_versions") \
+        .select("id, published_at") \
+        .eq("is_published", True) \
+        .order("published_at", desc=True) \
+        .limit(1).execute().data
+    if not published:
+        raise HTTPException(status_code=404, detail="No published blueprint version found")
+    return build_blueprint_payload(published[0]["id"])
+
+
+@router.get("/versions")
+async def get_system_blueprint_versions():
+    """Return all blueprint versions with summary fields."""
+    versions = supabase_admin.table("system_blueprint_versions") \
+        .select("id, version_key, product_name, is_published, published_at, last_updated, created_at, updated_at") \
+        .order("created_at", desc=True).execute().data
+    return versions

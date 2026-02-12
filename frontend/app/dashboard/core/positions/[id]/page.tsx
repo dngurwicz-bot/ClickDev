@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { PositionForm } from '@/components/core/PositionForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function EditPositionPage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
     const { id } = useParams()
     const [initialData, setInitialData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -36,9 +37,9 @@ export default function EditPositionPage() {
                 initialData={initialData}
                 onSuccess={() => {
                     toast.success('התקן עודכן בהצלחה')
-                    router.push('/dashboard/core/positions')
+                    goBackOrFallback('/dashboard/core/positions')
                 }}
-                onCancel={() => router.push('/dashboard/core/positions')}
+                onCancel={() => goBackOrFallback('/dashboard/core/positions')}
             />
         </div>
     )

@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, Bell, Menu, User, HelpCircle, Settings, Home, Star, LogOut, ShieldAlert, Building2, ChevronDown, Check, LayoutDashboard, Package, BarChart3, ArrowRight } from 'lucide-react'
+import { Search, Bell, Menu, User, HelpCircle, Settings, Home, Star, LogOut, ShieldAlert, Building2, ChevronDown, Check, LayoutDashboard, Package, BarChart3, ArrowRight, FileText } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -43,8 +43,10 @@ export default function TopNavigation() {
     const isActive = (path: string) => pathname === path
     const isAdminArea = pathname?.startsWith('/admin')
 
+    const userDisplayName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'משתמש'
+
     return (
-        <div className="h-14 bg-brand-dark text-white flex items-center justify-between px-4 shadow-md" dir="rtl">
+        <div className="h-14 bg-[#1f2d3a] text-white flex items-center justify-between px-4 shadow-md border-b border-white/10" dir="rtl">
             {/* Right Side: Logo & Menu Trigger */}
             <div className="flex items-center gap-4">
                 <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
@@ -61,7 +63,7 @@ export default function TopNavigation() {
                                 <button
                                     role="combobox"
                                     aria-expanded={openOrgSelector}
-                                    className="flex items-center justify-between gap-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-600/50 text-white text-sm font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-colors min-w-[200px]"
+                                    className="flex items-center justify-between gap-2 bg-[#2b3b4b] hover:bg-[#32485c] border border-white/20 text-white text-sm font-medium rounded-md px-3 py-1.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors min-w-[220px]"
                                 >
                                     <span className="truncate">{currentOrg?.name || "בחר ארגון..."}</span>
                                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -101,7 +103,7 @@ export default function TopNavigation() {
                         </Popover>
                     ) : (
                         <div className="flex items-center gap-2 text-white font-medium text-sm">
-                            <Building2 className="w-4 h-4 text-brand-teal" />
+                            <Building2 className="w-4 h-4 text-primary" />
                             <span>{currentOrg?.name || 'טוען...'}</span>
                         </div>
                     )}
@@ -118,10 +120,10 @@ export default function TopNavigation() {
                 <div className="relative group">
                     <input
                         type="text"
-                        placeholder="חיפוש לקוחות, מוצרים ועוד..."
-                        className="w-full bg-[#334155] border-transparent text-sm rounded-md py-1.5 pr-10 pl-4 text-slate-200 placeholder-slate-400 focus:bg-white focus:text-slate-900 focus:placeholder-slate-500 transition-all outline-none ring-0"
+                        placeholder="חיפוש עובדים, ארגונים ותפקידים..."
+                        className="w-full bg-[#2b3b4b] border border-white/20 text-sm rounded-md py-1.5 pr-10 pl-4 text-white placeholder-gray-300 focus:bg-[#32485c] focus:border-primary transition-all outline-none"
                     />
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-500" />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-white" />
                 </div>
             </div>
 
@@ -130,36 +132,38 @@ export default function TopNavigation() {
                 {isAdminArea ? (
                     <>
                         <Link href="/admin/dashboard">
-                            <NavButton icon={LayoutDashboard} label="דשבורד" active={isActive('/admin/dashboard')} />
+                            <NavButton icon={LayoutDashboard} label="דשבורד" active={isActive('/admin/dashboard')} showLabel />
                         </Link>
                         <Link href="/admin/organizations">
-                            <NavButton icon={Building2} label="ארגונים" active={isActive('/admin/organizations')} />
+                            <NavButton icon={Building2} label="ארגונים" active={isActive('/admin/organizations')} showLabel />
                         </Link>
                         <Link href="/admin/subscription-tiers">
-                            <NavButton icon={Package} label="סוגי מנויים" active={isActive('/admin/subscription-tiers')} />
+                            <NavButton icon={Package} label="מנויים" active={isActive('/admin/subscription-tiers')} showLabel />
                         </Link>
                         <Link href="/admin/announcements">
-                            <NavButton icon={Bell} label="הודעות" active={isActive('/admin/announcements')} />
+                            <NavButton icon={Bell} label="הודעות" active={isActive('/admin/announcements')} showLabel />
                         </Link>
                         <Link href="/admin/analytics">
-                            <NavButton icon={BarChart3} label="אנליטיקס" active={isActive('/admin/analytics')} />
+                            <NavButton icon={BarChart3} label="אנליטיקס" active={isActive('/admin/analytics')} showLabel />
+                        </Link>
+                        <Link href="/admin/system-blueprint">
+                            <NavButton icon={FileText} label="Blueprint" active={isActive('/admin/system-blueprint')} showLabel />
                         </Link>
                         <Link href="/admin/settings">
-                            <NavButton icon={Settings} label="הגדרות" active={isActive('/admin/settings')} />
+                            <NavButton icon={Settings} label="הגדרות" active={isActive('/admin/settings')} showLabel />
                         </Link>
 
                         <div className="h-6 w-px bg-slate-700 mx-2" />
 
                         <Link href="/dashboard">
-                            <NavButton icon={ArrowRight} label="חזרה למערכת" />
+                            <NavButton icon={ArrowRight} label="חזרה למערכת" showLabel />
                         </Link>
                     </>
                 ) : (
                     <>
-                        {/* Admin Link - Debug: forcing visible if check fails, or adding log */}
-                        {(isAdmin || true) && ( // DEBUG: Forced true for visibility as requested by user complaining it's missing
+                        {isAdmin && (
                             <Link href="/admin/dashboard">
-                                <NavButton icon={ShieldAlert} label="סופר אדמין" active={isActive('/admin/dashboard')} />
+                                <NavButton icon={ShieldAlert} label="ניהול מערכת" active={isActive('/admin/dashboard')} />
                             </Link>
                         )}
 
@@ -169,8 +173,12 @@ export default function TopNavigation() {
                             <NavButton icon={Home} label="בית" active={isActive('/dashboard')} />
                         </Link>
 
-                        <Link href="/dashboard/settings">
-                            <NavButton icon={Settings} label="הגדרות" active={isActive('/dashboard/settings')} />
+                        <Link href="/dashboard/profile">
+                            <NavButton icon={Settings} label="פרופיל" active={isActive('/dashboard/profile')} />
+                        </Link>
+
+                        <Link href="/system-blueprint">
+                            <NavButton icon={FileText} label="Blueprint" active={isActive('/system-blueprint')} />
                         </Link>
 
                         <div className="h-6 w-px bg-slate-700 mx-2" />
@@ -180,17 +188,36 @@ export default function TopNavigation() {
                     </>
                 )}
 
-                {/* Profile Dropdown */}
-                <div className="relative">
+                {/* User Area */}
+                <div className="h-6 w-px bg-white/20 mx-2" />
+                <div className="hidden lg:flex items-center gap-2 px-2 py-1 rounded-md bg-secondary-light/60 border border-white/10">
+                    <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center text-xs font-medium uppercase text-white">
+                        {user?.email?.[0] || 'U'}
+                    </div>
+                    <div className="flex flex-col leading-tight">
+                        <span className="text-xs text-gray-200">משתמש מחובר</span>
+                        <span className="text-sm font-semibold text-white max-w-[140px] truncate">{userDisplayName}</span>
+                    </div>
+                    <button
+                        onClick={handleSignOut}
+                        className="mr-2 inline-flex items-center gap-1 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-200 px-2 py-1 text-xs font-medium transition-colors"
+                    >
+                        <LogOut className="w-3.5 h-3.5" />
+                        התנתקות
+                    </button>
+                </div>
+
+                {/* Profile Dropdown (mobile / compact) */}
+                <div className="relative lg:hidden">
                     <button
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
                         className="flex items-center gap-2 mr-2 cursor-pointer hover:bg-slate-700/50 p-1.5 rounded-lg transition-colors border border-transparent focus:border-slate-600 outline-none"
                     >
-                        <div className="w-7 h-7 bg-brand-teal rounded-full flex items-center justify-center text-xs font-medium uppercase">
+                        <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center text-xs font-medium uppercase">
                             {user?.email?.[0] || 'U'}
                         </div>
                         <span className="text-sm font-medium hidden sm:block max-w-[100px] truncate">
-                            {user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'}
+                            {userDisplayName}
                         </span>
                     </button>
 
@@ -221,16 +248,17 @@ export default function TopNavigation() {
     )
 }
 
-function NavButton({ icon: Icon, label, active, badge, onClick }: { icon: any, label: string, active?: boolean, badge?: string, onClick?: () => void }) {
+function NavButton({ icon: Icon, label, active, badge, onClick, showLabel }: { icon: any, label: string, active?: boolean, badge?: string, onClick?: () => void, showLabel?: boolean }) {
     return (
         <button
             onClick={onClick}
-            className={`p-2 rounded-lg transition-colors relative group ${active ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            className={`p-2 rounded-lg transition-colors relative group inline-flex items-center gap-1.5 ${active ? 'bg-[#32485c] text-white' : 'text-gray-200 hover:text-white hover:bg-[#2b3b4b]'}`}
         >
             <Icon className="w-5 h-5" />
+            {showLabel && <span className="hidden md:inline text-xs font-medium">{label}</span>}
             <span className="sr-only">{label}</span>
             {badge && badge !== "0" && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-brand-teal rounded-full border border-brand-dark" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full border border-secondary" />
             )}
 
             {/* Tooltip */}

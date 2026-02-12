@@ -57,3 +57,4 @@ export default function Logo({ size = 'md', showDngHub = true, className = '', v
     </div>
   )
 }
+

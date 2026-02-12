@@ -1,4 +1,6 @@
 export interface BlueprintMeta {
+  id: string
+  version_key: string
   product_name: string
   version: string
   language: string
@@ -6,10 +8,15 @@ export interface BlueprintMeta {
   last_updated: string
   positioning: string
   target_companies: string[]
+  is_published: boolean
+  published_at: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface BlueprintModule {
   id: string
+  row_id?: string
   order: number
   name: string
   category: string
@@ -20,6 +27,7 @@ export interface BlueprintModule {
 }
 
 export interface BlueprintPhase {
+  id?: string
   phase: number
   name: string
   duration_weeks: number
@@ -27,8 +35,20 @@ export interface BlueprintPhase {
 }
 
 export interface BlueprintAlertEngine {
+  id?: string
   name: string
   examples: string[]
+}
+
+export interface BlueprintVersionSummary {
+  id: string
+  version_key: string
+  product_name: string
+  is_published: boolean
+  published_at: string | null
+  last_updated: string
+  created_at: string
+  updated_at: string
 }
 
 export interface BlueprintPayload {

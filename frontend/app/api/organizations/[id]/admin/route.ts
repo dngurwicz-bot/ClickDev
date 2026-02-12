@@ -11,12 +11,10 @@ function getSupabase() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Handle both Next.js 15 (Promise) and older versions
-    const resolvedParams = params instanceof Promise ? await params : params
-    const orgId = resolvedParams.id
+    const { id: orgId } = await params
 
     // Find admin user role
     const { data: userRole, error: roleError } = await getSupabase()

@@ -1,16 +1,17 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { Save, Printer, Paperclip, MoreHorizontal, ChevronDown, Check, X, Trash2, Search, LayoutGrid } from 'lucide-react'
+import React, { useEffect } from 'react'
+import { Printer, Paperclip, X, Trash2, Search, LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useScreenExit } from '@/lib/screen-lifecycle/useScreenExit'
 
 interface PriorityRecordLayoutProps {
     title: string
     subtitle?: string
     id?: string
     status?: string
-    onSave?: () => void
+    onSave?: () => Promise<void> | void
     onPrint?: () => void
     onCancel?: () => void
     onDelete?: () => void
@@ -20,68 +21,62 @@ interface PriorityRecordLayoutProps {
     children: React.ReactNode
     isDirty?: boolean
     suppressEnterSave?: boolean
+    fallbackRoute?: string
+    onRequestExit?: () => void
+    onDiscard?: () => void
 }
 
-export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPrint, onCancel, onDelete, onSearch, onToggleView, actions, children, isDirty, suppressEnterSave }: PriorityRecordLayoutProps) {
-    const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+export function PriorityRecordLayout({
+    title,
+    subtitle,
+    id,
+    status,
+    onSave,
+    onPrint,
+    onCancel,
+    onDelete,
+    onSearch,
+    onToggleView,
+    actions,
+    children,
+    isDirty,
+    suppressEnterSave: _suppressEnterSave,
+    fallbackRoute = '/dashboard',
+    onRequestExit,
+    onDiscard,
+}: PriorityRecordLayoutProps) {
+    const {
+        isConfirmOpen,
+        requestExit,
+        handleConfirmSave,
+        handleConfirmDiscard,
+        handleConfirmCancel,
+    } = useScreenExit({
+        isDirty,
+        save: async () => {
+            await onSave?.()
+        },
+        onDiscard,
+        onExit: onCancel,
+        fallbackRoute,
+        enableEscape: false,
+    })
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Don't handle if ConfirmDialog is open (it handles its own keys)
-            if (showConfirmDialog) return
-
             // Don't handle if a modal is open (modal handles its own ESC)
-            if (document.querySelector('.fixed.inset-0.z-50')) return
-
-            // --- ENTER: trigger save ---
-            if (e.key === 'Enter') {
-                if (suppressEnterSave) return
-
-                const target = e.target as HTMLElement
-                const tagName = target.tagName.toLowerCase()
-
-                // Skip if inside textarea, contenteditable, select, or listbox
-                if (tagName === 'textarea' ||
-                    target.isContentEditable ||
-                    tagName === 'select' ||
-                    target.closest('[role="listbox"]') ||
-                    target.closest('[role="dialog"]') ||
-                    target.closest('.tiptap')) {
-                    return
-                }
-
-                e.preventDefault()
-                onSave?.()
-            }
+            if (document.querySelector('.fixed.inset-0.z-50') || document.querySelector('.fixed.inset-0.z-\\[60\\]')) return
 
             // --- ESC: close/cancel ---
             if (e.key === 'Escape') {
                 e.preventDefault()
-                if (isDirty) {
-                    setShowConfirmDialog(true)
-                } else {
-                    onCancel?.()
-                }
+                ;(onRequestExit ?? requestExit)()
             }
         }
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [onSave, onCancel, isDirty, suppressEnterSave, showConfirmDialog])
-
-    const handleConfirmSave = useCallback(() => {
-        setShowConfirmDialog(false)
-        onSave?.()
-    }, [onSave])
-
-    const handleConfirmDiscard = useCallback(() => {
-        setShowConfirmDialog(false)
-        onCancel?.()
-    }, [onCancel])
-
-    const handleConfirmCancel = useCallback(() => {
-        setShowConfirmDialog(false)
-    }, [])
+    }, [onRequestExit, requestExit])
 
     return (
         <div className="bg-bg-main min-h-full flex flex-col font-sans" dir="rtl">
@@ -139,11 +134,6 @@ export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPr
 
                     {actions}
 
-                    <button onClick={onSave} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group" title="שמור (Enter)">
-                        <Save className="w-4 h-4 text-gray-300 group-hover:text-white" />
-                        <span className="text-xs font-medium text-gray-300 group-hover:text-white hidden xl:block">שמור</span>
-                    </button>
-
                     <button onClick={onToggleView} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded transition-colors group" title="תצוגת טבלה (F2)">
                         <LayoutGrid className="w-4 h-4 text-gray-300 group-hover:text-white" />
                         <span className="text-xs font-medium text-gray-300 group-hover:text-white hidden xl:block">תצוגה</span>
@@ -161,7 +151,7 @@ export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPr
 
                     <div className="w-px h-5 bg-white/10 mx-1"></div>
 
-                    <button onClick={onCancel} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 hover:bg-red-500/10 rounded transition-colors group" title="בטל (ESC)">
+                    <button onClick={onRequestExit ?? requestExit} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 hover:bg-red-500/10 rounded transition-colors group" title="בטל (ESC)">
                         <X className="w-4 h-4 text-gray-300 group-hover:text-red-400" />
                         <span className="text-xs font-medium text-gray-300 group-hover:text-red-400 hidden xl:block">בטל</span>
                     </button>
@@ -180,7 +170,7 @@ export function PriorityRecordLayout({ title, subtitle, id, status, onSave, onPr
 
             {/* Unsaved Changes Confirmation Dialog */}
             <ConfirmDialog
-                isOpen={showConfirmDialog}
+                isOpen={isConfirmOpen}
                 onConfirm={handleConfirmSave}
                 onDiscard={handleConfirmDiscard}
                 onCancel={handleConfirmCancel}

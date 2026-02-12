@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, Suspense, useCallback } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import EmployeeDetails, { Employee } from '@/components/employees/EmployeeDetails'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
 import { useViewMode } from '@/context/ViewModeContext'
 import { PriorityScreenToolbar } from '@/components/core/PriorityScreenToolbar'
 import { PriorityTableView, TableColumn } from '@/components/core/PriorityTableView'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export interface NewEmployeeData {
     employeeNumber: string
@@ -57,9 +58,9 @@ export default function EmployeeFilePageWrapper() {
 
 function EmployeeFilePage() {
     const searchParams = useSearchParams()
-    const router = useRouter()
     const { currentOrg } = useOrganization()
     const { viewMode, setViewMode: setGlobalViewMode } = useViewMode()
+    const { goBackOrFallback } = useNavigationStack()
     const [employees, setEmployees] = useState<Employee[]>([])
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
     const [isNew, setIsNew] = useState(false)
@@ -71,7 +72,12 @@ function EmployeeFilePage() {
         if (searchParams.get('new') === 'true') {
             setIsNew(true)
             setGlobalViewMode('form')
+            return
         }
+
+        // Always open "All Employees" route in table mode.
+        setIsNew(false)
+        setGlobalViewMode('table')
     }, [searchParams, setGlobalViewMode])
 
     // Fetch employees
@@ -84,6 +90,8 @@ function EmployeeFilePage() {
                 .from('employees')
                 .select('*')
                 .eq('organization_id', currentOrg.id)
+                .eq('is_active', true)
+                .is('deleted_at', null)
                 .limit(50)
 
             if (error) throw error
@@ -130,6 +138,8 @@ function EmployeeFilePage() {
                 .from('employees')
                 .select('*')
                 .eq('organization_id', currentOrg.id)
+                .eq('is_active', true)
+                .is('deleted_at', null)
 
             if (criteria.employeeId?.trim()) query = query.ilike('employee_number', `%${criteria.employeeId.trim()}%`)
             if (criteria.idNumber?.trim()) query = query.ilike('id_number', `%${criteria.idNumber.trim()}%`)
@@ -371,7 +381,7 @@ function EmployeeFilePage() {
             <PriorityScreenToolbar
                 title="כרטיס עובד"
                 tabs={SCREEN_TABS}
-                onClose={() => router.push('/dashboard/core')}
+                onRequestExit={() => goBackOrFallback('/dashboard/core')}
                 onAddNew={handleAddEmployee}
                 onRefresh={() => fetchEmployees()}
                 showViewToggle={true}

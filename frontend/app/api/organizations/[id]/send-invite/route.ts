@@ -11,13 +11,11 @@ function getSupabase() {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { email } = await request.json()
-    // Handle both Next.js 15 (Promise) and older versions
-    const resolvedParams = params instanceof Promise ? await params : params
-    const orgId = resolvedParams.id
+    const { id: orgId } = await params
 
     if (!email) {
       return NextResponse.json(

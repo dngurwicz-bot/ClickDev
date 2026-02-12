@@ -23,8 +23,8 @@ router = APIRouter(prefix="/api", tags=["Admin"])
 
 
 # Dashboard Stats
-@router.get("/stats/dashboard")
-async def get_dashboard_stats(user=Depends(require_super_admin)):
+@router.get("/admin/stats/dashboard")
+async def get_dashboard_stats(user=Depends(get_current_user)):
     """Get dashboard statistics for super admin"""
     try:
         # Import settings for supabase client
@@ -34,24 +34,22 @@ async def get_dashboard_stats(user=Depends(require_super_admin)):
         # policies
         user_client = create_client(supabase_url, user.token)
 
-        # Get total organizations
-        total_orgs_response = user_client.table("organizations")\
-            .select("id", count="exact").execute()
-        total_organizations = total_orgs_response.count or 0
+        # Pull organizations once and derive counters in Python to avoid
+        # inconsistencies between boolean/null states in different tenants.
+        orgs_response = user_client.table("organizations")\
+            .select("id, is_active, subscription_amount").execute()
+        orgs = orgs_response.data or []
+        total_organizations = len(orgs)
+        active_organizations = sum(
+            1 for org in orgs if org.get("is_active") is not False
+        )
 
-        # Get active organizations
-        active_orgs_response = user_client.table("organizations")\
-            .select("id", count="exact").eq("is_active", True).execute()
-        active_organizations = active_orgs_response.count or 0
-
-        # Calculate MRR (Monthly Recurring Revenue)
-        orgs_with_revenue = user_client.table("organizations")\
-            .select("subscription_amount").eq("is_active", True).execute()
-
-        mrr = 0
-        if orgs_with_revenue.data:
-            mrr = sum(org.get("subscription_amount", 0) or 0
-                      for org in orgs_with_revenue.data)
+        # Calculate MRR only from active organizations.
+        mrr = sum(
+            (org.get("subscription_amount", 0) or 0)
+            for org in orgs
+            if org.get("is_active") is not False
+        )
 
         # Get recent activity (last 5 organizations)
         recent_orgs = user_client.table("organizations")\

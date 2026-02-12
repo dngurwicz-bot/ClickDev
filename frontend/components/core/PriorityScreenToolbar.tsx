@@ -3,21 +3,12 @@
 import React, { useEffect } from 'react'
 import {
     X,
-    HelpCircle,
-    Settings,
+    Search,
     Table,
     Columns3,
-    Star,
-    BookmarkPlus,
-    Printer,
-    Clipboard,
-    BarChart3,
-    Bot,
-    ChevronDown,
-    Filter,
     Plus,
     RotateCcw,
-    MessageSquare,
+    Command,
 } from 'lucide-react'
 import { useViewMode } from '@/context/ViewModeContext'
 import { cn } from '@/lib/utils'
@@ -34,6 +25,7 @@ interface PriorityScreenToolbarProps {
     activeTab?: string
     onTabChange?: (tabId: string) => void
     onClose?: () => void
+    onRequestExit?: () => void
     onAddNew?: () => void
     onRefresh?: () => void
     showViewToggle?: boolean
@@ -45,13 +37,15 @@ export function PriorityScreenToolbar({
     activeTab,
     onTabChange,
     onClose,
+    onRequestExit,
     onAddNew,
     onRefresh,
     showViewToggle = true,
 }: PriorityScreenToolbarProps) {
     const { viewMode, toggleViewMode } = useViewMode()
+    const handleExit = onRequestExit ?? onClose
 
-    // ESC key closes the screen
+    // ESC key requests screen exit
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -60,146 +54,79 @@ export function PriorityScreenToolbar({
                     document.querySelector('.fixed.inset-0.z-\\[60\\]')) return
 
                 e.preventDefault()
-                onClose?.()
+                handleExit?.()
             }
         }
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [onClose])
+    }, [handleExit])
 
     return (
-        <div className="flex flex-col bg-white border-b border-[#BDC3C7] shrink-0" dir="rtl">
-            {/* Top row: title + action icons */}
-            <div className="flex items-center justify-between h-9 px-2 border-b border-[#E8EAEB]">
-                {/* Right side: close, help, settings */}
-                <div className="flex items-center gap-0.5">
+        <div className="flex flex-col bg-white border-b border-slate-200 shrink-0" dir="rtl">
+            <div className="flex items-center justify-between h-10 px-3 border-b border-slate-100 bg-gradient-to-l from-[#F8FAFC] to-white">
+                <div className="flex items-center gap-2">
                     <button
-                        onClick={onClose}
-                        className="p-1 hover:bg-[#E8EAEB] rounded transition-colors"
+                        onClick={handleExit}
+                        className="p-1.5 hover:bg-slate-100 rounded transition-colors"
                         title="סגור"
                     >
-                        <X className="w-4 h-4 text-[#7F8C8D]" />
+                        <X className="w-4 h-4 text-slate-500" />
                     </button>
-                    <button className="p-1 hover:bg-[#E8EAEB] rounded transition-colors" title="עזרה">
-                        <HelpCircle className="w-4 h-4 text-[#7F8C8D]" />
-                    </button>
-                    <button className="p-1 hover:bg-[#E8EAEB] rounded transition-colors" title="הגדרות">
-                        <Settings className="w-4 h-4 text-[#7F8C8D]" />
-                    </button>
-
-                    {/* View Toggle Buttons */}
-                    {showViewToggle && (
-                        <>
-                            <div className="w-px h-4 bg-[#D5DBDB] mx-1" />
-                            <button
-                                onClick={() => toggleViewMode()}
-                                className={cn(
-                                    "p-1 rounded transition-colors",
-                                    viewMode === 'table'
-                                        ? "bg-[#2980B9] text-white"
-                                        : "hover:bg-[#E8EAEB] text-[#7F8C8D]"
-                                )}
-                                title="תצוגת טבלה (F2)"
-                            >
-                                <Table className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => toggleViewMode()}
-                                className={cn(
-                                    "p-1 rounded transition-colors",
-                                    viewMode === 'form'
-                                        ? "bg-[#2980B9] text-white"
-                                        : "hover:bg-[#E8EAEB] text-[#7F8C8D]"
-                                )}
-                                title="תצוגת טופס (F2)"
-                            >
-                                <Columns3 className="w-4 h-4" />
-                            </button>
-                        </>
-                    )}
-
-                    <div className="w-px h-4 bg-[#D5DBDB] mx-1" />
-
-                    {/* Bookmarks, print, etc. */}
-                    <button className="p-1 hover:bg-[#E8EAEB] rounded transition-colors" title="מועדפים">
-                        <Star className="w-4 h-4 text-[#7F8C8D]" />
-                    </button>
-                    <button className="p-1 hover:bg-[#E8EAEB] rounded transition-colors" title="חיפושים שמורים">
-                        <BookmarkPlus className="w-4 h-4 text-[#7F8C8D]" />
-                    </button>
-
-                    <div className="w-px h-4 bg-[#D5DBDB] mx-1" />
-
-                    <button className="p-1 hover:bg-[#E8EAEB] rounded transition-colors" title="הדפסת מדבקות">
-                        <Printer className="w-4 h-4 text-[#7F8C8D]" />
-                    </button>
-                    <button className="p-1 hover:bg-[#E8EAEB] rounded transition-colors" title="העתק">
-                        <Clipboard className="w-4 h-4 text-[#7F8C8D]" />
-                    </button>
-                    <button className="p-1 hover:bg-[#E8EAEB] rounded transition-colors" title="דוחות">
-                        <BarChart3 className="w-4 h-4 text-[#7F8C8D]" />
-                    </button>
-
-                    <div className="w-px h-4 bg-[#D5DBDB] mx-1" />
-
-                    {/* Automations */}
-                    <button className="flex items-center gap-1 px-2 py-0.5 hover:bg-[#E8EAEB] rounded transition-colors text-[#7F8C8D]">
-                        <Bot className="w-4 h-4" />
-                        <span className="text-[11px]">אוטומציות</span>
-                        <ChevronDown className="w-3 h-3" />
-                    </button>
-
-                    <div className="w-px h-4 bg-[#D5DBDB] mx-1" />
-
-                    {/* Saved searches */}
-                    <button className="flex items-center gap-1 px-2 py-0.5 hover:bg-[#E8EAEB] rounded transition-colors text-[#7F8C8D]">
-                        <Filter className="w-4 h-4" />
-                        <span className="text-[11px]">חיפושים שמורים</span>
-                        <ChevronDown className="w-3 h-3" />
-                    </button>
+                    <div className="h-5 w-px bg-slate-200" />
+                    <span className="text-sm font-semibold text-slate-800">{title}</span>
+                    <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">CLICK Flow</span>
                 </div>
 
-                {/* Left side: Title */}
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[#2C3E50]">{title}</span>
+                <div className="flex items-center gap-1">
+                    <div className="hidden md:flex items-center gap-1.5 px-2 py-1 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded">
+                        <Command className="w-3.5 h-3.5" />
+                        <span>F2 החלפת תצוגה</span>
+                    </div>
+                    {showViewToggle && (
+                        <button
+                            onClick={() => toggleViewMode()}
+                            className={cn(
+                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border transition-colors",
+                                viewMode === 'table'
+                                    ? "border-sky-200 bg-sky-50 text-sky-700"
+                                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            )}
+                            title="החלפת תצוגה (F2)"
+                        >
+                            {viewMode === 'table' ? <Table className="w-3.5 h-3.5" /> : <Columns3 className="w-3.5 h-3.5" />}
+                            <span>{viewMode === 'table' ? 'טבלה' : 'טופס'}</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* Second row: Tabs + New button */}
-            <div className="flex items-center justify-between h-9 px-2">
-                {/* Right side: Quick action tabs */}
+            <div className="flex items-center justify-between h-11 px-3 bg-white">
                 <div className="flex items-center gap-1">
-                    {/* New button */}
                     <button
                         onClick={onAddNew}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-[#2980B9] text-white rounded text-xs font-bold hover:bg-[#2471A3] transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-md text-xs font-semibold hover:bg-emerald-700 transition-colors"
                     >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>חדש</span>
+                        <span>עובד חדש</span>
                     </button>
-
-                    {/* Refresh */}
                     <button
                         onClick={onRefresh}
-                        className="p-1 hover:bg-[#E8EAEB] rounded transition-colors"
+                        className="p-1.5 hover:bg-slate-100 rounded transition-colors"
                         title="רענן"
                     >
-                        <RotateCcw className="w-3.5 h-3.5 text-[#7F8C8D]" />
+                        <RotateCcw className="w-4 h-4 text-slate-500" />
                     </button>
-
-                    <div className="w-px h-4 bg-[#D5DBDB] mx-1" />
-
-                    {/* Custom tabs */}
+                    <div className="h-5 w-px bg-slate-200 mx-1" />
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => onTabChange?.(tab.id)}
                             className={cn(
-                                "flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors",
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
                                 activeTab === tab.id
-                                    ? "bg-[#2980B9] text-white"
-                                    : "text-[#2C3E50] hover:bg-[#E8EAEB]"
+                                    ? "bg-slate-800 text-white"
+                                    : "text-slate-700 hover:bg-slate-100"
                             )}
                         >
                             {tab.icon}
@@ -208,11 +135,9 @@ export function PriorityScreenToolbar({
                     ))}
                 </div>
 
-                {/* Left side: Chat/AI */}
-                <div className="flex items-center gap-1">
-                    <button className="p-1 hover:bg-[#E8EAEB] rounded transition-colors" title="צ'אט">
-                        <MessageSquare className="w-4 h-4 text-[#7F8C8D]" />
-                    </button>
+                <div className="hidden lg:flex items-center gap-2 text-xs text-slate-600">
+                    <Search className="w-3.5 h-3.5" />
+                    <span>חיפוש מהיר לפי מס עובד / ת.ז מתוך שורת הסינון בטבלה</span>
                 </div>
             </div>
         </div>

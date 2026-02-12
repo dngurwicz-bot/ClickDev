@@ -1,11 +1,11 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function NewTeamPage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
 
     return (
         <div className="h-full flex flex-col">
@@ -14,9 +14,9 @@ export default function NewTeamPage() {
                 forcedType="Team"
                 onSuccess={() => {
                     toast.success('הצוות נוסף בהצלחה')
-                    router.push('/dashboard/core/teams')
+                    goBackOrFallback('/dashboard/core/teams')
                 }}
-                onCancel={() => router.push('/dashboard/core/teams')}
+                onCancel={() => goBackOrFallback('/dashboard/core/teams')}
             />
         </div>
     )

@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function EditTeamPage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
     const { id } = useParams()
     const [initialData, setInitialData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -38,9 +39,9 @@ export default function EditTeamPage() {
                 forcedType="Team"
                 onSuccess={() => {
                     toast.success('הצוות עודכן בהצלחה')
-                    router.push('/dashboard/core/teams')
+                    goBackOrFallback('/dashboard/core/teams')
                 }}
-                onCancel={() => router.push('/dashboard/core/teams')}
+                onCancel={() => goBackOrFallback('/dashboard/core/teams')}
             />
         </div>
     )

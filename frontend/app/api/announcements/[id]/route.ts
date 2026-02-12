@@ -1,40 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-function getSupabase() {
-    return createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-}
+const BACKEND_API_BASE = process.env.BACKEND_API_URL || 'http://127.0.0.1:8000'
 
 // PUT - Update announcement
 export async function PUT(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> | { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const resolvedParams = params instanceof Promise ? await params : params
-        const id = resolvedParams.id
-        const body = await request.json()
+        const { id } = await params
+        const body = await request.text()
+        const response = await fetch(`${BACKEND_API_BASE}/api/announcements/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: request.headers.get('Authorization') || '',
+            },
+            body,
+        })
 
-        const { data, error } = await getSupabase()
-            .from('announcements')
-            .update(body)
-            .eq('id', id)
-            .select()
-            .single()
-
-        if (error) {
-            console.error('Error updating announcement:', error)
-            return NextResponse.json(
-                { error: error.message },
-                { status: 500 }
-            )
-        }
-
-        return NextResponse.json(data)
+        const data = await response.json()
+        return NextResponse.json(data, { status: response.status })
     } catch (error: any) {
         console.error('Error in PUT /api/announcements/[id]:', error)
         return NextResponse.json(
@@ -47,26 +32,19 @@ export async function PUT(
 // DELETE - Delete announcement
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> | { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const resolvedParams = params instanceof Promise ? await params : params
-        const id = resolvedParams.id
+        const { id } = await params
+        const response = await fetch(`${BACKEND_API_BASE}/api/announcements/${id}`, {
+            method: 'DELETE',
+            headers: {
+                Authorization: request.headers.get('Authorization') || '',
+            },
+        })
 
-        const { error } = await getSupabase()
-            .from('announcements')
-            .delete()
-            .eq('id', id)
-
-        if (error) {
-            console.error('Error deleting announcement:', error)
-            return NextResponse.json(
-                { error: error.message },
-                { status: 500 }
-            )
-        }
-
-        return NextResponse.json({ success: true })
+        const data = await response.json()
+        return NextResponse.json(data, { status: response.status })
     } catch (error: any) {
         console.error('Error in DELETE /api/announcements/[id]:', error)
         return NextResponse.json(

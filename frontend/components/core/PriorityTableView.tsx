@@ -41,16 +41,26 @@ export function PriorityTableView<T extends { id: string | number }>({
 }: PriorityTableViewProps<T>) {
     return (
         <div className="flex flex-col h-full bg-white font-sans" dir="rtl">
+            <div className="shrink-0 px-3 py-2 bg-slate-50 border-b border-slate-200">
+                <div className="flex items-center justify-between">
+                    <p className="text-xs text-slate-600">
+                        תצוגת רשימה דינמית: סנן בכל עמודה כדי להתמקד מהר.
+                    </p>
+                    <span className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                        {data.length} רשומות
+                    </span>
+                </div>
+            </div>
             {/* Column Headers */}
-            <div className="overflow-x-auto shrink-0 border-b border-[#BDC3C7]">
+            <div className="overflow-x-auto shrink-0 border-b border-slate-300">
                 <table className="w-full border-collapse min-w-max">
                     <thead>
-                        <tr className="bg-[#F0F3F4] border-b border-[#BDC3C7]">
+                        <tr className="bg-slate-100 border-b border-slate-300">
                             {columns.map((col, idx) => (
                                 <th
                                     key={col.key}
                                     className={cn(
-                                        "px-3 py-2 text-right text-[11px] font-bold text-[#2C3E50] border-l border-[#D5DBDB] whitespace-nowrap select-none",
+                                        "px-3 py-2 text-right text-[11px] font-bold text-slate-700 border-l border-slate-300 whitespace-nowrap select-none",
                                         idx === columns.length - 1 && "border-l-0"
                                     )}
                                     style={{ width: col.width, minWidth: col.width || '120px' }}
@@ -63,18 +73,19 @@ export function PriorityTableView<T extends { id: string | number }>({
                             ))}
                         </tr>
                         {/* Filter Row */}
-                        <tr className="bg-white border-b border-[#D5DBDB]">
+                        <tr className="bg-white border-b border-slate-200">
                             {columns.map((col, idx) => (
                                 <td
                                     key={`filter-${col.key}`}
                                     className={cn(
-                                        "px-1 py-0.5 border-l border-[#E8EAEB]",
+                                        "px-1 py-1 border-l border-slate-100",
                                         idx === columns.length - 1 && "border-l-0"
                                     )}
                                 >
                                     <input
                                         type="text"
-                                        className="w-full h-6 px-1 text-xs border border-[#D5DBDB] bg-white focus:border-[#2980B9] focus:outline-none"
+                                        placeholder="סינון..."
+                                        className="w-full h-7 px-2 text-xs border border-slate-200 bg-slate-50 rounded-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
                                         value={filterRow?.[col.key] || ''}
                                         onChange={(e) => onFilterChange?.(col.key, e.target.value)}
                                     />
@@ -89,51 +100,40 @@ export function PriorityTableView<T extends { id: string | number }>({
             <div className="flex-1 overflow-auto">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
-                        <div className="text-center text-[#7F8C8D]">
-                            <div className="animate-spin w-8 h-8 border-2 border-[#2980B9] border-t-transparent rounded-full mx-auto mb-3" />
+                        <div className="text-center text-slate-500">
+                            <div className="animate-spin w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full mx-auto mb-3" />
                             <span className="text-sm">טוען נתונים...</span>
                         </div>
                     </div>
                 ) : data.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
-                        <div className="text-center max-w-md">
-                            {/* Empty state illustration */}
-                            <div className="w-32 h-32 mx-auto mb-6 relative">
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-20 h-24 bg-[#E8EAEB] rounded-sm relative">
-                                        <div className="absolute top-2 right-2 left-2 space-y-1.5">
-                                            <div className="h-1 bg-[#BDC3C7] rounded-full w-3/4" />
-                                            <div className="h-1 bg-[#BDC3C7] rounded-full w-full" />
-                                            <div className="h-1 bg-[#BDC3C7] rounded-full w-1/2" />
-                                        </div>
-                                    </div>
-                                    <div className="absolute -bottom-1 -right-1">
-                                        <div className="w-10 h-10 bg-[#7C3AED] rounded-full flex items-center justify-center shadow-md">
-                                            <Plus className="w-5 h-5 text-white" />
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="text-center max-w-lg bg-slate-50 border border-slate-200 rounded-xl p-8">
+                            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                <Search className="w-5 h-5" />
                             </div>
-                            <h3 className="text-xl font-bold text-[#2C3E50] mb-3">{emptyMessage}</h3>
-                            <p className="text-sm text-[#7F8C8D] mb-2">{emptySubMessage}</p>
-                            <p className="text-sm text-[#7F8C8D] mb-4">להוספת נתונים חדשים אפשר להשתמש בכפתור חדש.</p>
+                            <h3 className="text-xl font-bold text-slate-800 mb-3">{emptyMessage}</h3>
+                            <p className="text-sm text-slate-600 mb-2">{emptySubMessage}</p>
+                            <p className="text-sm text-slate-600 mb-6">אפשר להתחיל מסינון, או להוסיף עובד חדש.</p>
 
-                            {onAddNew && (
-                                <button
-                                    onClick={onAddNew}
-                                    className="inline-flex items-center gap-2 px-5 py-2 bg-white border-2 border-[#7C3AED] text-[#7C3AED] rounded-full font-bold text-sm hover:bg-[#7C3AED] hover:text-white transition-colors"
-                                >
-                                    <span>חדש</span>
-                                    <Plus className="w-4 h-4" />
-                                </button>
-                            )}
+                            <div className="flex items-center justify-center gap-3">
+                                {onAddNew && (
+                                    <button
+                                        onClick={onAddNew}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md font-semibold text-sm hover:bg-emerald-700 transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        <span>הוספת עובד</span>
+                                    </button>
+                                )}
 
-                            <div className="mt-4">
-                                <p className="text-sm text-[#7F8C8D] mb-2">אפשר לחפש גם בעזרת AI.</p>
-                                <button className="inline-flex items-center gap-2 px-4 py-1.5 bg-white border border-[#D5DBDB] rounded-full text-sm text-[#7F8C8D] hover:border-[#2980B9] hover:text-[#2980B9] transition-colors">
+                                <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-600 hover:border-emerald-500 hover:text-emerald-700 transition-colors">
                                     <Search className="w-3.5 h-3.5" />
-                                    <span>חיפוש עם aiERP</span>
+                                    <span>חיפוש חכם</span>
                                 </button>
+                            </div>
+
+                            <div className="mt-5 text-xs text-slate-500">
+                                טיפ: הקלד חלק ממספר עובד/ת.ז בשורת הסינון העליונה.
                             </div>
                         </div>
                     </div>
@@ -146,19 +146,19 @@ export function PriorityTableView<T extends { id: string | number }>({
                                     onClick={() => onRowClick?.(row)}
                                     onDoubleClick={() => onRowDoubleClick?.(row)}
                                     className={cn(
-                                        "cursor-pointer transition-colors border-b border-[#F0F3F4] h-8",
+                                        "cursor-pointer transition-colors border-b border-slate-100 h-9",
                                         selectedId === row.id
-                                            ? "bg-[#D6EAF8] border-[#2980B9]"
+                                            ? "bg-emerald-50 border-emerald-200"
                                             : rowIdx % 2 === 0
-                                                ? "bg-white hover:bg-[#EBF5FB]"
-                                                : "bg-[#FAFBFC] hover:bg-[#EBF5FB]"
+                                                ? "bg-white hover:bg-slate-50"
+                                                : "bg-slate-50/40 hover:bg-slate-50"
                                     )}
                                 >
                                     {columns.map((col, colIdx) => (
                                         <td
                                             key={`${row.id}-${col.key}`}
                                             className={cn(
-                                                "px-3 py-1 text-xs text-[#2C3E50] border-l border-[#F0F3F4] truncate",
+                                                "px-3 py-1 text-xs text-slate-700 border-l border-slate-100 truncate",
                                                 colIdx === columns.length - 1 && "border-l-0"
                                             )}
                                             style={{ width: col.width, minWidth: col.width || '120px' }}

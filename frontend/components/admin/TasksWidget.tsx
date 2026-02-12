@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CheckCircle2, Clock, AlertTriangle, User, MoreVertical, Plus, Trash2, X } from 'lucide-react'
+import { CheckCircle2, User, Plus, Trash2, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -16,6 +16,7 @@ interface Task {
 
 export default function TasksWidget() {
     const [tasks, setTasks] = useState<Task[]>([])
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
     const [showAddModal, setShowAddModal] = useState(false)
     const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -26,6 +27,11 @@ export default function TasksWidget() {
     })
 
     useEffect(() => {
+        const loadCurrentUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            setCurrentUserId(user?.id || null)
+        }
+        loadCurrentUser()
         fetchTasks()
     }, [])
 
@@ -162,7 +168,7 @@ export default function TasksWidget() {
                                         {task.assigned_to && (
                                             <span className="flex items-center gap-1 text-xs text-gray-500">
                                                 <User className="w-3 h-3" />
-                                                {task.assigned_to === 'self' ? 'אני' : 'משתמש אחר'}
+                                                {task.assigned_to === 'self' || task.assigned_to === currentUserId ? 'אני' : 'משתמש אחר'}
                                             </span>
                                         )}
                                     </div>

@@ -11,6 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 
 from database import supabase_admin  # pylint: disable=import-error
+from supabase import create_client
 
 security = HTTPBearer()
 
@@ -89,9 +90,10 @@ async def require_super_admin(user=Depends(get_current_user)):
     print(f"[AUTH DEBUG] Checking super_admin for: {user.email} ({user.id})")
 
     try:
-        # Use admin client to check user roles
-        # (bypasses RLS for role verification)
-        response = supabase_admin.table("user_roles").select("*") \
+        # Prefer user token for RLS-safe role check (works without service role).
+        supabase_url = os.getenv("SUPABASE_URL", "")
+        user_client = create_client(supabase_url, user.token)
+        response = user_client.table("user_roles").select("role") \
             .eq("user_id", user.id) \
             .eq("role", "super_admin") \
             .execute()
@@ -123,9 +125,10 @@ async def require_admin(user=Depends(get_current_user)):
     Dependency to ensure user has 'super_admin' or 'organization_admin' role.
     """
     try:
-        # Use admin client to check user roles
-        # (bypasses RLS for role verification)
-        response = supabase_admin.table("user_roles").select("*") \
+        # Prefer user token for RLS-safe role check.
+        supabase_url = os.getenv("SUPABASE_URL", "")
+        user_client = create_client(supabase_url, user.token)
+        response = user_client.table("user_roles").select("role") \
             .eq("user_id", user.id) \
             .in_("role", ["super_admin", "organization_admin"]) \
             .execute()

@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { JobTitleForm } from '@/components/core/JobTitleForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function EditRolePage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
     const { id } = useParams()
     const [initialData, setInitialData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -36,9 +37,9 @@ export default function EditRolePage() {
                 initialData={initialData}
                 onSuccess={() => {
                     toast.success('התפקיד עודכן בהצלחה')
-                    router.push('/dashboard/core/roles')
+                    goBackOrFallback('/dashboard/core/roles')
                 }}
-                onCancel={() => router.push('/dashboard/core/roles')}
+                onCancel={() => goBackOrFallback('/dashboard/core/roles')}
             />
         </div>
     )

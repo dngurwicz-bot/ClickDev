@@ -10,8 +10,10 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'react-hot-toast'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
-import { Loader2, Save, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { authFetch } from '@/lib/api'
+import { useScreenExit } from '@/lib/screen-lifecycle/useScreenExit'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 // Simplified schema - only basic fields
 const employeeSchema = z.object({
@@ -143,7 +145,24 @@ export function EmployeeForm({ initialData, onSuccess, onCancel }: EmployeeFormP
         } else {
             toast.error('יש לתקן את השגיאות בטופס')
         }
+        throw new Error('Validation failed')
     }
+
+    const {
+        isConfirmOpen,
+        requestExit,
+        handleConfirmSave,
+        handleConfirmDiscard,
+        handleConfirmCancel,
+    } = useScreenExit({
+        isDirty: form.formState.isDirty,
+        save: async () => {
+            await form.handleSubmit(onSubmit, onError)()
+        },
+        onExit: onCancel,
+        fallbackRoute: '/dashboard/core/employees',
+        exitAfterSave: false,
+    })
 
     return (
         <div className="flex flex-col h-full bg-[#f3f4f6] overflow-hidden font-sans border border-gray-400 relative z-30" dir="rtl">
@@ -155,9 +174,8 @@ export function EmployeeForm({ initialData, onSuccess, onCancel }: EmployeeFormP
                     </span>
                 </div>
                 <div className="flex gap-2">
-                    <button type="button" onClick={form.handleSubmit(onSubmit, onError)} className="p-1 hover:bg-gray-100 rounded text-[#00A896]" title="שמור"><Save className="w-5 h-5" /></button>
                     {onCancel && (
-                        <button type="button" onClick={onCancel} className="p-1 hover:bg-gray-100 rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
+                        <button type="button" onClick={requestExit} className="p-1 hover:bg-gray-100 rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
                     )}
                 </div>
             </div>
@@ -305,7 +323,7 @@ export function EmployeeForm({ initialData, onSuccess, onCancel }: EmployeeFormP
             <div className="h-12 bg-[#d1d5db] border-t border-gray-400 flex items-center px-4 justify-between shrink-0 shadow-inner z-20">
                 <button
                     type="button"
-                    onClick={onCancel}
+                    onClick={requestExit}
                     className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-6 text-xs font-bold shadow-sm"
                 >
                     יציאה (Exit)
@@ -319,16 +337,15 @@ export function EmployeeForm({ initialData, onSuccess, onCancel }: EmployeeFormP
                     >
                         ביטול שינויים
                     </button>
-                    <button
-                        onClick={form.handleSubmit(onSubmit, onError)}
-                        disabled={loading}
-                        className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-6 text-xs font-bold shadow-sm flex items-center gap-2"
-                    >
-                        {loading && <Loader2 className="h-3 w-3 animate-spin" />}
-                        עדכון (Save)
-                    </button>
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={isConfirmOpen}
+                onConfirm={handleConfirmSave}
+                onDiscard={handleConfirmDiscard}
+                onCancel={handleConfirmCancel}
+            />
         </div>
     )
 }

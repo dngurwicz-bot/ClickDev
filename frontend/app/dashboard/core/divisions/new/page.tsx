@@ -1,11 +1,11 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function NewDivisionPage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
 
     return (
         <div className="h-full flex flex-col">
@@ -14,9 +14,9 @@ export default function NewDivisionPage() {
                 forcedType="Division"
                 onSuccess={() => {
                     toast.success('החטיבה נוספה בהצלחה')
-                    router.push('/dashboard/core/divisions')
+                    goBackOrFallback('/dashboard/core/divisions')
                 }}
-                onCancel={() => router.push('/dashboard/core/divisions')}
+                onCancel={() => goBackOrFallback('/dashboard/core/divisions')}
             />
         </div>
     )

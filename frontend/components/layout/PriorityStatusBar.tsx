@@ -63,8 +63,8 @@ export function PriorityStatusBar() {
 
                 <div className="w-px h-4 bg-[#BDC3C7]" />
 
-                {/* DNG Hub branding */}
-                <span className="text-[10px] font-bold text-[#2980B9] tracking-wider">dng hub</span>
+                {/* CLICK Hub branding */}
+                <span className="text-[10px] font-bold text-[#2980B9] tracking-wider">click hub</span>
             </div>
         </div>
     )

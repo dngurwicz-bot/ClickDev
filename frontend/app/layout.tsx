@@ -7,6 +7,7 @@ import { SidebarProvider } from '@/lib/contexts/SidebarContext'
 import { InactivityProvider } from '@/lib/contexts/InactivityContext'
 import { ViewModeProvider } from '@/context/ViewModeContext'
 import { FocusProvider } from '@/context/FocusContext'
+import { NavigationStackProvider } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 const rubik = Rubik({
   subsets: ['latin', 'hebrew'],
@@ -30,15 +31,17 @@ export default function RootLayout({
       <head />
       <body>
         <OrganizationProvider>
-          <SidebarProvider>
-            <ViewModeProvider>
-              <FocusProvider>
-                <InactivityProvider>
-                  {children}
-                </InactivityProvider>
-              </FocusProvider>
-            </ViewModeProvider>
-          </SidebarProvider>
+          <NavigationStackProvider>
+            <SidebarProvider>
+              <ViewModeProvider>
+                <FocusProvider>
+                  <InactivityProvider>
+                    {children}
+                  </InactivityProvider>
+                </FocusProvider>
+              </ViewModeProvider>
+            </SidebarProvider>
+          </NavigationStackProvider>
           <Toaster
             position="top-center"
             toastOptions={{

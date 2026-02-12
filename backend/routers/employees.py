@@ -22,6 +22,8 @@ async def get_employees(org_id: str, _user=Depends(get_current_user)):
         response = supabase_admin.table("employees")\
             .select("*")\
             .eq("organization_id", org_id)\
+            .eq("is_active", True)\
+            .is_("deleted_at", "null")\
             .order("created_at", desc=True)\
             .execute()
 

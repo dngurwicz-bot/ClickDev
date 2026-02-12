@@ -14,6 +14,7 @@ const RECENT_ITEMS = [
 
 const FAVORITES = [
     { label: 'יצירת עובד חדש', href: '/dashboard/core/employees/new' },
+    { label: 'System Blueprint', href: '/system-blueprint' },
     { label: 'דוחות ניהוליים', href: '#' },
 ]
 

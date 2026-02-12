@@ -1,11 +1,11 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function NewDepartmentPage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
 
     return (
         <div className="h-full flex flex-col">
@@ -14,9 +14,9 @@ export default function NewDepartmentPage() {
                 forcedType="Department"
                 onSuccess={() => {
                     toast.success('המחלקה נוספה בהצלחה')
-                    router.push('/dashboard/core/departments')
+                    goBackOrFallback('/dashboard/core/departments')
                 }}
-                onCancel={() => router.push('/dashboard/core/departments')}
+                onCancel={() => goBackOrFallback('/dashboard/core/departments')}
             />
         </div>
     )

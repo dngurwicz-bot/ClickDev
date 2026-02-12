@@ -1,11 +1,11 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { OrgUnitForm } from '@/components/core/OrgUnitForm'
 import toast from 'react-hot-toast'
+import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
 
 export default function NewWingPage() {
-    const router = useRouter()
+    const { goBackOrFallback } = useNavigationStack()
 
     return (
         <div className="h-full flex flex-col">
@@ -14,9 +14,9 @@ export default function NewWingPage() {
                 forcedType="Wing"
                 onSuccess={() => {
                     toast.success('האגף נוסף בהצלחה')
-                    router.push('/dashboard/core/wings')
+                    goBackOrFallback('/dashboard/core/wings')
                 }}
-                onCancel={() => router.push('/dashboard/core/wings')}
+                onCancel={() => goBackOrFallback('/dashboard/core/wings')}
             />
         </div>
     )

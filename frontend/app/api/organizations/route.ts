@@ -1,32 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-function getSupabase() {
-    return createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-}
+const BACKEND_API_BASE = process.env.BACKEND_API_URL || 'http://127.0.0.1:8000'
 
 export async function GET(request: NextRequest) {
     try {
-        const { data, error } = await getSupabase()
-            .from('organizations')
-            .select('id, name, org_number, active_modules')
-            .order('name')
+        const response = await fetch(`${BACKEND_API_BASE}/api/organizations`, {
+            method: 'GET',
+            headers: {
+                Authorization: request.headers.get('Authorization') || '',
+            },
+        })
 
-        if (error) {
-            console.error('Error fetching organizations:', error)
-            return NextResponse.json(
-                { error: error.message },
-                { status: 500 }
-            )
-        }
-
-        return NextResponse.json(data)
+        const data = await response.json()
+        return NextResponse.json(data, { status: response.status })
     } catch (error: any) {
         console.error('Error in GET /api/organizations:', error)
+        return NextResponse.json(
+            { error: error.message || 'Internal server error' },
+            { status: 500 }
+        )
+    }
+}
+
+export async function POST(request: NextRequest) {
+    try {
+        const body = await request.text()
+        const response = await fetch(`${BACKEND_API_BASE}/api/organizations`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: request.headers.get('Authorization') || '',
+            },
+            body,
+        })
+
+        const data = await response.json()
+        return NextResponse.json(data, { status: response.status })
+    } catch (error: any) {
+        console.error('Error in POST /api/organizations:', error)
         return NextResponse.json(
             { error: error.message || 'Internal server error' },
             { status: 500 }

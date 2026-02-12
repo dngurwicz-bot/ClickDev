@@ -193,3 +193,150 @@ class ReportRequest(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     filters: Optional[Dict[str, Any]] = {}
+
+
+class BlueprintVersionCreate(BaseModel):
+    """Create a new blueprint version."""
+    version_key: str
+    product_name: str
+    language: str = "he-IL"
+    direction: str = "rtl"
+    positioning: str
+    last_updated: date_type
+
+
+class BlueprintVersionUpdate(BaseModel):
+    """Update an existing blueprint version."""
+    version_key: Optional[str] = None
+    product_name: Optional[str] = None
+    language: Optional[str] = None
+    direction: Optional[str] = None
+    positioning: Optional[str] = None
+    last_updated: Optional[date_type] = None
+
+
+class BlueprintVersionSummary(BaseModel):
+    """Public version summary."""
+    id: str
+    version_key: str
+    product_name: str
+    is_published: bool
+    published_at: Optional[datetime] = None
+    last_updated: date_type
+    created_at: datetime
+    updated_at: datetime
+
+
+class BlueprintTargetCompanyCreate(BaseModel):
+    """Create a target company record."""
+    version_id: str
+    company_type: str
+    sort_order: int
+
+
+class BlueprintPhaseCreate(BaseModel):
+    """Create a blueprint implementation phase."""
+    version_id: str
+    phase_number: int
+    name: str
+    duration_weeks: int
+
+
+class BlueprintPhaseUpdate(BaseModel):
+    """Update a blueprint implementation phase."""
+    phase_number: Optional[int] = None
+    name: Optional[str] = None
+    duration_weeks: Optional[int] = None
+
+
+class BlueprintPhaseDeliverableCreate(BaseModel):
+    """Create a phase deliverable row."""
+    phase_id: str
+    deliverable: str
+    sort_order: int
+
+
+class BlueprintModuleCreate(BaseModel):
+    """Create a blueprint module."""
+    version_id: str
+    module_key: str
+    display_order: int
+    name: str
+    category: str
+    for_who: str
+    description: str
+    is_highlighted: bool = False
+
+
+class BlueprintModuleUpdate(BaseModel):
+    """Update a blueprint module."""
+    module_key: Optional[str] = None
+    display_order: Optional[int] = None
+    name: Optional[str] = None
+    category: Optional[str] = None
+    for_who: Optional[str] = None
+    description: Optional[str] = None
+    is_highlighted: Optional[bool] = None
+
+
+class BlueprintModuleCapabilityCreate(BaseModel):
+    """Create a module capability row."""
+    module_id: str
+    capability: str
+    sort_order: int
+
+
+class BlueprintModuleKpiCreate(BaseModel):
+    """Create a module KPI row."""
+    module_id: str
+    kpi_key: str
+    sort_order: int
+
+
+class BlueprintNotificationChannelCreate(BaseModel):
+    """Create a notification channel row."""
+    version_id: str
+    channel_key: str
+    sort_order: int
+
+
+class BlueprintAlertEngineCreate(BaseModel):
+    """Create alert engine row."""
+    version_id: str
+    name: str
+    sort_order: int
+
+
+class BlueprintAlertEngineUpdate(BaseModel):
+    """Update alert engine row."""
+    name: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class BlueprintAlertExampleCreate(BaseModel):
+    """Create an alert example row."""
+    engine_id: str
+    example_text: str
+    sort_order: int
+
+
+class BlueprintEscalationPolicyCreate(BaseModel):
+    """Create an escalation policy row."""
+    version_id: str
+    policy_key: str
+    policy_value: str
+    sort_order: int
+
+
+class BlueprintCoreEntityCreate(BaseModel):
+    """Create a core entity row."""
+    version_id: str
+    entity_name: str
+    sort_order: int
+
+
+class BlueprintIntegrationTargetCreate(BaseModel):
+    """Create an integration target row."""
+    version_id: str
+    target_name: str
+    sort_order: int
