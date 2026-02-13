@@ -23,7 +23,10 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 def _require_system_admin(user: AuthedUser) -> None:
-    sb = get_service_client()
+    try:
+        sb = get_service_client()
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     sa = sb.table("system_admins").select("user_id").eq("user_id", user.user_id).execute()
     if not sa.data:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="System admin required")

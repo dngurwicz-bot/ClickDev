@@ -9,6 +9,7 @@ import { getSupabase } from '@/lib/supabase'
 import type { MeResponse } from '@/lib/types'
 import { apiFetch } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
+import { Logo } from '@/components/Logo'
 
 function ThemeToggle() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -27,7 +28,7 @@ function ThemeToggle() {
       onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
       className="h-9 px-3"
     >
-      {theme === 'dark' ? 'Light' : 'Dark'}
+      {theme === 'dark' ? 'בהיר' : 'כהה'}
     </Button>
   )
 }
@@ -40,11 +41,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const nav = useMemo(() => {
     const items = []
-    items.push({ href: '/app', label: 'Home', icon: Building2 })
+    items.push({ href: '/app', label: 'בית', icon: Building2 })
     if (me?.is_system_admin) {
-      items.push({ href: '/app/admin/orgs', label: 'Orgs', icon: Users })
-      items.push({ href: '/app/admin/brand', label: 'Brand', icon: Palette })
-      items.push({ href: '/app/admin/orgs', label: 'Super Admin', icon: Shield })
+      items.push({ href: '/app/admin/orgs', label: 'ארגונים', icon: Users })
+      items.push({ href: '/app/admin/brand', label: 'מותג', icon: Palette })
+      items.push({ href: '/app/admin/orgs', label: 'סופר אדמין', icon: Shield })
     }
     return items
   }, [me?.is_system_admin])
@@ -53,21 +54,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     let alive = true
     async function load() {
       setLoading(true)
-      const supabase = getSupabase()
-      const { data } = await supabase.auth.getSession()
-      const token = data.session?.access_token
-      if (!token) {
+      let token: string | undefined
+      try {
+        const supabase = getSupabase()
+        const { data } = await supabase.auth.getSession()
+        token = data.session?.access_token
+      } catch (e: any) {
+        toast.error(e?.message ?? 'שגיאת קונפיגורציה')
+        setLoading(false)
+        return
+      }
+      const t = token
+      if (!t) {
         router.replace('/login')
         return
       }
       try {
-        const res = await apiFetch<MeResponse>('/me', token)
+        const res = await apiFetch<MeResponse>('/me', t)
         if (!alive) return
         setMe(res)
       } catch (e: any) {
         if (!alive) return
-        toast.error(e?.message ?? 'Failed to load session')
-        await supabase.auth.signOut()
+        toast.error(e?.message ?? 'נכשל לטעון סשן')
+        try {
+          const supabase = getSupabase()
+          await supabase.auth.signOut()
+        } catch {}
         router.replace('/login')
       } finally {
         if (alive) setLoading(false)
@@ -80,8 +92,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [router, pathname])
 
   async function logout() {
-    const supabase = getSupabase()
-    await supabase.auth.signOut()
+    try {
+      const supabase = getSupabase()
+      await supabase.auth.signOut()
+    } catch {}
     router.replace('/login')
   }
 
@@ -93,12 +107,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="h-9 w-9 overflow-hidden rounded-xl border border-brand-text/10 bg-brand-surface">
               <img src="/brand/icon.png" alt="Logo" className="h-full w-full object-contain p-1.5" />
             </div>
-            <div className="text-sm font-semibold tracking-wide">HR SaaS</div>
+            <Logo className="leading-none" />
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Button variant="ghost" onClick={logout} className="h-9 px-3">
-              Logout
+              יציאה
             </Button>
           </div>
         </div>
@@ -130,13 +144,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="mt-4 rounded-xl border border-brand-text/10 bg-brand-bg/60 p-3 text-xs text-brand-text/70">
-            {loading ? 'Loading…' : me?.is_system_admin ? 'System Super Admin' : 'Member'}
+            {loading ? 'טוען…' : me?.is_system_admin ? 'סופר אדמין מערכת' : 'משתמש'}
           </div>
         </aside>
 
         <main className="min-w-0">
           {loading ? (
-            <div className="rounded-2xl border border-brand-text/10 bg-brand-surface p-6">Loading…</div>
+            <div className="rounded-2xl border border-brand-text/10 bg-brand-surface p-6">טוען…</div>
           ) : (
             children
           )}

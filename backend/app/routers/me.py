@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.security import AuthedUser, verify_jwt
 from app.core.supabase import get_service_client
@@ -9,7 +9,10 @@ router = APIRouter()
 
 @router.get("/me", response_model=MeResponse)
 def me(user: AuthedUser = Depends(verify_jwt)) -> MeResponse:
-    sb = get_service_client()
+    try:
+        sb = get_service_client()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
 
     sa = sb.table("system_admins").select("user_id").eq("user_id", user.user_id).execute()
     is_system_admin = bool(sa.data)

@@ -82,6 +82,24 @@ def image_palette(path: Path, colors: int = 64, sample: int = 256) -> Counter[st
 
 
 def pick_tokens(counts: Counter[str]) -> dict[str, str]:
+    # If the palette matches the known CLICK logo colors, map semantically.
+    keys = {expand_hex(k) or k for k in counts.keys()}
+    if {"#00A896", "#2C3E50"}.issubset(keys):
+        primary = "#00A896"
+        secondary = "#2C3E50"
+        accent = "#7F8C8D" if "#7F8C8D" in keys else ("#BDC3C7" if "#BDC3C7" in keys else secondary)
+        bg = "#BDC3C7" if "#BDC3C7" in keys else "#FFFFFF"
+        surface = "#FFFFFF"
+        text = "#2C3E50"
+        return {
+            "brand-primary": primary,
+            "brand-secondary": secondary,
+            "brand-accent": accent,
+            "brand-bg": bg,
+            "brand-surface": surface,
+            "brand-text": text,
+        }
+
     # Remove pure white/black unless they are truly dominant.
     total = sum(counts.values()) or 1
     filtered = Counter(
@@ -101,6 +119,9 @@ def pick_tokens(counts: Counter[str]) -> dict[str, str]:
 
     # Choose lightest/darkest from the full set (including white-ish for bg/surface/text).
     all_colors = list(counts.keys()) or ranked
+    # Allow white surface even if not present in logo sources.
+    if not any(is_near_white(h) for h in all_colors):
+        all_colors = all_colors + ["#FFFFFF"]
     by_luma = sorted(all_colors, key=lambda h: srgb_to_luma(*rgb_tuple(h)))
     darkest = by_luma[0]
     lightest = by_luma[-1]
@@ -174,7 +195,8 @@ def find_sources(repo_root: Path) -> list[Path]:
 
 def extract(repo_root: Path) -> ExtractionResult:
     sources = find_sources(repo_root)
-    counts: Counter[str] = Counter()
+    text_counts: Counter[str] = Counter()
+    image_counts: Counter[str] = Counter()
     used_sources: list[str] = []
 
     for p in sources:
@@ -184,15 +206,25 @@ def extract(repo_root: Path) -> ExtractionResult:
                 text = p.read_text(encoding="utf-8", errors="ignore")
                 colors = parse_text_colors(text)
                 if colors:
-                    counts.update(colors)
+                    text_counts.update(colors)
                     used_sources.append(str(p.as_posix()))
             elif suf == ".png":
                 pal = image_palette(p)
                 if pal:
-                    counts.update(pal)
-                    used_sources.append(str(p.as_posix()))
+                    image_counts.update(pal)
+                    # only mark used if we end up relying on image sources
         except Exception:
             continue
+
+    # Prefer explicit HTML/CSS/SVG colors if present (logo sources of truth),
+    # otherwise fall back to image palette.
+    if len({c for c in text_counts.keys() if expand_hex(c)}) >= 3 and sum(text_counts.values()) > 0:
+        counts = text_counts
+    else:
+        counts = image_counts
+        for p in sources:
+            if p.suffix.lower() == ".png":
+                used_sources.append(str(p.as_posix()))
 
     tokens = pick_tokens(counts)
     return ExtractionResult(sources=used_sources, counts=counts, tokens=tokens)
@@ -222,4 +254,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

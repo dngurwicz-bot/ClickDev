@@ -34,9 +34,9 @@ export default function AppHome() {
   return (
     <div className="space-y-6">
       <Card>
-        <div className="text-xl font-semibold tracking-tight">Welcome</div>
+        <div className="text-xl font-semibold tracking-tight">ברוכים הבאים</div>
         <div className="mt-2 text-sm text-brand-text/70">
-          {me ? `User: ${me.user_id}${me.is_system_admin ? ' (system admin)' : ''}` : '…'}
+          {me ? `משתמש: ${me.user_id}${me.is_system_admin ? ' (סופר אדמין)' : ''}` : '…'}
         </div>
       </Card>
     </div>

@@ -7,7 +7,10 @@ router = APIRouter(prefix="/org", tags=["org"])
 
 
 def _default_org_id(user_id: str) -> str | None:
-    sb = get_service_client()
+    try:
+        sb = get_service_client()
+    except RuntimeError:
+        return None
     mem = (
         sb.table("org_members")
         .select("org_id,role,created_at")
@@ -21,7 +24,10 @@ def _default_org_id(user_id: str) -> str | None:
 
 
 def _role_for_org(user_id: str, org_id: str) -> str | None:
-    sb = get_service_client()
+    try:
+        sb = get_service_client()
+    except RuntimeError:
+        return None
     mem = (
         sb.table("org_members")
         .select("role")
@@ -37,7 +43,10 @@ def _role_for_org(user_id: str, org_id: str) -> str | None:
 
 @router.get("/modules")
 def current_org_modules(user: AuthedUser = Depends(verify_jwt)):
-    sb = get_service_client()
+    try:
+        sb = get_service_client()
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     org_id = _default_org_id(user.user_id)
     if not org_id:
         return []
@@ -50,7 +59,10 @@ def current_org_modules(user: AuthedUser = Depends(verify_jwt)):
 
 @router.get("/members")
 def list_org_members(user: AuthedUser = Depends(verify_jwt)):
-    sb = get_service_client()
+    try:
+        sb = get_service_client()
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     org_id = _default_org_id(user.user_id)
     if not org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No org membership")

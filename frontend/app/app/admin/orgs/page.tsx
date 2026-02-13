@@ -71,11 +71,11 @@ export default function AdminOrgsPage() {
       <Card>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="text-xl font-semibold tracking-tight">{title}</div>
-            <div className="mt-1 text-sm text-brand-text/70">System Super Admin only</div>
+            <div className="text-xl font-semibold tracking-tight">{isAllowed ? 'ארגונים' : 'אין הרשאה'}</div>
+            <div className="mt-1 text-sm text-brand-text/70">זמין לסופר אדמין בלבד</div>
           </div>
           {isAllowed ? (
-            <Button onClick={() => setOpen(true)}>Create org</Button>
+            <Button onClick={() => setOpen(true)}>יצירת ארגון</Button>
           ) : (
             <span className="text-sm text-brand-text/60">No access</span>
           )}
@@ -83,18 +83,18 @@ export default function AdminOrgsPage() {
       </Card>
 
       {loading ? (
-        <Card>Loading…</Card>
+        <Card>טוען…</Card>
       ) : !isAllowed ? (
-        <Card>Ask a system admin to grant access.</Card>
+        <Card>אין לך הרשאות למסך הזה.</Card>
       ) : orgs.length === 0 ? (
-        <Card>No organizations yet.</Card>
+        <Card>אין עדיין ארגונים.</Card>
       ) : (
         <Table>
           <thead>
             <tr>
-              <Th>Name</Th>
-              <Th>Status</Th>
-              <Th>Created</Th>
+              <Th>שם</Th>
+              <Th>סטטוס</Th>
+              <Th>נוצר</Th>
               <Th></Th>
             </tr>
           </thead>
@@ -106,7 +106,7 @@ export default function AdminOrgsPage() {
                 <Td className="text-brand-text/70">{new Date(o.created_at).toLocaleString()}</Td>
                 <Td>
                   <a className="text-sm font-semibold text-brand-primary hover:underline" href={`/app/admin/orgs/${o.id}`}>
-                    Manage
+                    ניהול
                   </a>
                 </Td>
               </tr>
@@ -115,15 +115,15 @@ export default function AdminOrgsPage() {
         </Table>
       )}
 
-      <Modal open={open} title="Create Organization" onClose={() => setOpen(false)}>
+      <Modal open={open} title="יצירת ארגון" onClose={() => setOpen(false)}>
         <div className="space-y-4">
-          <Input label="Organization name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input label="שם ארגון" value={name} onChange={(e) => setName(e.target.value)} />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              ביטול
             </Button>
             <Button onClick={createOrg} loading={saving} disabled={!name.trim()}>
-              Create
+              יצירה
             </Button>
           </div>
         </div>

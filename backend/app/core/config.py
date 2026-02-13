@@ -4,9 +4,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    supabase_url: str
-    supabase_service_role_key: str
-    supabase_jwt_secret: str
+    # Keep required for real deployments; allow empty strings locally so the server can boot
+    # and clearly return 503 until secrets are configured.
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+    supabase_jwt_secret: str = ""
 
     cors_origins: str = "http://localhost:3000"
     port: int = 8000
@@ -17,4 +19,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

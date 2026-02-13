@@ -1,0 +1,58 @@
+
+> click-frontend@1.0.0 dev
+> next dev --port 3000
+
+ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Click01\ClickDev\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Click01\ClickDev\frontend\package-lock.json
+
+Γû▓ Next.js 16.1.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.242.2.4:3000
+- Environments: .env.local
+
+Γ£ô Starting...
+Γ£ô Ready in 3.7s
+Γùï Compiling / ...
+ GET / 307 in 6.2s (compile: 5.8s, render: 487ms)
+ GET /app 200 in 1493ms (compile: 1183ms, render: 310ms)
+ GET /app 200 in 138ms (compile: 16ms, render: 122ms)
+ GET /app 200 in 114ms (compile: 15ms, render: 99ms)
+ GET /app 200 in 116ms (compile: 15ms, render: 101ms)
+  Reload env: .env.local
+ GET /app 200 in 355ms (compile: 245ms, render: 109ms)
+ GET /app 200 in 234ms (compile: 15ms, render: 218ms)
+ GET / 307 in 193ms (compile: 55ms, render: 138ms)
+ GET /app 200 in 109ms (compile: 19ms, render: 90ms)
+ GET /login 200 in 1111ms (compile: 808ms, render: 302ms)
+ GET /login 200 in 184ms (compile: 16ms, render: 169ms)
+Γ£ô Compiled in 347ms
+ GET /login 200 in 128ms (compile: 13ms, render: 115ms)
+Γ£ô Compiled in 54ms
+Γ£ô Compiled in 33ms
+ GET /login 200 in 201ms (compile: 122ms, render: 79ms)
+ GET /login 200 in 38ms (compile: 11ms, render: 27ms)
+Γ£ô Compiled in 85ms
+Γ£ô Compiled in 475ms
+ GET /login 200 in 357ms (compile: 228ms, render: 129ms)
+ GET /login 200 in 341ms (compile: 139ms, render: 202ms)
+ GET /login 200 in 35ms (compile: 9ms, render: 26ms)
+ GET /login 200 in 33ms (compile: 8ms, render: 25ms)
+Γ£ô Compiled in 3.5s
+Γ£ô Compiled in 50ms
+Γ£ô Compiled in 114ms
+ GET /login 200 in 430ms (compile: 166ms, render: 264ms)
+Γ£ô Compiled in 68ms
+Γ£ô Compiled in 39ms
+ΓÜá Found a change in next.config.js. Restarting the server to apply the changes...
+Γû▓ Next.js 16.1.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.242.2.4:3000
+- Environments: .env.local
+
+Γ£ô Starting...
+Γ£ô Ready in 2.2s
+Γùï Compiling /login ...

@@ -1,17 +1,17 @@
 import type { Metadata } from 'next'
-import { Manrope } from 'next/font/google'
+import { Rubik } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 
-const font = Manrope({
-  subsets: ['latin'],
-  variable: '--font-manrope',
+const font = Rubik({
+  subsets: ['latin', 'hebrew'],
+  variable: '--font-rubik',
   display: 'swap',
 })
 
 export const metadata: Metadata = {
-  title: 'HR SaaS',
-  description: 'Multi-tenant HR SaaS',
+  title: 'CLICK',
+  description: 'CLICK - מערכת משאבי אנוש רב-ארגונית',
 }
 
 const themeInitScript = `
@@ -28,7 +28,7 @@ const themeInitScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={font.variable}>
+    <html lang="he" dir="rtl" className={font.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
@@ -48,4 +48,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   )
 }
-

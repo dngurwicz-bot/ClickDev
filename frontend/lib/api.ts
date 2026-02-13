@@ -1,7 +1,8 @@
-import { requireEnv } from './env'
+import { env } from './env'
 
 export async function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const base = requireEnv('NEXT_PUBLIC_API_BASE_URL')
+  const base = env('NEXT_PUBLIC_API_BASE_URL')
+  if (!base) throw new Error('Missing env var: NEXT_PUBLIC_API_BASE_URL')
   const res = await fetch(`${base}${path}`, {
     ...init,
     headers: {
