@@ -1,0 +1,39 @@
+{
+  "sources": [
+    "C:/Click01/ClickDev/frontend/app/icon.png"
+  ],
+  "tokens": {
+    "--brand-primary": "#25618D",
+    "--brand-secondary": "#1B5077",
+    "--brand-accent": "#1A4E76",
+    "--brand-bg": "#E2EAED",
+    "--brand-surface": "#FEFEFE",
+    "--brand-text": "#113F61"
+  },
+  "top_colors": [
+    "#25618D",
+    "#1B5077",
+    "#FEFEFE",
+    "#1A4E76",
+    "#245D88",
+    "#628BAB",
+    "#5A86A7",
+    "#A2BACA",
+    "#477597",
+    "#16486D",
+    "#35668A",
+    "#9AB6C9",
+    "#275576",
+    "#B8CBD5",
+    "#5C819C",
+    "#D8E4E9",
+    "#1E5985",
+    "#557C98",
+    "#376B92",
+    "#A2BDD1",
+    "#7594A8",
+    "#88A5B7",
+    "#EBF2F4",
+    "#C5D4DB"
+  ]
+}
