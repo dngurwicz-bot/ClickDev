@@ -1,46 +1,34 @@
 import type { Config } from 'tailwindcss'
 
+function rgbVar(name: string) {
+  return `rgb(var(${name}) / <alpha-value>)`
+}
+
 const config: Config = {
   content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
       colors: {
-        primary: {
-          DEFAULT: 'var(--primary)',
-          dark: 'var(--primary-dark)',
-          light: 'var(--primary-light)',
+        brand: {
+          primary: rgbVar('--brand-primary-rgb'),
+          secondary: rgbVar('--brand-secondary-rgb'),
+          accent: rgbVar('--brand-accent-rgb'),
+          bg: rgbVar('--brand-bg-rgb'),
+          surface: rgbVar('--brand-surface-rgb'),
+          text: rgbVar('--brand-text-rgb'),
         },
-        secondary: {
-          DEFAULT: 'var(--secondary)',
-          dark: '#1a252f', // Darker shade of #2C3E50
-          light: 'var(--secondary-light)',
-        },
-        success: 'var(--success)',
-        warning: 'var(--warning)',
-        danger: 'var(--danger)',
-        info: 'var(--info)',
-        background: 'var(--bg-main)',
-        surface: 'var(--surface)',
-        muted: 'var(--text-muted)',
-        border: 'var(--border)',
       },
       fontFamily: {
-        sans: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
+        sans: ['var(--font-manrope)', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'premium': '0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
-        'premium-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-        'focus-ring': '0 0 0 3px rgba(0, 168, 150, 0.2)',
-      }
+        card: '0 12px 40px -20px rgb(var(--brand-text-rgb) / 0.22)',
+      },
     },
   },
-  plugins: [
-    require('tailwindcss-rtl'),
-  ],
+  plugins: [],
 }
 export default config
