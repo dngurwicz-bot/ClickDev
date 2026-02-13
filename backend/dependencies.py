@@ -16,6 +16,19 @@ from supabase import create_client
 security = HTTPBearer()
 
 
+def _create_user_scoped_client(token: str):
+    """Create a Supabase client using API key + user JWT for RLS."""
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    supabase_key = os.getenv("SUPABASE_API_KEY", "")
+
+    if not supabase_url or not supabase_key:
+        raise HTTPException(status_code=500, detail="Server configuration error")
+
+    user_client = create_client(supabase_url, supabase_key)
+    user_client.postgrest.auth(token)
+    return user_client
+
+
 # Helper function to get current user
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
@@ -90,9 +103,8 @@ async def require_super_admin(user=Depends(get_current_user)):
     print(f"[AUTH DEBUG] Checking super_admin for: {user.email} ({user.id})")
 
     try:
-        # Prefer user token for RLS-safe role check (works without service role).
-        supabase_url = os.getenv("SUPABASE_URL", "")
-        user_client = create_client(supabase_url, user.token)
+        # Use API key + user JWT so PostgREST gets a valid apikey + auth context.
+        user_client = _create_user_scoped_client(user.token)
         response = user_client.table("user_roles").select("role") \
             .eq("user_id", user.id) \
             .eq("role", "super_admin") \
@@ -125,9 +137,8 @@ async def require_admin(user=Depends(get_current_user)):
     Dependency to ensure user has 'super_admin' or 'organization_admin' role.
     """
     try:
-        # Prefer user token for RLS-safe role check.
-        supabase_url = os.getenv("SUPABASE_URL", "")
-        user_client = create_client(supabase_url, user.token)
+        # Use API key + user JWT so PostgREST gets a valid apikey + auth context.
+        user_client = _create_user_scoped_client(user.token)
         response = user_client.table("user_roles").select("role") \
             .eq("user_id", user.id) \
             .in_("role", ["super_admin", "organization_admin"]) \

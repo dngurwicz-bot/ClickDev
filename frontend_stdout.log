@@ -1,0 +1,13 @@
+
+> click-frontend@1.0.0 dev
+> next dev
+
+▲ Next.js 16.1.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.0.0.13:3000
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 10.5s
+○ Compiling / ...
+ GET / 200 in 5.0s (compile: 4.7s, render: 325ms)

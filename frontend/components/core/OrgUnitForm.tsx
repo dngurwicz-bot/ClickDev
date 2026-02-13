@@ -185,11 +185,11 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
                     {/* Right Column (Labels on the right because RTL) */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">שם ה{titleLabel}</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">שם ה{titleLabel}</label>
                             <div className="flex-1 relative">
                                 <input
                                     {...register('name')}
-                                    className="w-full h-8 bg-[#E0F5F3] border border-[#00A896]/30 px-2 text-sm focus:border-[#00A896] focus:ring-1 focus:ring-[#00A896]/20 outline-none shadow-sm font-medium"
+                                    className="click-ui-input h-8 font-medium"
                                 />
                                 {errors.name && <p className="absolute -bottom-4 right-0 text-red-500 text-[10px]">{errors.name.message}</p>}
                             </div>
@@ -200,16 +200,16 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
                             <input
                                 value={unitNumber}
                                 disabled
-                                className="flex-1 h-8 bg-gray-100 border border-gray-300 px-2 text-sm font-mono"
+                                className="flex-1 h-8 bg-gray-100 border border-[var(--ui-border)] px-2 text-sm font-mono rounded-md"
                             />
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">סוג ישות</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">סוג ישות</label>
                             <input
                                 value={defaultType}
                                 disabled
-                                className="flex-1 h-8 bg-gray-100 border border-gray-300 px-2 text-sm"
+                                className="flex-1 h-8 bg-gray-100 border border-[var(--ui-border)] px-2 text-sm rounded-md"
                             />
                         </div>
                     </div>
@@ -218,7 +218,7 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
                     <div className="space-y-4">
                         {showParentSelect && (
                             <div className="flex items-center gap-4">
-                                <label className="text-sm font-bold text-gray-700 w-32 shrink-0">שייך ל-</label>
+                                <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">שייך ל-</label>
                                 <div className="flex-1">
                                     <Controller
                                         name="parent_id"
@@ -237,7 +237,7 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
                         )}
 
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">מנהל אחראי</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">מנהל אחראי</label>
                             <div className="flex-1">
                                 <Controller
                                     name="manager_id"
@@ -254,24 +254,24 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">תאריך תחולה</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">תאריך תחולה</label>
                             <div className="flex-1">
                                 <input
                                     type="date"
                                     {...register('effective_date')}
-                                    className="w-full h-8 bg-[#E0F5F3] border border-[#00A896]/30 px-2 text-sm focus:border-[#00A896] outline-none"
+                                    className="click-ui-input h-8"
                                 />
                                 {errors.effective_date && <p className="text-red-500 text-[10px]">{errors.effective_date.message}</p>}
                             </div>
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">גמר תוקף</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">גמר תוקף</label>
                             <div className="flex-1">
                                 <input
                                     type="date"
                                     {...register('expiry_date')}
-                                    className="w-full h-8 bg-white border border-gray-400 px-2 text-sm focus:border-blue-500 outline-none"
+                                    className="click-ui-input h-8 bg-white"
                                 />
                             </div>
                         </div>
@@ -280,13 +280,13 @@ export function OrgUnitForm({ parentId, parentType, initialData, onSuccess, onCa
                 </div>
 
                 {/* Status Bar - Branded Teal */}
-                <div className="mt-8 border-[1.5px] border-[#00A896] bg-white p-3 flex items-start gap-3 shadow-inner max-w-4xl mx-auto">
-                    <div className="w-8 h-8 shrink-0 bg-[#E0F5F3] border border-[#00A896]/30 flex items-center justify-center text-[#00A896]">📖</div>
+                <div className="mt-8 border border-[var(--ui-border-strong)] bg-white p-3 flex items-start gap-3 shadow-inner max-w-4xl mx-auto rounded-md">
+                    <div className="w-8 h-8 shrink-0 bg-[var(--ui-accent-soft)] border border-[var(--ui-border)] flex items-center justify-center text-[var(--ui-accent)]">📖</div>
                     <div className="flex-1">
-                        <p className="text-[12px] leading-tight text-gray-700 font-medium">
+                        <p className="text-[12px] leading-tight text-[var(--ui-text)] font-medium">
                             הגדרת היחידה הארגונית בתוקף.
                         </p>
-                        <p className="text-[10px] text-gray-500 mt-1">
+                        <p className="text-[10px] text-[var(--ui-text-soft)] mt-1">
                             הפעילות מבוצעת על קובץ האירועים : תקשורת - אירועי עדכון אמיתי
                         </p>
                     </div>

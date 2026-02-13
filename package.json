@@ -7,6 +7,7 @@
         "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" --names \"frontend,backend\" --prefix-colors \"cyan,magenta\"",
         "dev:frontend": "cd frontend && npm run dev",
         "dev:backend": "cd backend && python -m uvicorn main:app --reload",
+        "system:start": "powershell -ExecutionPolicy Bypass -File ./tools/start-system.ps1",
         "lint:frontend": "cd frontend && npm run lint",
         "build:frontend": "cd frontend && npm run build"
     },

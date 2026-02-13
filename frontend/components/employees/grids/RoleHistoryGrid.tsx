@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Trash2, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { dispatchEmployeeAction } from '@/lib/api'
 
 interface RoleHistoryRecord {
     id: string
@@ -82,23 +82,21 @@ export default function RoleHistoryGrid({ employeeId, organizationId }: RoleHist
 
     const handleAddNew = async () => {
         try {
-            const { data: newRow, error } = await supabase
-                .from('employee_role_history')
-                .insert({
-                    organization_id: organizationId,
-                    employee_id: employeeId,
+            const effectiveAt = new Date().toISOString().split('T')[0]
+            await dispatchEmployeeAction(organizationId, employeeId, {
+                action_key: 'employee_role.changed',
+                effective_at: effectiveAt,
+                request_id: `role-add-${employeeId}-${Date.now()}`,
+                payload: {
                     job_title: '',
+                    rank: '',
                     scope_percentage: 100,
-                    valid_from: new Date().toISOString().split('T')[0]
-                })
-                .select()
-                .single()
-
-            if (error) throw error
-            setData(prev => [newRow, ...prev]) // Latest on top usually for history
-        } catch (error) {
+                },
+            })
+            await fetchData()
+        } catch (error: any) {
             console.error('Error adding role:', error)
-            toast.error('שגיאה בהוספת שורה')
+            toast.error(error.message || 'שגיאה בהוספת שורה')
         }
     }
 

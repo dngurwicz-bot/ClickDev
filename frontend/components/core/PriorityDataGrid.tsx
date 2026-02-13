@@ -19,14 +19,14 @@ interface PriorityDataGridProps<T> {
 
 export function PriorityDataGrid<T extends { id: string | number }>({ columns, data, onRowClick, isLoading }: PriorityDataGridProps<T>) {
     return (
-        <div className="overflow-x-auto border border-gray-300 bg-white">
+        <div className="overflow-x-auto click-ui-table-shell shadow-sm">
             <table className="w-full text-xs text-right border-collapse font-sans">
-                <thead className="bg-[#EAECEE] text-gray-700 font-bold sticky top-0">
+                <thead className="click-ui-table-head font-bold sticky top-0">
                     <tr>
                         {columns.map((col) => (
                             <th
                                 key={col.key}
-                                className="p-1 px-2 border-l border-b border-white last:border-l-0 whitespace-nowrap"
+                                className="px-3 py-2 border-l border-b border-[var(--ui-border-strong)] last:border-l-0 whitespace-nowrap text-[11px]"
                                 style={{ width: col.width }}
                             >
                                 {col.header}
@@ -37,13 +37,13 @@ export function PriorityDataGrid<T extends { id: string | number }>({ columns, d
                 <tbody className="bg-white">
                     {isLoading ? (
                         <tr>
-                            <td colSpan={columns.length} className="p-4 text-center text-gray-400">
+                            <td colSpan={columns.length} className="p-4 text-center text-slate-500">
                                 טוען נתונים...
                             </td>
                         </tr>
                     ) : data.length === 0 ? (
                         <tr>
-                            <td colSpan={columns.length} className="p-4 text-center text-gray-400">
+                            <td colSpan={columns.length} className="p-4 text-center text-slate-500">
                                 אין נתונים להצגה
                             </td>
                         </tr>
@@ -53,14 +53,13 @@ export function PriorityDataGrid<T extends { id: string | number }>({ columns, d
                                 key={row.id}
                                 onClick={() => onRowClick?.(row)}
                                 className={cn(
-                                    "hover:bg-[#EBF5FB] cursor-pointer transition-colors odd:bg-white even:bg-[#F8F9F9]",
-                                    // Optional: Selected row styling if needed
+                                    "hover:bg-[#f1f7fb] cursor-pointer transition-colors odd:bg-white even:bg-[#f8fbfd] h-10",
                                 )}
                             >
                                 {columns.map((col) => (
                                     <td
                                         key={`${String(row.id)}-${col.key}`}
-                                        className="p-1 px-2 border-b border-gray-200 border-l border-l-gray-100 last:border-l-0 text-gray-800 truncate max-w-[200px]"
+                                        className="px-3 py-1 border-b border-[var(--ui-border)] border-l border-l-[var(--ui-border)] last:border-l-0 text-[var(--ui-text)] truncate max-w-[240px]"
                                     >
                                         {col.render ? col.render(row) : (row as any)[col.key]}
                                     </td>

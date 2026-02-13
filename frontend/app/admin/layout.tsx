@@ -6,7 +6,7 @@ import { isSuperAdmin, getCurrentUser } from '@/lib/auth'
 
 import TopNavigation from '@/components/dashboard/TopNavigation'
 import { StatusBarProvider } from '@/context/StatusBarContext'
-import { PriorityStatusBar } from '@/components/layout/PriorityStatusBar'
+import { AppBottomDock } from '@/components/layout/AppBottomDock'
 
 // Force HMR update
 export default function AdminLayout({
@@ -15,23 +15,39 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return window.sessionStorage.getItem('click_is_super_admin') !== '1'
+  })
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const user = await getCurrentUser()
         if (!user) {
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem('click_is_super_admin')
+          }
           router.push('/login')
           return
         }
 
         const isSA = await isSuperAdmin()
         if (!isSA) {
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem('click_is_super_admin')
+          }
           router.push('/unauthorized')
           return
         }
+
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.setItem('click_is_super_admin', '1')
+        }
       } catch (error) {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem('click_is_super_admin')
+        }
         router.push('/login')
         return
       } finally {
@@ -60,7 +76,7 @@ export default function AdminLayout({
           {children}
         </main>
 
-        <PriorityStatusBar />
+        <AppBottomDock />
       </div>
     </StatusBarProvider>
   )

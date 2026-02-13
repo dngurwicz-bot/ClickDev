@@ -63,23 +63,23 @@ export function PriorityScreenToolbar({
     }, [handleExit])
 
     return (
-        <div className="flex flex-col bg-white border-b border-slate-200 shrink-0" dir="rtl">
-            <div className="flex items-center justify-between h-10 px-3 border-b border-slate-100 bg-gradient-to-l from-[#F8FAFC] to-white">
+        <div className="flex flex-col click-ui-toolbar shrink-0" dir="rtl">
+            <div className="flex items-center justify-between h-10 px-3 border-b border-[var(--ui-border)] bg-gradient-to-l from-[#F7FBFE] to-white">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleExit}
-                        className="p-1.5 hover:bg-slate-100 rounded transition-colors"
+                        className="p-1.5 hover:bg-[var(--ui-accent-soft)] rounded transition-colors"
                         title="סגור"
                     >
-                        <X className="w-4 h-4 text-slate-500" />
+                        <X className="w-4 h-4 text-[var(--ui-text-soft)]" />
                     </button>
-                    <div className="h-5 w-px bg-slate-200" />
-                    <span className="text-sm font-semibold text-slate-800">{title}</span>
-                    <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">CLICK Flow</span>
+                    <div className="h-5 w-px bg-[var(--ui-border)]" />
+                    <span className="text-sm font-semibold text-[var(--ui-text)]">{title}</span>
+                    <span className="text-[11px] text-[var(--ui-text-soft)] bg-[var(--ui-surface-soft)] px-2 py-0.5 rounded-full border border-[var(--ui-border)]">CLICK</span>
                 </div>
 
                 <div className="flex items-center gap-1">
-                    <div className="hidden md:flex items-center gap-1.5 px-2 py-1 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded">
+                    <div className="hidden md:flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--ui-text-soft)] bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] rounded">
                         <Command className="w-3.5 h-3.5" />
                         <span>F2 החלפת תצוגה</span>
                     </div>
@@ -89,8 +89,8 @@ export function PriorityScreenToolbar({
                             className={cn(
                                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border transition-colors",
                                 viewMode === 'table'
-                                    ? "border-sky-200 bg-sky-50 text-sky-700"
-                                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                    ? "border-[var(--ui-border-strong)] bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]"
+                                    : "border-[var(--ui-border)] bg-[var(--ui-surface-soft)] text-[var(--ui-text-soft)]"
                             )}
                             title="החלפת תצוגה (F2)"
                         >
@@ -105,19 +105,19 @@ export function PriorityScreenToolbar({
                 <div className="flex items-center gap-1">
                     <button
                         onClick={onAddNew}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-md text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--ui-accent)] text-white rounded-md text-xs font-semibold hover:opacity-90 transition-colors"
                     >
                         <Plus className="w-3.5 h-3.5" />
                         <span>עובד חדש</span>
                     </button>
                     <button
                         onClick={onRefresh}
-                        className="p-1.5 hover:bg-slate-100 rounded transition-colors"
+                        className="p-1.5 hover:bg-[var(--ui-accent-soft)] rounded transition-colors"
                         title="רענן"
                     >
-                        <RotateCcw className="w-4 h-4 text-slate-500" />
+                        <RotateCcw className="w-4 h-4 text-[var(--ui-text-soft)]" />
                     </button>
-                    <div className="h-5 w-px bg-slate-200 mx-1" />
+                    <div className="h-5 w-px bg-[var(--ui-border)] mx-1" />
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -125,8 +125,8 @@ export function PriorityScreenToolbar({
                             className={cn(
                                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
                                 activeTab === tab.id
-                                    ? "bg-slate-800 text-white"
-                                    : "text-slate-700 hover:bg-slate-100"
+                                    ? "bg-[var(--ui-text)] text-white"
+                                    : "text-[var(--ui-text)] hover:bg-[var(--ui-accent-soft)]"
                             )}
                         >
                             {tab.icon}
@@ -135,7 +135,7 @@ export function PriorityScreenToolbar({
                     ))}
                 </div>
 
-                <div className="hidden lg:flex items-center gap-2 text-xs text-slate-600">
+                <div className="hidden lg:flex items-center gap-2 text-xs text-[var(--ui-text-soft)]">
                     <Search className="w-3.5 h-3.5" />
                     <span>חיפוש מהיר לפי מס עובד / ת.ז מתוך שורת הסינון בטבלה</span>
                 </div>

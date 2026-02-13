@@ -168,16 +168,31 @@ export function EmployeeTablesManager({ category, employeeId }: EmployeeTablesMa
     const handleSave = async (tableId: TableId, data: any) => {
         console.log('Saving table data:', tableId, data)
         try {
-            const response = await fetch(`/api/organizations/${orgId}/employees`, {
+            const actionByTable: Record<string, string> = {
+                '001': 'employee_profile.created',
+                '100': 'employee_identity.amended',
+                '101': 'employee_address.changed',
+            }
+            const actionKey = actionByTable[tableId]
+            if (!actionKey) {
+                throw new Error('פעולה לא נתמכת עבור הטבלה הזו')
+            }
+
+            const endpoint = actionKey === 'employee_profile.created'
+                ? `/api/organizations/${orgId}/employees/actions`
+                : `/api/organizations/${orgId}/employees/${employeeId}/actions`
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('sb-access-token')}`
                 },
                 body: JSON.stringify({
-                    operation_code: 'ADD', // For now, default to ADD (new event)
-                    event_code: tableId,
-                    data: data
+                    action_key: actionKey,
+                    effective_at: new Date().toISOString().split('T')[0],
+                    request_id: `${tableId}-${Date.now()}`,
+                    payload: data
                 })
             })
 

@@ -30,6 +30,18 @@ from routers import (  # noqa: E402
     analytics,
     admin,
     employees,
+    click_actions,
+    ui_shell,
+    search,
+    modules_runtime,
+    notifications,
+    flow,
+    docs_module,
+    vision,
+    assets,
+    vibe,
+    grow,
+    insights,
     system_blueprint,
     system_blueprint_admin
 )
@@ -58,6 +70,18 @@ app.include_router(core.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
 app.include_router(employees.router)
+app.include_router(click_actions.router)
+app.include_router(ui_shell.router)
+app.include_router(search.router)
+app.include_router(modules_runtime.router)
+app.include_router(notifications.router)
+app.include_router(flow.router)
+app.include_router(docs_module.router)
+app.include_router(vision.router)
+app.include_router(assets.router)
+app.include_router(vibe.router)
+app.include_router(grow.router)
+app.include_router(insights.router)
 app.include_router(system_blueprint.router)
 app.include_router(system_blueprint_admin.router)
 

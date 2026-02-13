@@ -9,10 +9,8 @@ import {
     getPaginationRowModel,
     ColumnDef,
     flexRender,
-    FilterFn,
 } from '@tanstack/react-table'
-import { ChevronDown, ChevronUp, Search, X, Filter } from 'lucide-react'
-import { FacetedFilter } from './FacetedFilter'
+import { Search, X } from 'lucide-react'
 
 interface DataTableProps<TData> {
     columns: ColumnDef<TData>[]
@@ -110,89 +108,79 @@ export default function DataTable<TData>({
 
     return (
         <div className="space-y-3 font-sans" dir="rtl">
-            {/* Hilan-Style Toolbar - Ultra-Dense */}
-            <div className="h-8 bg-[#f0f0f0] border border-gray-400 flex items-center px-1 justify-between select-none shadow-sm">
-                <div className="flex items-center gap-0.5">
+            <div className="min-h-10 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface-soft)] px-3 py-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {showSearch && (
-                        <div className="relative h-6">
+                        <div className="relative h-8">
                             <input
                                 value={globalFilter ?? ''}
                                 onChange={(e) => setGlobalFilter(e.target.value)}
                                 placeholder="חיפוש..."
-                                className="h-6 pl-6 pr-2 text-[11px] border border-gray-400 outline-none focus:border-blue-500 bg-white"
-                                style={{ width: '150px' }}
+                                className="h-8 w-52 pl-8 pr-8 text-xs click-ui-input bg-white"
                             />
-                            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" />
+                            <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--ui-text-soft)]" />
                             {globalFilter && (
                                 <button
                                     onClick={() => setGlobalFilter('')}
-                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0"
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--ui-text-soft)] hover:text-[var(--ui-text)] p-0"
                                 >
-                                    <X className="w-2.5 h-2.5" />
+                                    <X className="w-3.5 h-3.5" />
                                 </button>
                             )}
                         </div>
                     )}
 
-                    <div className="w-px h-5 bg-gray-400 mx-0.5" />
-
-                    {/* Hilan Date Range Filter */}
                     {enableDateFilter && (
                         <>
-                            <span className="text-[10px] text-gray-700 font-bold px-1">תאריכים:</span>
-                            <div className="flex items-center gap-0.5 bg-white border border-gray-400 px-1 h-6 shadow-inner">
-                                <span className="text-blue-700 font-bold text-[9px]">מ-</span>
+                            <span className="text-xs text-[var(--ui-text-soft)] font-medium">טווח תאריכים:</span>
+                            <div className="flex items-center gap-1 bg-white border border-[var(--ui-border)] px-2 h-8 rounded-md">
+                                <span className="text-[var(--ui-accent)] font-semibold text-[11px]">מ-</span>
                                 <input
                                     type="date"
                                     value={fromDate}
                                     onChange={(e) => setFromDate(e.target.value)}
-                                    className="border-none outline-none p-0 text-[10px] bg-transparent w-24"
+                                    className="border-none outline-none p-0 text-xs bg-transparent w-28"
                                 />
                             </div>
-                            <div className="flex items-center gap-0.5 bg-white border border-gray-400 px-1 h-6 shadow-inner">
-                                <span className="text-blue-700 font-bold text-[9px]">עד</span>
+                            <div className="flex items-center gap-1 bg-white border border-[var(--ui-border)] px-2 h-8 rounded-md">
+                                <span className="text-[var(--ui-accent)] font-semibold text-[11px]">עד</span>
                                 <input
                                     type="date"
                                     value={toDate}
                                     onChange={(e) => setToDate(e.target.value)}
-                                    className="border-none outline-none p-0 text-[10px] bg-transparent w-24"
+                                    className="border-none outline-none p-0 text-xs bg-transparent w-28"
                                 />
                             </div>
                         </>
                     )}
-
-                    <div className="w-px h-5 bg-gray-400 mx-0.5" />
                 </div>
 
-                {/* Right side stats */}
-                <div className="text-[10px] text-gray-700 font-bold px-1">
+                <div className="text-xs font-semibold text-[var(--ui-text)] bg-white border border-[var(--ui-border)] px-2 py-1 rounded-full">
                     סה"כ: {filteredData.length}
                 </div>
             </div>
 
-            {/* Table Container - Hilan/ERP Style */}
-            <div className="border-[1px] border-gray-400 overflow-hidden bg-white shadow-sm">
+            <div className="click-ui-table-shell shadow-sm">
                 <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)]">
-                    <table className="w-full border-collapse text-[12px]">
-                        {/* Header - Hilan Style */}
+                    <table className="w-full border-collapse text-xs">
                         <thead className="sticky top-0">
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <tr key={headerGroup.id} className="bg-[#c0c0c0] border-b border-gray-400">
+                                <tr key={headerGroup.id} className="click-ui-table-head border-b border-[var(--ui-border-strong)]">
                                     {headerGroup.headers.map((header) => (
                                         <th
                                             key={header.id}
-                                            className="px-1 py-1 text-right text-[11px] font-bold text-black border-l border-gray-400 last:border-l-0 select-none relative group bg-[#c0c0c0] h-6"
+                                            className="px-3 py-2 text-right text-[11px] font-bold text-[var(--ui-text)] border-l border-[var(--ui-border-strong)] last:border-l-0 select-none relative group h-9"
                                             style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                                         >
                                             <div
-                                                className={`flex items-center justify-between gap-1 h-full ${header.column.getCanSort() ? 'cursor-pointer hover:bg-[#a0a0a0]' : ''}`}
+                                                className={`flex items-center justify-between gap-1 h-full ${header.column.getCanSort() ? 'cursor-pointer hover:text-[var(--ui-accent)]' : ''}`}
                                                 onClick={header.column.getToggleSortingHandler()}
                                             >
                                                 <span className="truncate font-sans">
                                                     {flexRender(header.column.columnDef.header, header.getContext())}
                                                 </span>
                                                 {header.column.getCanSort() && (
-                                                    <div className="text-[9px] shrink-0 opacity-60 group-hover:opacity-100 font-bold">
+                                                    <div className="text-[10px] shrink-0 opacity-60 group-hover:opacity-100 font-bold">
                                                         {header.column.getIsSorted() === 'asc' ? '↑' : header.column.getIsSorted() === 'desc' ? '↓' : '↕'}
                                                     </div>
                                                 )}
@@ -203,13 +191,12 @@ export default function DataTable<TData>({
                             ))}
                         </thead>
 
-                        {/* Body - Hilan Dense Grid */}
                         <tbody>
                             {filteredData.length === 0 ? (
                                 <tr>
                                     <td
                                         colSpan={columns.length}
-                                        className="px-2 py-4 text-center text-gray-500 bg-white text-[11px]"
+                                        className="px-2 py-12 text-center text-slate-500 bg-white text-sm"
                                     >
                                         לא נמצאו נתונים תואמים
                                     </td>
@@ -220,15 +207,15 @@ export default function DataTable<TData>({
                                         key={row.id}
                                         onClick={() => onRowClick?.(row.original)}
                                         className={`
-                                            border-b border-gray-300 last:border-b-0 transition-colors h-6
-                                            ${i % 2 === 0 ? 'bg-white' : 'bg-[#f5f5f5]'} 
-                                            ${onRowClick ? 'hover:bg-[#e0f0f0] cursor-pointer' : ''}
+                                            border-b border-[var(--ui-border)] last:border-b-0 transition-colors h-10
+                                            ${i % 2 === 0 ? 'bg-white' : 'bg-[#f8fbfd]'} 
+                                            ${onRowClick ? 'hover:bg-[#f1f7fb] cursor-pointer' : ''}
                                         `}
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <td
                                                 key={cell.id}
-                                                className="px-1 py-0 border-l border-gray-300 last:border-l-0 truncate align-middle text-[11px] h-6"
+                                                className="px-3 py-1 border-l border-[var(--ui-border)] last:border-l-0 truncate align-middle text-xs text-[var(--ui-text)] h-10"
                                                 style={{ width: cell.column.getSize() !== 150 ? cell.column.getSize() : undefined }}
                                                 title={String(cell.getValue() ?? '')}
                                             >
@@ -242,31 +229,30 @@ export default function DataTable<TData>({
                     </table>
                 </div>
 
-                {/* Hilan-Style Pagination Footer */}
-                <div className="bg-[#f0f0f0] border-t border-gray-400 px-1 py-1 flex items-center justify-between select-none h-7">
-                    <div className="flex gap-0.5 items-center">
+                <div className="bg-[var(--ui-surface-soft)] border-t border-[var(--ui-border)] px-3 py-2 flex items-center justify-between select-none">
+                    <div className="flex gap-1 items-center">
                         <button
                             onClick={() => table.previousPage()}
                             disabled={!table.getCanPreviousPage()}
-                            className="px-2 py-0.5 border border-gray-400 bg-[#e0e0e0] text-[10px] font-bold text-black hover:bg-[#d0d0d0] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                            className="px-2 py-1 border border-[var(--ui-border)] bg-white text-[11px] font-semibold text-[var(--ui-text)] rounded-md hover:border-[var(--ui-accent)] hover:text-[var(--ui-accent)] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             &lt;&lt; הקודם
                         </button>
-                        <div className="flex items-center gap-1 px-1 text-[10px] text-black bg-white border border-gray-400 shadow-sm">
-                            <span className="font-bold">{table.getState().pagination.pageIndex + 1}</span>
+                        <div className="flex items-center gap-1 px-2 py-1 text-[11px] text-[var(--ui-text)] bg-white border border-[var(--ui-border)] rounded-md">
+                            <span className="font-semibold">{table.getState().pagination.pageIndex + 1}</span>
                             <span>/</span>
-                            <span className="font-bold">{table.getPageCount()}</span>
+                            <span className="font-semibold">{table.getPageCount()}</span>
                         </div>
                         <button
                             onClick={() => table.nextPage()}
                             disabled={!table.getCanNextPage()}
-                            className="px-2 py-0.5 border border-gray-400 bg-[#e0e0e0] text-[10px] font-bold text-black hover:bg-[#d0d0d0] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                            className="px-2 py-1 border border-[var(--ui-border)] bg-white text-[11px] font-semibold text-[var(--ui-text)] rounded-md hover:border-[var(--ui-accent)] hover:text-[var(--ui-accent)] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             הבא &gt;&gt;
                         </button>
                     </div>
-                    <span className="text-[10px] text-gray-700 font-bold">
-                        סה"כ: <span className="font-bold">{filteredData.length}</span>
+                    <span className="text-[11px] text-[var(--ui-text-soft)] font-medium">
+                        סה"כ: <span className="font-semibold text-[var(--ui-text)]">{filteredData.length}</span>
                     </span>
                 </div>
             </div>

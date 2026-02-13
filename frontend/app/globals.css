@@ -18,6 +18,15 @@
   --warning: #F39C12;
   --danger: #C0392B;
   --info: #2980B9;
+  --ui-bg: #eef3f7;
+  --ui-surface: #ffffff;
+  --ui-surface-soft: #f7fafd;
+  --ui-border: #d4e0e8;
+  --ui-border-strong: #bfd0dc;
+  --ui-text: #1f3f56;
+  --ui-text-soft: #5d7a8e;
+  --ui-accent: #1f7aa8;
+  --ui-accent-soft: #e7f3f9;
 }
 
 * {
@@ -88,4 +97,47 @@ body {
 
 .ProseMirror:focus {
   outline: none;
+}
+
+/* Unified system look */
+.click-ui-surface {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+}
+
+.click-ui-input {
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
+  font-size: 12px;
+  padding: 0 10px;
+  outline: none;
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+
+.click-ui-input:focus {
+  border-color: var(--ui-accent);
+  background: var(--ui-surface);
+  box-shadow: 0 0 0 2px rgba(31, 122, 168, 0.14);
+}
+
+.click-ui-toolbar {
+  background: var(--ui-surface);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.click-ui-table-shell {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.click-ui-table-head {
+  background: #edf4f9;
+  color: var(--ui-text);
 }

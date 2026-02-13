@@ -10,21 +10,17 @@ import { PriorityFormField } from '@/components/core/PriorityFormField'
 import { PriorityDataGrid } from '@/components/core/PriorityDataGrid'
 import {
     User,
-    FileText,
-    MapPin,
-    ShieldCheck,
-    CheckCircle2,
-    Network,
-    Building2,
     Loader2
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 
 import { ClickSearchPopover } from '@/components/core/ClickSearchPopover'
 
-import DateRangeSelector, { DateRangeType } from './DateRangeSelector'
 import { cn } from '@/lib/utils'
+import { FamilyTab } from './tabs/FamilyTab'
+import { BankDetailsTab } from './tabs/BankDetailsTab'
+import { RoleHistoryTab } from './tabs/RoleHistoryTab'
+import { AssetsTab } from './tabs/AssetsTab'
 
 export interface Employee {
     id: string
@@ -77,8 +73,14 @@ export interface AddressHistoryRecord {
     phone_additional?: string
     valid_from: string
     valid_to?: string
-    effective_from: string
-    effective_to?: string
+}
+
+interface TimelineRecord {
+    id: string
+    action_key: string
+    effective_at: string
+    created_at: string
+    payload_json?: Record<string, any>
 }
 
 interface EmployeeDetailsProps {
@@ -92,7 +94,7 @@ interface EmployeeDetailsProps {
     lastCreatedId?: string
     existingIds?: string[]
     existingNationalIds?: string[]
-    onUpdate?: (eventCode: string, data: any, operationCode?: string) => Promise<void> | void
+    onUpdate?: (actionKey: string, data: any) => Promise<void> | void
     onCancel?: () => void
     onDelete?: () => void
     searchMode?: boolean
@@ -111,6 +113,11 @@ const MASTER_TABS = [
 
 const DETAIL_TABS = [
     { id: 'personal', label: 'פרטים אישיים' },
+    { id: 'family', label: 'משפחה' },
+    { id: 'bank', label: 'בנק' },
+    { id: 'role_history', label: 'היסטוריית תפקיד' },
+    { id: 'assets', label: 'נכסים' },
+    { id: 'timeline', label: 'היסטוריית פעולות' },
 ]
 
 export default function EmployeeDetails({
@@ -154,9 +161,8 @@ export default function EmployeeDetails({
     }, [employee?.org_unit_id])
 
     // State for Filter / Tables
-    const [activeTable, setActiveTable] = useState<string>('001') // Keeping for backward compat if needed
-    const [filteredNameHistory, setFilteredNameHistory] = useState<NameHistoryRecord[]>([])
     const [addressHistory, setAddressHistory] = useState<AddressHistoryRecord[]>([])
+    const [timeline, setTimeline] = useState<TimelineRecord[]>([])
 
     // Form Data
     const [formData, setFormData] = useState({
@@ -199,6 +205,28 @@ export default function EmployeeDetails({
             initialFormDataRef.current = newData
             setIsSelectionVisible(false)
             setIsSearching(false)
+
+            const loadTemporalData = async () => {
+                const [addressesResp, timelineResp] = await Promise.all([
+                    supabase
+                        .from('employee_address')
+                        .select('*')
+                        .eq('employee_id', employee.id)
+                        .eq('organization_id', employee.organization_id)
+                        .order('valid_from', { ascending: false }),
+                    supabase
+                        .from('employee_action_journal')
+                        .select('*')
+                        .eq('employee_id', employee.id)
+                        .eq('organization_id', employee.organization_id)
+                        .order('created_at', { ascending: false })
+                        .limit(50),
+                ])
+
+                if (!addressesResp.error) setAddressHistory(addressesResp.data || [])
+                if (!timelineResp.error) setTimeline((timelineResp.data || []) as TimelineRecord[])
+            }
+            loadTemporalData()
         } else if (searchMode) {
             // Reset form for search
             const emptyData = {
@@ -372,7 +400,10 @@ export default function EmployeeDetails({
                     }
                 } else if (onUpdate && employee) {
                     try {
-                        await onUpdate('100', preparedData, '2');
+                        const actionKey = activeMasterTab === 'address'
+                            ? 'employee_address.changed'
+                            : 'employee_identity.amended'
+                        await onUpdate(actionKey, preparedData)
                         toast.success('העובד עודכן בהצלחה');
                     } catch (err: any) {
                         toast.error(err.message || 'שגיאה בעדכון העובד');
@@ -383,6 +414,7 @@ export default function EmployeeDetails({
             onCancel={onCancel}
             onDelete={onDelete}
             onSearch={onNewSearch}
+            onToggleView={onToggleView}
         >
             {/* SEARCHING OVERLAY */}
             {isSearching && (
@@ -581,10 +613,59 @@ export default function EmployeeDetails({
 
                 <div className="flex-1 bg-white border border-gray-300 shadow-sm p-4 overflow-y-auto">
 
-
-                    {['personal'].includes(activeDetailTab) && (
-                        <div className="text-center text-gray-400 py-10">
-                            תוכן לשונית {DETAIL_TABS.find(t => t.id === activeDetailTab)?.label} בבנייה
+                    {activeDetailTab === 'personal' && (
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-sm text-secondary border-b border-gray-200 pb-2">היסטוריית כתובות</h3>
+                            <div className="border border-gray-200">
+                                <table className="w-full text-xs">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="p-2 text-right">עיר</th>
+                                            <th className="p-2 text-right">רחוב</th>
+                                            <th className="p-2 text-right">טלפון</th>
+                                            <th className="p-2 text-right">מתאריך</th>
+                                            <th className="p-2 text-right">עד תאריך</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {addressHistory.map((row) => (
+                                            <tr key={row.id} className="border-t border-gray-100">
+                                                <td className="p-2">{row.city_name || ''}</td>
+                                                <td className="p-2">{row.street || ''}</td>
+                                                <td className="p-2">{row.phone || ''}</td>
+                                                <td className="p-2">{row.valid_from || ''}</td>
+                                                <td className="p-2">{row.valid_to || 'פעיל'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                    {activeDetailTab === 'family' && employee && (
+                        <FamilyTab employeeId={employee.id} organizationId={employee.organization_id} />
+                    )}
+                    {activeDetailTab === 'bank' && employee && (
+                        <BankDetailsTab employeeId={employee.id} organizationId={employee.organization_id} />
+                    )}
+                    {activeDetailTab === 'role_history' && employee && (
+                        <RoleHistoryTab employeeId={employee.id} organizationId={employee.organization_id} />
+                    )}
+                    {activeDetailTab === 'assets' && employee && (
+                        <AssetsTab employeeId={employee.id} organizationId={employee.organization_id} />
+                    )}
+                    {activeDetailTab === 'timeline' && (
+                        <div className="space-y-2">
+                            {timeline.length === 0 && (
+                                <div className="text-center text-gray-400 py-10">אין פעולות היסטוריות להצגה</div>
+                            )}
+                            {timeline.map((item) => (
+                                <div key={item.id} className="border border-gray-200 rounded p-3 bg-gray-50">
+                                    <div className="text-xs text-gray-500">{item.created_at}</div>
+                                    <div className="font-bold text-sm">{item.action_key}</div>
+                                    <div className="text-xs text-gray-600">מתאריך תוקף: {item.effective_at}</div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>

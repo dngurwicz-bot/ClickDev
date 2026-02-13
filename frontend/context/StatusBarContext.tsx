@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
 
 interface RecordStatus {
     label?: string
@@ -16,12 +16,24 @@ interface StatusBarContextType {
 const StatusBarContext = createContext<StatusBarContextType | undefined>(undefined)
 
 export function StatusBarProvider({ children }: { children: React.ReactNode }) {
-    const [recordStatus, setRecordStatus] = useState<RecordStatus | null>(null)
+    const [recordStatus, setRecordStatusState] = useState<RecordStatus | null>(null)
+
+    const setRecordStatus = useCallback((status: RecordStatus | null) => {
+        setRecordStatusState((prev) => {
+            if (prev === status) return prev
+            if (!prev && !status) return prev
+            if (!prev || !status) return status
+            if (prev.label === status.label && prev.current === status.current && prev.total === status.total) {
+                return prev
+            }
+            return status
+        })
+    }, [])
 
     const value = useMemo(() => ({
         recordStatus,
         setRecordStatus,
-    }), [recordStatus])
+    }), [recordStatus, setRecordStatus])
 
     return (
         <StatusBarContext.Provider value={value}>

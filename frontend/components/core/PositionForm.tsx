@@ -120,14 +120,14 @@ export function PositionForm({ initialData, onSuccess, onCancel }: PositionFormP
     })
 
     return (
-        <div className="bg-[#f3f4f6] min-h-[450px] flex flex-col border border-gray-400 font-sans" dir="rtl">
+        <div className="bg-[var(--ui-bg)] min-h-[450px] flex flex-col border border-[var(--ui-border-strong)] font-sans rounded-lg overflow-hidden" dir="rtl">
             {/* Header Bar */}
-            <div className="bg-white border-b border-gray-300 p-2 flex justify-between items-center shadow-sm">
+            <div className="bg-white border-b border-[var(--ui-border)] p-2 flex justify-between items-center shadow-sm">
                 <div className="flex items-center gap-4">
-                    <span className="font-bold text-lg text-gray-800">תקן {initialData?.id.slice(0, 4) || 'חדש'} - {jobTitles.find(t => t.id === initialData?.job_title_id)?.title || 'הגדרת תקן'}</span>
+                    <span className="font-bold text-lg text-[var(--ui-text)]">תקן {initialData?.id.slice(0, 4) || 'חדש'} - {jobTitles.find(t => t.id === initialData?.job_title_id)?.title || 'הגדרת תקן'}</span>
                 </div>
                 <div className="flex gap-2">
-                    <button type="button" onClick={requestExit} className="p-1 hover:bg-gray-100 rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
+                    <button type="button" onClick={requestExit} className="p-1 hover:bg-[var(--ui-accent-soft)] rounded text-red-500" title="סגור"><X className="w-5 h-5" /></button>
                 </div>
             </div>
 
@@ -138,11 +138,11 @@ export function PositionForm({ initialData, onSuccess, onCancel }: PositionFormP
                     {/* Right Column */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">תפקיד (מקטלוג)</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">תפקיד (מקטלוג)</label>
                             <div className="flex-1">
                                 <select
                                     {...register('job_title_id')}
-                                    className="w-full h-8 bg-[#E0F5F3] border border-[#00A896]/30 px-2 text-sm focus:border-[#00A896] outline-none shadow-sm font-medium"
+                                    className="click-ui-input h-8 font-medium"
                                 >
                                     <option value="">בחר תפקיד...</option>
                                     {jobTitles.map(t => (
@@ -154,7 +154,7 @@ export function PositionForm({ initialData, onSuccess, onCancel }: PositionFormP
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">שיוך ארגוני</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">שיוך ארגוני</label>
                             <div className="flex-1">
                                 <Controller
                                     name="org_unit_id"
@@ -175,36 +175,36 @@ export function PositionForm({ initialData, onSuccess, onCancel }: PositionFormP
                     {/* Left Column */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">תקן ניהולי</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">תקן ניהולי</label>
                             <div className="flex-1 flex items-center">
                                 <input
                                     type="checkbox"
                                     {...register('is_manager_position')}
-                                    className="w-4 h-4 border-gray-400 rounded"
+                                    className="w-4 h-4 border-[var(--ui-border-strong)] rounded"
                                 />
-                                <span className="mr-2 text-xs text-gray-500">(סימון תקן זה כניהולי יאפשר כפיפויות אליו)</span>
+                                <span className="mr-2 text-xs text-[var(--ui-text-soft)]">(סימון תקן זה כניהולי יאפשר כפיפויות אליו)</span>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">תאריך תחולה</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">תאריך תחולה</label>
                             <div className="flex-1">
                                 <input
                                     type="date"
                                     {...register('effective_date')}
-                                    className="w-full h-8 bg-[#E0F5F3] border border-[#00A896]/30 px-2 text-sm focus:border-[#00A896] outline-none"
+                                    className="click-ui-input h-8"
                                 />
                                 {errors.effective_date && <p className="text-red-500 text-[10px]">{errors.effective_date.message}</p>}
                             </div>
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <label className="text-sm font-bold text-gray-700 w-32 shrink-0">גמר תוקף</label>
+                            <label className="text-sm font-bold text-[var(--ui-text)] w-32 shrink-0">גמר תוקף</label>
                             <div className="flex-1">
                                 <input
                                     type="date"
                                     {...register('expiry_date')}
-                                    className="w-full h-8 bg-white border border-gray-400 px-2 text-sm focus:border-blue-500 outline-none"
+                                    className="click-ui-input h-8 bg-white"
                                 />
                             </div>
                         </div>
@@ -213,11 +213,11 @@ export function PositionForm({ initialData, onSuccess, onCancel }: PositionFormP
             </form>
 
             {/* Bottom Action Bar */}
-            <div className="bg-[#d1d5db] border-t border-gray-400 p-2 flex gap-3 mt-auto">
+            <div className="bg-[var(--ui-surface-soft)] border-t border-[var(--ui-border)] p-2 flex gap-3 mt-auto">
                 <button
                     type="button"
                     onClick={requestExit}
-                    className="h-8 bg-white border border-gray-500 text-gray-800 hover:bg-gray-100 px-8 text-xs font-bold shadow-sm"
+                    className="h-8 bg-white border border-[var(--ui-border-strong)] text-[var(--ui-text)] hover:bg-[#f4f9fc] px-8 text-xs font-bold shadow-sm rounded-md"
                 >
                     יציאה (Exit)
                 </button>

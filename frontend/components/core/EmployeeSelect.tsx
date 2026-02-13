@@ -21,6 +21,29 @@ interface EmployeeSelectProps {
     className?: string
 }
 
+function describeError(error: unknown) {
+    if (error instanceof Error) {
+        return {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+        }
+    }
+
+    if (error && typeof error === 'object') {
+        const e = error as Record<string, unknown>
+        return {
+            message: typeof e.message === 'string' ? e.message : null,
+            code: typeof e.code === 'string' ? e.code : null,
+            details: typeof e.details === 'string' ? e.details : null,
+            hint: typeof e.hint === 'string' ? e.hint : null,
+            raw: e,
+        }
+    }
+
+    return { raw: String(error) }
+}
+
 export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד...", className }: EmployeeSelectProps) {
     const { currentOrg } = useOrganization()
     const [open, setOpen] = useState(false)
@@ -45,7 +68,8 @@ export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד
                 if (error) throw error
                 setEmployees(data || [])
             } catch (err) {
-                console.error('Error fetching employees:', err)
+                console.error('Error fetching employees:', describeError(err))
+                setEmployees([])
             } finally {
                 setLoading(false)
             }
@@ -68,10 +92,17 @@ export function EmployeeSelect({ value, onChange, placeholder = "בחר עובד
                 .from('employees')
                 .select('id, first_name, last_name, employee_number')
                 .eq('id', value)
+                .eq('organization_id', currentOrg.id)
                 .eq('is_active', true)
                 .is('deleted_at', null)
-                .single()
-                .then(({ data }) => { if (data) setDisplayEmployee(data) })
+                .maybeSingle()
+                .then(({ data, error }) => {
+                    if (error) {
+                        console.error('Error fetching selected employee:', describeError(error))
+                        return
+                    }
+                    setDisplayEmployee(data ?? null)
+                })
         } else {
             setDisplayEmployee(null)
         }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import EmployeeDetails, { Employee } from '@/components/employees/EmployeeDetails'
 import { useOrganization } from '@/lib/contexts/OrganizationContext'
@@ -9,6 +9,8 @@ import { useStatusBar } from '@/context/StatusBarContext'
 import { PriorityScreenToolbar } from '@/components/core/PriorityScreenToolbar'
 import { PriorityTableView, TableColumn } from '@/components/core/PriorityTableView'
 import { useNavigationStack } from '@/lib/screen-lifecycle/NavigationStackProvider'
+import { createSavedSearch, dispatchEmployeeAction, dispatchEmployeeCreateAction, listSavedSearches, updateSavedSearch } from '@/lib/api'
+import type { SavedSearch } from '@/lib/types/models'
 
 export interface NewEmployeeData {
     employeeNumber: string
@@ -69,6 +71,8 @@ function EmployeeFilePage() {
     const [isLoaded, setIsLoaded] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [filterRow, setFilterRow] = useState<Record<string, string>>({})
+    const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
+    const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<string>('')
 
     useEffect(() => {
         if (searchParams.get('new') === 'true') {
@@ -121,6 +125,25 @@ function EmployeeFilePage() {
         if (currentOrg?.id) {
             fetchEmployees()
         }
+    }, [currentOrg?.id])
+
+    const loadSavedSearches = async () => {
+        if (!currentOrg?.id) return
+        try {
+            const items = await listSavedSearches(currentOrg.id, 'employee_file')
+            setSavedSearches(items)
+            const defaultSearch = items.find((item) => item.is_default)
+            if (defaultSearch) {
+                setSelectedSavedSearchId(defaultSearch.id)
+                setFilterRow((defaultSearch.filters_json as Record<string, string>) || {})
+            }
+        } catch (error) {
+            console.error('Failed to load saved searches', error)
+        }
+    }
+
+    useEffect(() => {
+        loadSavedSearches()
     }, [currentOrg?.id])
 
     const existingIds = employees.map(e => e.employeeNumber || '').filter(Boolean)
@@ -243,44 +266,19 @@ function EmployeeFilePage() {
 
         try {
             setError(null)
-            const { supabase } = await import('@/lib/supabase')
-            const { data: { session } } = await supabase.auth.getSession()
-
-            const response = await fetch(`/api/organizations/${currentOrg.id}/employees`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+            await dispatchEmployeeCreateAction(currentOrg.id, {
+                action_key: 'employee_profile.created',
+                effective_at: new Date().toISOString().split('T')[0],
+                request_id: `new-employee-${crypto.randomUUID()}`,
+                payload: {
+                    employee_number: employee.employeeNumber || (employee as any).employeeId,
+                    id_number: employee.idNumber,
+                    first_name_he: employee.firstName,
+                    last_name_he: employee.lastName,
+                    father_name_he: employee.fatherName,
+                    birth_date: formattedBirthDate,
                 },
-                body: JSON.stringify({
-                    operation_code: 'ADD',
-                    data: {
-                        employee_number: employee.employeeNumber || (employee as any).employeeId,
-                        id_number: employee.idNumber,
-                        id_type: 'israeli_id',
-                        firstName: employee.firstName,
-                        lastName: employee.lastName,
-                        fatherName: employee.fatherName,
-                        birthDate: formattedBirthDate,
-                        effectiveFrom: new Date().toISOString().split('T')[0],
-                    }
-                })
             })
-
-            if (!response.ok) {
-                const errData = await response.json()
-                let errorMessage = 'Failed to save employee'
-                if (typeof errData.detail === 'string') {
-                    errorMessage = errData.detail
-                } else if (Array.isArray(errData.detail)) {
-                    errorMessage = errData.detail.map((e: any) =>
-                        `${e.loc.join('.')} (${e.type}): ${e.msg}`
-                    ).join('\n')
-                } else if (errData.message) {
-                    errorMessage = errData.message
-                }
-                throw new Error(errorMessage)
-            }
 
             const updatedList = await fetchEmployees()
             if (updatedList) {
@@ -295,57 +293,40 @@ function EmployeeFilePage() {
         }
     }
 
-    const handleUpdateEmployee = async (eventCode: string, data: any, operationCode: string = '2') => {
+    const handleDispatchAction = async (actionKey: string, data: any = {}) => {
         if (!currentOrg?.id || !selectedEmployee) return
 
         try {
             setError(null)
-            const { supabase } = await import('@/lib/supabase')
-            const { data: { session } } = await supabase.auth.getSession()
+            const effectiveAt = data.effectiveAt || data.effective_from || new Date().toISOString().split('T')[0]
+            let payload: Record<string, any> = { ...data }
 
-            let payloadData: any = {
-                employee_number: selectedEmployee.employeeNumber || selectedEmployee.id,
-                id_number: selectedEmployee.idNumber || '',
-                id_type: 'israeli_id',
-            }
-
-            if (eventCode === '100') {
-                payloadData = {
-                    ...payloadData,
-                    firstName: operationCode === '3' ? data.firstName : (data.firstName || selectedEmployee.firstName),
-                    lastName: operationCode === '3' ? data.lastName : (data.lastName || selectedEmployee.lastName),
-                    fatherName: data.fatherName || selectedEmployee.fatherName || '',
-                    birthDate: formatDateForBackend(data.birthDate || selectedEmployee.birthDate || '2000-01-01'),
-                    effectiveFrom: data.effectiveFrom || new Date().toISOString().split('T')[0]
+            if (actionKey === 'employee_identity.amended') {
+                payload = {
+                    first_name_he: data.firstName || selectedEmployee.firstName,
+                    last_name_he: data.lastName || selectedEmployee.lastName,
+                    father_name_he: data.fatherName || selectedEmployee.fatherName || '',
+                    birth_date: formatDateForBackend(data.birthDate || selectedEmployee.birthDate || '2000-01-01'),
                 }
-            } else {
-                payloadData = {
-                    ...payloadData,
-                    ...data,
-                    effectiveFrom: data.effectiveFrom || data.effective_from || new Date().toISOString().split('T')[0]
+            } else if (actionKey === 'employee_address.changed') {
+                payload = {
+                    city_name: data.city || data.city_name || '',
+                    street: data.street || '',
+                    house_number: data.houseNum || data.house_number || '',
+                    phone: data.phone || '',
+                }
+            } else if (actionKey === 'employee_status.closed') {
+                payload = {
+                    closed_reason: data.closed_reason || 'manual_close',
                 }
             }
 
-            const response = await fetch(`/api/organizations/${currentOrg.id}/employees`, {
-                method: 'POST',
-                cache: 'no-store',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
-                },
-                body: JSON.stringify({
-                    operation_code: operationCode,
-                    event_code: eventCode,
-                    data: payloadData
-                })
+            await dispatchEmployeeAction(currentOrg.id, selectedEmployee.id, {
+                action_key: actionKey,
+                effective_at: effectiveAt,
+                payload,
+                request_id: `${selectedEmployee.id}-${actionKey}-${effectiveAt}-${crypto.randomUUID()}`,
             })
-
-            if (!response.ok) {
-                const errData = await response.json()
-                throw new Error(errData.message || errData.detail || 'Failed to update employee')
-            }
 
             const updatedList = await fetchEmployees()
             if (updatedList) {
@@ -364,13 +345,15 @@ function EmployeeFilePage() {
     }
 
     // Filter data based on filterRow
-    const filteredEmployees = employees.filter(emp => {
-        return Object.entries(filterRow).every(([key, value]) => {
-            if (!value) return true
-            const cellValue = String((emp as any)[key] || '').toLowerCase()
-            return cellValue.includes(value.toLowerCase())
+    const filteredEmployees = useMemo(() => {
+        return employees.filter((emp) => {
+            return Object.entries(filterRow).every(([key, value]) => {
+                if (!value) return true
+                const cellValue = String((emp as any)[key] || '').toLowerCase()
+                return cellValue.includes(value.toLowerCase())
+            })
         })
-    })
+    }, [employees, filterRow])
 
     const handleBackToTable = () => {
         setIsNew(false)
@@ -411,6 +394,45 @@ function EmployeeFilePage() {
 
             {/* Content Area: Table View or Form View */}
             <div className="flex-1 overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-[#d6e4ee] bg-white">
+                    <select
+                        className="h-8 rounded border border-[#c8dbe7] px-2 text-xs"
+                        value={selectedSavedSearchId}
+                        onChange={async (e) => {
+                            const id = e.target.value
+                            setSelectedSavedSearchId(id)
+                            const found = savedSearches.find((s) => s.id === id)
+                            if (found) {
+                                setFilterRow((found.filters_json as Record<string, string>) || {})
+                                if (currentOrg?.id) {
+                                    await updateSavedSearch(currentOrg.id, found.id, { touch_last_used: true })
+                                }
+                            }
+                        }}
+                    >
+                        <option value="">חיפוש שמור...</option>
+                        {savedSearches.map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                        ))}
+                    </select>
+                    <button
+                        className="h-8 rounded bg-[#2b7aaa] px-3 text-xs font-semibold text-white"
+                        onClick={async () => {
+                            if (!currentOrg?.id) return
+                            const name = prompt('שם לחיפוש השמור')
+                            if (!name?.trim()) return
+                            await createSavedSearch(currentOrg.id, {
+                                screen_key: 'employee_file',
+                                name: name.trim(),
+                                filters_json: filterRow,
+                                is_default: false,
+                            })
+                            await loadSavedSearches()
+                        }}
+                    >
+                        שמור חיפוש
+                    </button>
+                </div>
                 {viewMode === 'table' ? (
                     <PriorityTableView
                         columns={EMPLOYEE_TABLE_COLUMNS}
@@ -434,8 +456,9 @@ function EmployeeFilePage() {
                         onPrevious={handlePreviousEmployee}
                         onBack={handleBackToTable}
                         onSaveNew={(data) => handleSaveNewEmployee(data as any)}
-                        onUpdate={handleUpdateEmployee}
+                        onUpdate={handleDispatchAction}
                         onCancel={handleBackToTable}
+                        onToggleView={() => setGlobalViewMode('table')}
                         lastCreatedId={employees.length > 0 ? String(Math.max(0, ...employees.map(e => parseInt(e.employeeNumber || '0')).filter(n => !isNaN(n)))) : undefined}
                         existingIds={existingIds}
                         existingNationalIds={existingNationalIds}
@@ -445,7 +468,7 @@ function EmployeeFilePage() {
                         onDelete={async () => {
                             if (confirm('האם אתה בטוח שברצונך למחוק רשומה זו?')) {
                                 try {
-                                    await handleUpdateEmployee('200', {}, '3')
+                                    await handleDispatchAction('employee_status.closed', {})
                                     alert('העובד נמחק בהצלחה')
                                     setSelectedEmployee(null)
                                 } catch (err: any) {

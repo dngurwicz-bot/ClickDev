@@ -142,6 +142,39 @@ class Table001Request(BaseModel):
     data: Dict[str, Any]
 
 
+class ClickActionRequest(BaseModel):
+    """Unified CLICK action command request."""
+    action_key: str
+    effective_at: date_type
+    payload: Dict[str, Any] = {}
+    request_id: str
+
+
+class EmployeeTimelineItem(BaseModel):
+    """A single action journal entry."""
+    id: str
+    action_key: str
+    action_version: int
+    effective_at: date_type
+    payload_json: Dict[str, Any]
+    snapshot_before_json: Optional[Dict[str, Any]] = None
+    snapshot_after_json: Optional[Dict[str, Any]] = None
+    correlation_id: str
+    created_by: Optional[str] = None
+    created_at: datetime
+
+
+class EmployeeFileResponse(BaseModel):
+    """Employee file aggregated view."""
+    employee: Dict[str, Any]
+    addresses: List[Dict[str, Any]]
+    children: List[Dict[str, Any]]
+    bank_details: List[Dict[str, Any]]
+    role_history: List[Dict[str, Any]]
+    assets: List[Dict[str, Any]]
+    timeline: List[Dict[str, Any]]
+
+
 class EmployeeBase(BaseModel):
     """Base Employee record (Static)."""
     id: str

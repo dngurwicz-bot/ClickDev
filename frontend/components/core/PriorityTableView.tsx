@@ -40,27 +40,27 @@ export function PriorityTableView<T extends { id: string | number }>({
     onFilterChange,
 }: PriorityTableViewProps<T>) {
     return (
-        <div className="flex flex-col h-full bg-white font-sans" dir="rtl">
-            <div className="shrink-0 px-3 py-2 bg-slate-50 border-b border-slate-200">
+        <div className="flex flex-col h-full bg-[var(--ui-bg)] font-sans" dir="rtl">
+            <div className="shrink-0 px-3 py-2 click-ui-toolbar">
                 <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-600">
+                    <p className="text-xs text-[var(--ui-text-soft)]">
                         תצוגת רשימה דינמית: סנן בכל עמודה כדי להתמקד מהר.
                     </p>
-                    <span className="text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-semibold text-[var(--ui-text)] bg-white border border-[var(--ui-border)] px-2 py-0.5 rounded-full">
                         {data.length} רשומות
                     </span>
                 </div>
             </div>
             {/* Column Headers */}
-            <div className="overflow-x-auto shrink-0 border-b border-slate-300">
+            <div className="overflow-x-auto shrink-0 border-b border-[var(--ui-border-strong)]">
                 <table className="w-full border-collapse min-w-max">
                     <thead>
-                        <tr className="bg-slate-100 border-b border-slate-300">
+                        <tr className="click-ui-table-head border-b border-[var(--ui-border-strong)]">
                             {columns.map((col, idx) => (
                                 <th
                                     key={col.key}
                                     className={cn(
-                                        "px-3 py-2 text-right text-[11px] font-bold text-slate-700 border-l border-slate-300 whitespace-nowrap select-none",
+                                        "px-3 py-2 text-right text-[11px] font-bold text-[var(--ui-text)] border-l border-[var(--ui-border-strong)] whitespace-nowrap select-none",
                                         idx === columns.length - 1 && "border-l-0"
                                     )}
                                     style={{ width: col.width, minWidth: col.width || '120px' }}
@@ -73,19 +73,19 @@ export function PriorityTableView<T extends { id: string | number }>({
                             ))}
                         </tr>
                         {/* Filter Row */}
-                        <tr className="bg-white border-b border-slate-200">
+                        <tr className="bg-white border-b border-[var(--ui-border)]">
                             {columns.map((col, idx) => (
                                 <td
                                     key={`filter-${col.key}`}
                                     className={cn(
-                                        "px-1 py-1 border-l border-slate-100",
+                                        "px-1 py-1 border-l border-[var(--ui-border)]",
                                         idx === columns.length - 1 && "border-l-0"
                                     )}
                                 >
                                     <input
                                         type="text"
                                         placeholder="סינון..."
-                                        className="w-full h-7 px-2 text-xs border border-slate-200 bg-slate-50 rounded-sm focus:border-emerald-500 focus:bg-white focus:outline-none"
+                                        className="click-ui-input h-7 rounded-sm"
                                         value={filterRow?.[col.key] || ''}
                                         onChange={(e) => onFilterChange?.(col.key, e.target.value)}
                                     />
@@ -97,42 +97,42 @@ export function PriorityTableView<T extends { id: string | number }>({
             </div>
 
             {/* Table Body */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto click-ui-table-shell border-0 rounded-none">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
-                        <div className="text-center text-slate-500">
-                            <div className="animate-spin w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full mx-auto mb-3" />
+                        <div className="text-center text-[var(--ui-text-soft)]">
+                            <div className="animate-spin w-8 h-8 border-2 border-[var(--ui-accent)] border-t-transparent rounded-full mx-auto mb-3" />
                             <span className="text-sm">טוען נתונים...</span>
                         </div>
                     </div>
                 ) : data.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
-                        <div className="text-center max-w-lg bg-slate-50 border border-slate-200 rounded-xl p-8">
-                            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <div className="text-center max-w-lg bg-[var(--ui-surface-soft)] border border-[var(--ui-border)] rounded-xl p-8">
+                            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--ui-accent-soft)] text-[var(--ui-accent)] flex items-center justify-center">
                                 <Search className="w-5 h-5" />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-800 mb-3">{emptyMessage}</h3>
-                            <p className="text-sm text-slate-600 mb-2">{emptySubMessage}</p>
-                            <p className="text-sm text-slate-600 mb-6">אפשר להתחיל מסינון, או להוסיף עובד חדש.</p>
+                            <h3 className="text-xl font-bold text-[var(--ui-text)] mb-3">{emptyMessage}</h3>
+                            <p className="text-sm text-[var(--ui-text-soft)] mb-2">{emptySubMessage}</p>
+                            <p className="text-sm text-[var(--ui-text-soft)] mb-6">אפשר להתחיל מסינון, או להוסיף עובד חדש.</p>
 
                             <div className="flex items-center justify-center gap-3">
                                 {onAddNew && (
                                     <button
                                         onClick={onAddNew}
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md font-semibold text-sm hover:bg-emerald-700 transition-colors"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--ui-accent)] text-white rounded-md font-semibold text-sm hover:opacity-90 transition-colors"
                                     >
                                         <Plus className="w-4 h-4" />
                                         <span>הוספת עובד</span>
                                     </button>
                                 )}
 
-                                <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-600 hover:border-emerald-500 hover:text-emerald-700 transition-colors">
+                                <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[var(--ui-border)] rounded-md text-sm text-[var(--ui-text-soft)] hover:border-[var(--ui-accent)] hover:text-[var(--ui-accent)] transition-colors">
                                     <Search className="w-3.5 h-3.5" />
                                     <span>חיפוש חכם</span>
                                 </button>
                             </div>
 
-                            <div className="mt-5 text-xs text-slate-500">
+                            <div className="mt-5 text-xs text-[var(--ui-text-soft)]">
                                 טיפ: הקלד חלק ממספר עובד/ת.ז בשורת הסינון העליונה.
                             </div>
                         </div>
@@ -146,19 +146,19 @@ export function PriorityTableView<T extends { id: string | number }>({
                                     onClick={() => onRowClick?.(row)}
                                     onDoubleClick={() => onRowDoubleClick?.(row)}
                                     className={cn(
-                                        "cursor-pointer transition-colors border-b border-slate-100 h-9",
+                                        "cursor-pointer transition-colors border-b border-[var(--ui-border)] h-9",
                                         selectedId === row.id
-                                            ? "bg-emerald-50 border-emerald-200"
+                                            ? "bg-[var(--ui-accent-soft)] border-[var(--ui-border-strong)]"
                                             : rowIdx % 2 === 0
-                                                ? "bg-white hover:bg-slate-50"
-                                                : "bg-slate-50/40 hover:bg-slate-50"
+                                                ? "bg-white hover:bg-[#f7fbfe]"
+                                                : "bg-[#f8fbfd] hover:bg-[#f1f7fb]"
                                     )}
                                 >
                                     {columns.map((col, colIdx) => (
                                         <td
                                             key={`${row.id}-${col.key}`}
                                             className={cn(
-                                                "px-3 py-1 text-xs text-slate-700 border-l border-slate-100 truncate",
+                                                "px-3 py-1 text-xs text-[var(--ui-text)] border-l border-[var(--ui-border)] truncate",
                                                 colIdx === columns.length - 1 && "border-l-0"
                                             )}
                                             style={{ width: col.width, minWidth: col.width || '120px' }}

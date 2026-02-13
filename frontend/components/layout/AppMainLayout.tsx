@@ -1,41 +1,38 @@
 'use client'
 
 import React from 'react'
-import { PriorityHeader } from './PriorityHeader'
+import { AppHeader } from './AppHeader'
 import { FocusProvider } from '@/context/FocusContext'
 import { ViewModeProvider } from '@/context/ViewModeContext'
 import { StatusBarProvider } from '@/context/StatusBarContext'
-import { PriorityStatusBar } from './PriorityStatusBar'
+import { AppBottomDock } from './AppBottomDock'
 
-function PriorityLayoutContent({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex flex-col h-screen w-full bg-bg-main overflow-hidden text-text-primary font-sans" dir="rtl">
-            {/* Double Header */}
-            <PriorityHeader />
+            <AppHeader />
 
-            {/* Main Content Area */}
             <div className="flex flex-1 overflow-hidden relative">
-                <main className="flex-1 overflow-y-auto bg-[#ECF0F1] relative mb-6">
+                <main className="flex-1 overflow-y-auto bg-[var(--ui-bg)] relative mb-6">
                     <div className="min-h-full w-full">
                         {children}
                     </div>
                 </main>
             </div>
 
-            {/* Footer Status Bar */}
-            <PriorityStatusBar />
+            <AppBottomDock />
         </div>
     )
 }
 
-export default function PriorityMainLayout({ children }: { children: React.ReactNode }) {
+export default function AppMainLayout({ children }: { children: React.ReactNode }) {
     return (
         <FocusProvider>
             <ViewModeProvider>
                 <StatusBarProvider>
-                    <PriorityLayoutContent>
+                    <AppLayoutContent>
                         {children}
-                    </PriorityLayoutContent>
+                    </AppLayoutContent>
                 </StatusBarProvider>
             </ViewModeProvider>
         </FocusProvider>
